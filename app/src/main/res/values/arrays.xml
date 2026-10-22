@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Looks Locked: Cinema-Ink Dark / Light / Kids only — no half-mix palettes. -->
-    <string-array name="theme_names">
-        <item>@string/theme_cinema_ink</item>
-        <item>@string/theme_cinema_ink_light</item>
-        <item>@string/theme_kids_bright</item>
+    <!-- Single locked look: Dark. -->
+
+    <!-- Cinema Room → Ambient start delay. -->
+    <string-array name="cinema_room_idle_names">
+        <item>@string/cinema_room_idle_30</item>
+        <item>@string/cinema_room_idle_60</item>
+        <item>@string/cinema_room_idle_90</item>
+        <item>@string/cinema_room_idle_120</item>
+        <item>@string/cinema_room_idle_300</item>
     </string-array>
-    <string-array name="theme_values">
-        <item>cinema_ink</item>
-        <item>cinema_ink_light</item>
-        <item>kids_bright</item>
+    <string-array name="cinema_room_idle_values">
+        <item>30000</item>
+        <item>60000</item>
+        <item>90000</item>
+        <item>120000</item>
+        <item>300000</item>
     </string-array>
 
     <!-- TV Leanback poster density (Appearance → Leanback density). -->
@@ -193,31 +199,7 @@
         <item>cross_provider</item>
     </string-array>
 
-    <string-array name="tmdb_logo_quality_entries">
-        <item>Original first</item>
-        <item>w1280 first</item>
-    </string-array>
-    <string-array name="tmdb_logo_quality_values">
-        <item>original_first</item>
-        <item>w1280_first</item>
-    </string-array>
 
-    <string-array name="tmdb_logo_ttl_entries">
-        <item>1 hour</item>
-        <item>6 hours</item>
-        <item>12 hours</item>
-        <item>24 hours</item>
-        <item>48 hours</item>
-        <item>168 hours</item>
-    </string-array>
-    <string-array name="tmdb_logo_ttl_values">
-        <item>1</item>
-        <item>6</item>
-        <item>12</item>
-        <item>24</item>
-        <item>48</item>
-        <item>168</item>
-    </string-array>
 
     <string-array name="download_quality_preset_entries">
         <item>@string/download_preset_best</item>
@@ -232,13 +214,21 @@
 
     <string-array name="playback_video_quality_entries">
         <item>@string/settings_playback_video_quality_auto</item>
-        <item>@string/settings_playback_video_quality_720</item>
+        <item>@string/settings_playback_video_quality_2160</item>
+        <item>@string/settings_playback_video_quality_1440</item>
         <item>@string/settings_playback_video_quality_1080</item>
+        <item>@string/settings_playback_video_quality_720</item>
+        <item>@string/settings_playback_video_quality_480</item>
+        <item>@string/settings_playback_video_quality_360</item>
     </string-array>
     <string-array name="playback_video_quality_values">
         <item>AUTO</item>
-        <item>P720</item>
+        <item>P2160</item>
+        <item>P1440</item>
         <item>P1080</item>
+        <item>P720</item>
+        <item>P480</item>
+        <item>P360</item>
     </string-array>
 
     <string-array name="download_max_concurrent_entries">
@@ -297,38 +287,5 @@
         <item>CUSTOM_FOLDER</item>
     </string-array>
 
-    <string-array name="lumina_accent_names">
-        <item>@string/exp_accent_crimson</item>
-        <item>@string/exp_accent_ember</item>
-        <item>@string/exp_accent_aurora</item>
-        <item>@string/exp_accent_slate</item>
-    </string-array>
-    <string-array name="lumina_accent_values">
-        <item>crimson</item>
-        <item>ember</item>
-        <item>aurora</item>
-        <item>slate</item>
-    </string-array>
-
-    <string-array name="profile_avatar_names">
-        <item>@string/profile_avatar_crimson_signal</item>
-        <item>@string/profile_avatar_ember_forge</item>
-        <item>@string/profile_avatar_aurora_tide</item>
-        <item>@string/profile_avatar_slate_noir</item>
-        <item>@string/profile_avatar_forest_grove</item>
-        <item>@string/profile_avatar_ocean_depth</item>
-        <item>@string/profile_avatar_gold_atelier</item>
-        <item>@string/profile_avatar_rose_velvet</item>
-    </string-array>
-    <string-array name="profile_avatar_values">
-        <item>crimson</item>
-        <item>ember</item>
-        <item>aurora</item>
-        <item>slate</item>
-        <item>forest</item>
-        <item>ocean</item>
-        <item>gold</item>
-        <item>rose</item>
-    </string-array>
 
 </resources>

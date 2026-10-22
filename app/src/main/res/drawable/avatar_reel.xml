@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- film tail -->
+    <path
+        android:fillColor="#D5DBE1"
+        android:pathData="M66,82h28v9h-28z" />
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M70,84h4v5h-4zM78,84h4v5h-4zM86,84h4v5h-4z" />
+    <!-- reel disc -->
+    <path
+        android:fillColor="#D5DBE1"
+        android:pathData="M20,52a32,32 0 1,1 64,0a32,32 0 1,1 -64,0" />
+    <!-- holes -->
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M47,35a5,5 0 1,1 10,0a5,5 0 1,1 -10,0" />
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M63.9,57.6a5,5 0 1,1 10,0a5,5 0 1,1 -10,0" />
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M41.4,72.9a5,5 0 1,1 10,0a5,5 0 1,1 -10,0" />
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M57.4,72.9a5,5 0 1,1 10,0a5,5 0 1,1 -10,0" />
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M29.1,57.6a5,5 0 1,1 10,0a5,5 0 1,1 -10,0" />
+    <path
+        android:fillColor="#26313D"
+        android:pathData="M48,52a4,4 0 1,1 8,0a4,4 0 1,1 -8,0" />
+</vector>

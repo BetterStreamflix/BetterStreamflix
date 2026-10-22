@@ -16,12 +16,14 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
-import com.bumptech.glide.Glide
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemDetailTrailerRowMobileBinding
@@ -69,7 +71,7 @@ class DetailTrailerMobilePlayer(
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var previousOrientation: Int? = null
-    private var previousSystemUi: Int? = null
+
     private var boundLifecycleOwner: LifecycleOwner? = null
     private var thumbQuality = readThumbQuality()
     private var pipelineSession: TrailerPlayPipeline.Session? = null
@@ -379,10 +381,11 @@ class DetailTrailerMobilePlayer(
             row.tvDetailTrailerDesc.visibility = View.GONE
             val ytId = TrailerPlaybackController.youtubeVideoId(entry.url)
             if (ytId != null) {
-                Glide.with(row.ivDetailTrailerThumb)
-                    .load(TrailerCatalog.youtubeThumbUrl(ytId, thumbQuality))
-                    .centerCrop()
-                    .into(row.ivDetailTrailerThumb)
+                TrailerThumbLoader.into(
+                    target = row.ivDetailTrailerThumb,
+                    videoId = ytId,
+                    quality = thumbQuality,
+                )
             } else {
                 row.ivDetailTrailerThumb.setImageDrawable(null)
             }
@@ -565,7 +568,6 @@ class DetailTrailerMobilePlayer(
         customView = view
         customViewCallback = callback
         previousOrientation = activity.requestedOrientation
-        previousSystemUi = activity.window.decorView.systemUiVisibility
         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         val decor = activity.window.decorView as ViewGroup
         val holder = FrameLayout(context).apply {
@@ -586,12 +588,11 @@ class DetailTrailerMobilePlayer(
                 ViewGroup.LayoutParams.MATCH_PARENT,
             ),
         )
-        @Suppress("DEPRECATION")
-        activity.window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            )
+        WindowCompat.getInsetsController(activity.window, activity.window.decorView).apply {
+            systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     private fun exitFullscreen() {
@@ -606,11 +607,8 @@ class DetailTrailerMobilePlayer(
         customViewCallback = null
         previousOrientation?.let { activity.requestedOrientation = it }
         previousOrientation = null
-        previousSystemUi?.let {
-            @Suppress("DEPRECATION")
-            activity.window.decorView.systemUiVisibility = it
-        }
-        previousSystemUi = null
+        WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+            .show(WindowInsetsCompat.Type.systemBars())
     }
 
     private fun readStartMuted(): Boolean =

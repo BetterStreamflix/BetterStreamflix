@@ -99,15 +99,12 @@ class ProfileManagerTest {
     }
 
     @Test
-    fun avatarKeys_containsExpectedPalette() {
+    fun avatarKeys_matchesIllustratedCatalog() {
         assertEquals(
-            listOf(
-                "crimson", "ember", "aurora", "slate", "forest", "ocean", "gold", "rose",
-                "violet", "mint", "indigo", "copper", "arctic", "sunset", "neon",
-                "cobalt", "magenta", "charcoal", "teal", "peach",
-            ),
+            ProfileAvatarStyle.all().map { it.key },
             ProfileManager.avatarKeys,
         )
+        assertEquals(20, ProfileManager.avatarKeys.size)
     }
 
     @Test

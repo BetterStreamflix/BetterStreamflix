@@ -15,7 +15,13 @@ class ProfileScopedPreferenceStoreTest {
         assertTrue("SHOW_NEXT_EPISODES" in ProfileScopedPreferenceStore.SCOPED_KEYS)
         assertTrue("SHOW_SMART_COLLECTIONS" in ProfileScopedPreferenceStore.SCOPED_KEYS)
         assertTrue("PARENTAL_CONTROL_MAX_AGE" in ProfileScopedPreferenceStore.SCOPED_KEYS)
-        assertTrue("SELECTED_THEME" in ProfileScopedPreferenceStore.SCOPED_KEYS)
+    }
+
+    @Test
+    fun retiredThemeKeyStaysOffTheStore() {
+        // Single locked Dark look — no theme widget exists anymore, so the key
+        // must not be scoped-routed or it would shadow profile prefs forever.
+        assertFalse("SELECTED_THEME" in ProfileScopedPreferenceStore.SCOPED_KEYS)
     }
 
     @Test

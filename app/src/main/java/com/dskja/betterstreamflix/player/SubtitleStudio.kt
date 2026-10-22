@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.player
 
 import android.content.Context
+import android.graphics.Color
 import android.text.Layout
 import android.view.View
 import androidx.media3.common.text.Cue
@@ -47,6 +48,8 @@ object SubtitleStudio {
         val backgroundColor: Int,
         val edgeType: Int = CaptionStyleCompat.EDGE_TYPE_NONE,
         val edgeColor: Int = 0xFF000000.toInt(),
+        val windowColor: Int = Color.TRANSPARENT,
+        val typefaceIndex: Int = 0,
     )
 
     val CLASSIC = LightPreset(
@@ -75,7 +78,73 @@ object SubtitleStudio {
         edgeColor = 0xFF000000.toInt(),
     )
 
-    val presets: List<LightPreset> = listOf(CLASSIC, YELLOW_LARGE, HIGH_CONTRAST)
+    /** Broadcast look — clean white with a soft drop shadow, no boxes. */
+    val CINEMA = LightPreset(
+        id = "cinema",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_cinema,
+        textSize = 1f,
+        fontColor = 0xFFFFFFFF.toInt(),
+        backgroundColor = Color.TRANSPARENT,
+        edgeType = CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+        edgeColor = 0xC0000000.toInt(),
+    )
+
+    /** Anime / fast-cut readability — bright text, hard outline, no background. */
+    val OUTLINE = LightPreset(
+        id = "outline",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_outline,
+        textSize = 1.1f,
+        fontColor = 0xFFFFFFFF.toInt(),
+        backgroundColor = Color.TRANSPARENT,
+        edgeType = CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+        edgeColor = 0xFF000000.toInt(),
+    )
+
+    /** Long-form readability — serif face, cream ink, deep translucent box. */
+    val SERIF = LightPreset(
+        id = "serif",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_serif,
+        textSize = 1f,
+        fontColor = 0xFFF5E6D3.toInt(),
+        backgroundColor = argb(200, 0x0A0A0C),
+        typefaceIndex = 2,
+    )
+
+    /** Dark-room viewing — dim amber, no box, barely lifts the black floor. */
+    val NIGHT = LightPreset(
+        id = "night",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_night,
+        textSize = 0.9f,
+        fontColor = 0xC0FFC9A0.toInt(),
+        backgroundColor = Color.TRANSPARENT,
+        edgeType = CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+        edgeColor = 0x99000000.toInt(),
+    )
+
+    /** Bright scenes / HDR — fully opaque black box for guaranteed separation. */
+    val BOXED = LightPreset(
+        id = "boxed",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_boxed,
+        textSize = 1f,
+        fontColor = 0xFFFFFFFF.toInt(),
+        backgroundColor = 0xFF000000.toInt(),
+    )
+
+    /** Low-vision readability — largest size, warm yellow, hard outline. */
+    val ACCESS = LightPreset(
+        id = "access",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_access,
+        textSize = 1.75f,
+        fontColor = 0xFFFFF176.toInt(),
+        backgroundColor = argb(160, 0x000000),
+        edgeType = CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+        edgeColor = 0xFF000000.toInt(),
+    )
+
+    val presets: List<LightPreset> = listOf(
+        CLASSIC, YELLOW_LARGE, HIGH_CONTRAST, CINEMA, OUTLINE, SERIF,
+        NIGHT, BOXED, ACCESS,
+    )
 
     fun matchesCurrent(preset: LightPreset): Boolean {
         val style = UserPreferences.captionStyle
@@ -83,20 +152,22 @@ object SubtitleStudio {
             style.foregroundColor.getRgb() == preset.fontColor.getRgb() &&
             style.foregroundColor.getAlpha() == preset.fontColor.getAlpha() &&
             style.backgroundColor == preset.backgroundColor &&
+            style.windowColor == preset.windowColor &&
             style.edgeType == preset.edgeType &&
-            style.edgeColor == preset.edgeColor
+            style.edgeColor == preset.edgeColor &&
+            UserPreferences.captionTypefaceIndex == preset.typefaceIndex
     }
 
     fun applyPreset(preset: LightPreset) {
-        val windowColor = UserPreferences.captionStyle.windowColor
         UserPreferences.captionTextSize = preset.textSize
+        UserPreferences.captionTypefaceIndex = preset.typefaceIndex
         UserPreferences.captionStyle = CaptionStyleCompat(
             preset.fontColor,
             preset.backgroundColor,
-            windowColor,
+            preset.windowColor,
             preset.edgeType,
             preset.edgeColor,
-            null,
+            UserPreferences.captionTypefaceOrDefault(),
         )
     }
 

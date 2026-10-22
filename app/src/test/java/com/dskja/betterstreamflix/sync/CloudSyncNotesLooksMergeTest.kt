@@ -112,21 +112,25 @@ class CloudSyncNotesLooksMergeTest {
     }
 
     @Test
-    fun clampLook_kidsAlwaysKidsBright() {
+    fun clampLook_kidsCollapsesToDark() {
         assertEquals(
-            ThemeManager.KIDS_BRIGHT,
+            ThemeManager.CINEMA_INK,
             CloudNotesLooksSync.clampLookForActiveProfile(ThemeManager.CINEMA_INK, kidsActive = true),
+        )
+        assertEquals(
+            ThemeManager.CINEMA_INK,
+            CloudNotesLooksSync.clampLookForActiveProfile(ThemeManager.KIDS_BRIGHT, kidsActive = true),
         )
     }
 
     @Test
-    fun clampLook_adultMapsKidsBrightToCinemaInk() {
+    fun clampLook_adultCollapsesToDark() {
         assertEquals(
             ThemeManager.CINEMA_INK,
             CloudNotesLooksSync.clampLookForActiveProfile(ThemeManager.KIDS_BRIGHT, kidsActive = false),
         )
         assertEquals(
-            ThemeManager.CINEMA_INK_LIGHT,
+            ThemeManager.CINEMA_INK,
             CloudNotesLooksSync.clampLookForActiveProfile(ThemeManager.CINEMA_INK_LIGHT, kidsActive = false),
         )
     }

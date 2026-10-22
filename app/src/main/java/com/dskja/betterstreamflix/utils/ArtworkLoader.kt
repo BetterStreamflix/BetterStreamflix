@@ -107,7 +107,12 @@ private fun ImageView.loadRecoverableArtwork(
     var hasRequestedRepairForBlankUrl = false
 
     fun stillCurrent(): Boolean {
-        return isAttachedToWindow && getTag(R.id.artwork_load_generation) == ticket
+        // Do NOT gate on isAttachedToWindow: RecyclerView prefetch binds views
+        // before attach, and skipping submit() here meant nothing ever loaded
+        // (blank covers). The generation ticket alone guards recycling — a
+        // stale callback after rebind sees a different ticket and is dropped.
+        // Glide's into() is safe on detached views and resolves on attach.
+        return getTag(R.id.artwork_load_generation) == ticket
     }
 
     fun submit(url: String?) {
@@ -128,16 +133,6 @@ private fun ImageView.loadRecoverableArtwork(
                 } else {
                     builder
                 }
-            }
-            .let {
-                if (ExperimentalMobileDesign.enabled() &&
-                    !DeviceCapabilities.shouldReduceHomeEffects(context)
-                ) {
-                    it.transition(
-                        com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-                            .withCrossFade(200)
-                    )
-                } else it
             }
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(

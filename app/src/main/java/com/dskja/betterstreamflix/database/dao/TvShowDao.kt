@@ -24,6 +24,9 @@ interface TvShowDao {
     @Query("UPDATE tv_shows SET logo = :logo, logoLanguage = :logoLanguage WHERE id = :id")
     fun updateLogo(id: String, logo: String?, logoLanguage: String?)
 
+    @Query("UPDATE tv_shows SET banner = :banner WHERE id = :id")
+    fun updateBanner(id: String, banner: String?)
+
     @Query("SELECT * FROM tv_shows WHERE id = :id")
     fun getByIdAsFlow(id: String): Flow<TvShow?>
 

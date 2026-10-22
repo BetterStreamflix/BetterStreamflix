@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_onboarding_choice"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="60dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="10dp">
+
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_exp_icon_chip"
+        android:clipToOutline="true">
+
+        <ImageView
+            android:id="@+id/iv_choice_logo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            tools:src="@drawable/ic_provider_default_logo" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_choice_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:fontFamily="@font/manrope"
+        android:textColor="@color/cinema_text"
+        android:textSize="15sp"
+        tools:text="Provider" />
+
+    <ImageView
+        android:id="@+id/iv_choice_check"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_featured_check"
+        android:visibility="gone"
+        tools:visibility="visible" />
+</LinearLayout>

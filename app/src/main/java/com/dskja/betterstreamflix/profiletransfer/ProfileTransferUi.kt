@@ -21,13 +21,11 @@ import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.QrUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -157,12 +155,7 @@ object ProfileTransferUi {
             addView(container)
         }
 
-        val useGlass = ExperimentalMobileDesign.enabled()
-        val builder = if (useGlass) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(context)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(context))
         val dialog = builder
             .setTitle(R.string.profile_transfer_export_title)
             .setView(scroll)
@@ -215,29 +208,28 @@ object ProfileTransferUi {
         scanQr: () -> Unit,
     ) {
         val context = fragment.context ?: return
-        val options = arrayOf(
-            context.getString(R.string.profile_transfer_import_scan_qr),
-            context.getString(R.string.profile_transfer_import_open_file),
-            context.getString(R.string.profile_transfer_import_paste),
-        )
-        val useGlass = ExperimentalMobileDesign.enabled()
-        val builder = if (useGlass) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(context)
-        }
-        builder
+        val builder = androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(context))
+        val content = android.view.LayoutInflater.from(context)
+            .inflate(R.layout.dialog_profile_transfer_import, null, false)
+        val dialog = builder
             .setTitle(R.string.profile_transfer_import_title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> scanQr()
-                    1 -> openFile()
-                    2 -> showPasteDialog(fragment)
-                }
-            }
+            .setView(content)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
-            .also { ExpDialogChrome.polishButtons(it) }
+            .create()
+        content.findViewById<View>(R.id.row_import_scan_qr).setOnClickListener {
+            dialog.dismiss()
+            scanQr()
+        }
+        content.findViewById<View>(R.id.row_import_open_file).setOnClickListener {
+            dialog.dismiss()
+            openFile()
+        }
+        content.findViewById<View>(R.id.row_import_paste).setOnClickListener {
+            dialog.dismiss()
+            showPasteDialog(fragment)
+        }
+        dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+        dialog.show()
     }
 
     private fun showPasteDialog(fragment: Fragment) {
@@ -249,12 +241,7 @@ object ProfileTransferUi {
         }
         val pad = (20 * context.resources.displayMetrics.density).toInt()
         input.setPadding(pad, pad / 2, pad, pad / 2)
-        val useGlass = ExperimentalMobileDesign.enabled()
-        val builder = if (useGlass) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(context)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(context))
         builder
             .setTitle(R.string.profile_transfer_import_paste)
             .setView(input)
@@ -312,18 +299,9 @@ object ProfileTransferUi {
             payload.notes.size,
             payload.persona?.displayName?.takeIf { it.isNotBlank() } ?: "—",
         )
-        val useGlass = ExperimentalMobileDesign.enabled()
-        val builder = if (useGlass) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(activity))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(activity)
-        }
-        val glass = if (useGlass) {
-            ExpDialogChrome.buildGlassMessage(activity, message)
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root) else builder.setMessage(message)
+        val builder = androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(activity))
+        val glass = ExpDialogChrome.buildGlassMessage(activity, message)
+        builder.setView(glass.root)
         var importing = false
         val applyKids = payload.persona?.isKids == true
         val dialog = builder
@@ -348,11 +326,7 @@ object ProfileTransferUi {
             if (!importing) confirmInFlight = false
         }
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-            } else {
-                ExpDialogChrome.polishButtons(dialog)
-            }
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
         }
         dialog.show()
     }
@@ -428,11 +402,9 @@ object ProfileTransferUi {
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = activity.getString(R.string.settings_parental_pin_hint)
         }
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(activity))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(activity)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(
+            ExpDialogChrome.themedContext(activity),
+        )
         builder
             .setTitle(R.string.profile_transfer_kids_import_pin_title)
             .setMessage(R.string.profile_transfer_kids_import_pin_message)

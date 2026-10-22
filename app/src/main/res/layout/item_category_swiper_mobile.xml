@@ -37,6 +37,26 @@
         app:layout_constraintHeight_percent="0.20"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <TextView
+        android:id="@+id/tv_swiper_eyebrow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:fontFamily="@font/outfit"
+        android:letterSpacing="0.22"
+        android:shadowColor="#B3000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="6"
+        android:text="@string/home_swiper_eyebrow"
+        android:textAllCaps="true"
+        android:textColor="#BFFFFFFF"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@id/fl_swiper_logo_slot"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <!-- Brand-forward title logo — hero signal, no hard plate. -->
     <FrameLayout
         android:id="@+id/fl_swiper_logo_slot"
@@ -124,8 +144,8 @@
             android:id="@+id/btn_swiper_watch_now"
             android:layout_width="0dp"
             android:layout_height="52dp"
-            android:layout_marginEnd="10dp"
-            android:layout_weight="1.4"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1"
             android:background="@drawable/bg_featured_cta_primary"
             android:drawablePadding="8dp"
             android:fontFamily="@font/outfit"
@@ -139,24 +159,33 @@
             android:textSize="14sp"
             android:textStyle="bold" />
 
-        <TextView
+        <!-- iOS-style circular My List toggle: glass chip + pulse ring. -->
+        <FrameLayout
             android:id="@+id/btn_swiper_add_to_list"
-            android:layout_width="0dp"
+            android:layout_width="52dp"
             android:layout_height="52dp"
-            android:layout_marginStart="10dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_featured_cta_secondary"
-            android:drawablePadding="8dp"
-            android:fontFamily="@font/outfit"
-            android:gravity="center"
-            android:letterSpacing="0.02"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="@string/home_swiper_my_list"
-            android:textAllCaps="true"
-            android:textColor="@color/cinema_text"
-            android:textSize="13sp"
-            android:textStyle="bold" />
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_featured_list_button"
+            android:clickable="true"
+            android:focusable="true">
+
+            <View
+                android:id="@+id/v_swiper_list_ring"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_featured_list_ring"
+                android:importantForAccessibility="no"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/iv_swiper_list_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_featured_add"
+                app:tint="@android:color/white" />
+        </FrameLayout>
     </LinearLayout>
 
     <!-- Status kept for binding; visual hierarchy moves to genres line. -->

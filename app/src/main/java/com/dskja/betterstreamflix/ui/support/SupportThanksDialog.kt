@@ -15,7 +15,6 @@ import com.dskja.betterstreamflix.support.SupportProvider
 import com.dskja.betterstreamflix.support.SupportersCatalog
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 class SupportThanksDialog(
     context: Context,
@@ -47,32 +46,29 @@ class SupportThanksDialog(
             context.getString(R.string.support_thanks_body)
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
-            (binding.root.getChildAt(0) as? android.view.View)
-                ?.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            ExpMotion.enterScreen(binding.root)
-            ExpMotion.revealHeader(
-                binding.ivSupportThanksHeart,
-                binding.vSupportThanksAccentRule,
-                binding.tvSupportThanksTitle,
-                binding.tvSupportThanksBody,
-            )
-            ExpMotion.pulseAccentRule(binding.vSupportThanksAccentRule)
-            ExpMotion.popIn(binding.ivSupportThanksHeart)
-            binding.btnSupportThanksBack.setBackgroundResource(
-                ExperimentalMobileDesign.primaryButtonBackground(),
-            )
-            binding.btnSupportThanksCommunity.setBackgroundResource(
-                ExperimentalMobileDesign.chipBackground(),
-            )
-            binding.btnSupportThanksBack.applyExpPress()
-            binding.btnSupportThanksCommunity.applyExpPress()
-            listOf(binding.btnSupportThanksBack, binding.btnSupportThanksCommunity)
-                .forEachIndexed { index, btn ->
-                    btn.postDelayed({ ExpMotion.popIn(btn) }, 40L * index)
-                }
-        }
+        (binding.root.getChildAt(0) as? android.view.View)
+            ?.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.revealHeader(
+            binding.ivSupportThanksHeart,
+            binding.vSupportThanksAccentRule,
+            binding.tvSupportThanksTitle,
+            binding.tvSupportThanksBody,
+        )
+        ExpMotion.pulseAccentRule(binding.vSupportThanksAccentRule)
+        ExpMotion.popIn(binding.ivSupportThanksHeart)
+        binding.btnSupportThanksBack.setBackgroundResource(
+            R.drawable.bg_button_mobile,
+        )
+        binding.btnSupportThanksCommunity.setBackgroundResource(
+            R.drawable.bg_outlined_chip,
+        )
+        binding.btnSupportThanksBack.applyExpPress()
+        binding.btnSupportThanksCommunity.applyExpPress()
+        listOf(binding.btnSupportThanksBack, binding.btnSupportThanksCommunity)
+            .forEachIndexed { index, btn ->
+                btn.postDelayed({ ExpMotion.popIn(btn) }, 40L * index)
+            }
 
         binding.btnSupportThanksBack.setOnClickListener {
             ExpMotion.hapticTap(it)

@@ -588,6 +588,8 @@ object PoseidonHD2Provider : Provider {
                 val foundUrl = match?.groupValues?.get(1)
                 if (!foundUrl.isNullOrEmpty()) return foundUrl
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "OkHttp resolution failed for $playerUrl")
         }

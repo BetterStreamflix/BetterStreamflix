@@ -140,28 +140,11 @@ internal object SeasonSwitcher {
                     com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(view)
                     showSeasonDialog()
                 }
-                if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                        dialogButton.applyExpPress()
-                    }
-                }
                 return@launch
             }
 
-            val wasGone = spinner.visibility != View.VISIBLE
             spinner.visibility = View.VISIBLE
             dialogButton?.visibility = View.GONE
-            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { spinner.applyExpPress() }
-                if (wasGone) {
-                    com.dskja.betterstreamflix.utils.ExpMotion.popIn(spinner)
-                }
-                runCatching {
-                    spinner.setPopupBackgroundResource(
-                        com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
-                    )
-                }
-            }
             spinner.adapter = ArrayAdapter(
                 fragment.requireContext(),
                 android.R.layout.simple_spinner_item,

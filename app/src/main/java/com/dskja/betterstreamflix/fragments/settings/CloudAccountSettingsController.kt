@@ -25,18 +25,13 @@ import com.dskja.betterstreamflix.sync.SupabaseProvider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 object CloudAccountSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     /**
      * Link-Code claim path: password dialog with host email prefilled.
@@ -167,15 +162,10 @@ object CloudAccountSettingsController {
             val message = email?.let {
                 fragment.getString(R.string.cloud_sync_signed_in_as, it)
             } ?: fragment.getString(R.string.cloud_sync_signed_out)
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(ctx, message)
-            } else {
-                null
-            }
+            val glass = ExpDialogChrome.buildGlassMessage(ctx, message)
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.cloud_sync_sign_out)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(R.string.cloud_sync_sign_out) { _, _ ->
                     runAction(fragment, scope, ::refresh) {
@@ -187,8 +177,7 @@ object CloudAccountSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
@@ -235,8 +224,7 @@ object CloudAccountSettingsController {
         val density = context.resources.displayMetrics.density
         val padding = (24 * density).toInt()
         val fieldGap = (10 * density).toInt()
-        val exp = ExperimentalMobileDesign.enabled()
-        val email = EditText(context).apply {
+                val email = EditText(context).apply {
             hint = context.getString(R.string.cloud_sync_email_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             isSingleLine = true
@@ -244,32 +232,24 @@ object CloudAccountSettingsController {
                 setText(prefilledEmail.trim())
                 setSelection(text?.length ?: 0)
             }
-            if (exp) {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
         val password = EditText(context).apply {
             hint = context.getString(R.string.cloud_sync_password_hint)
             isSingleLine = true
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             transformationMethod = PasswordTransformationMethod.getInstance()
-            if (exp) {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
-        val glass = if (exp) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.cloud_sync_email_hint),
             )
-        } else {
-            null
-        }
-        val contentView = if (glass != null) {
+        val contentView = run {
             glass.root.addView(
                 email,
                 LinearLayout.LayoutParams(
@@ -285,13 +265,6 @@ object CloudAccountSettingsController {
                 ).also { it.topMargin = fieldGap },
             )
             glass.root
-        } else {
-            LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(padding, padding / 2, padding, 0)
-                addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
         }
         val dialog = alertBuilder(context)
             .setTitle(titleRes)
@@ -300,17 +273,14 @@ object CloudAccountSettingsController {
             .setPositiveButton(titleRes, null)
             .create()
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                with(ExpPressEffects) {
-                    email.applyExpPress()
-                    password.applyExpPress()
-                }
-                ExpMotion.popIn(email)
-                email.postDelayed({ ExpMotion.popIn(password) }, 40L)
-            } else {
-                ExpDialogChrome.polishShown(dialog)
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+            with(ExpPressEffects) {
+                email.applyExpPress()
+                password.applyExpPress()
             }
+            ExpMotion.popIn(email)
+            email.postDelayed({ ExpMotion.popIn(password) }, 40L)
+
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val emailValue = email.text.toString().trim()
                 val passwordValue = password.text.toString()
@@ -342,20 +312,16 @@ object CloudAccountSettingsController {
             null,
             android.R.attr.progressBarStyleHorizontal,
         ).apply {
-            if (ExperimentalMobileDesign.enabled()) {
-                progressTintList = android.content.res.ColorStateList.valueOf(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        androidx.appcompat.R.attr.colorPrimary,
-                    ),
-                )
-            }
+            progressTintList = android.content.res.ColorStateList.valueOf(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
         }
         val message = TextView(context).apply {
             setText(R.string.cloud_sync_progress_connecting)
-            if (ExperimentalMobileDesign.enabled()) {
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-            }
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -378,8 +344,7 @@ object CloudAccountSettingsController {
                 },
             )
         }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.cloud_sync_progress_connecting),
             ).also { g ->
@@ -391,9 +356,6 @@ object CloudAccountSettingsController {
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     ).also { it.topMargin = (4 * density).toInt() },
                 )
-            }
-        } else {
-            null
         }
         val contentView = glass?.root ?: LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -407,8 +369,7 @@ object CloudAccountSettingsController {
             .create()
         dialog.setCanceledOnTouchOutside(false)
         dialog.setOnShowListener {
-            if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-            else ExpDialogChrome.polishButtons(dialog)
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
         }
         dialog.show()
 

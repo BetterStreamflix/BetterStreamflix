@@ -10,7 +10,6 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.Preference
@@ -28,11 +27,7 @@ import kotlinx.coroutines.launch
 object SerienStreamAuthSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     /** Call from Settings onResume after returning from WebView sign-in. */
     fun refresh(findPreference: (String) -> Preference?) {
@@ -48,7 +43,6 @@ object SerienStreamAuthSettingsController {
         findPreference("SERIENSTREAM_SESSION_PASTE")?.isVisible = true
         findPreference("SERIENSTREAM_SESSION_COOKIES")?.isVisible = false
     }
-
 
     fun bind(
         fragment: Fragment,
@@ -84,23 +78,17 @@ object SerienStreamAuthSettingsController {
 
         validate?.setOnPreferenceClickListener {
             val ctx = fragment.requireContext()
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     ctx,
                     ctx.getString(R.string.serienstream_auth_validate_progress_message),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.serienstream_auth_validate_progress_title)
                 .setCancelable(false)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.serienstream_auth_validate_progress_message)
+            builder.setView(glass.root)
             val progress = builder.create()
             progress.setOnShowListener {
-                if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
-                else ExpDialogChrome.polishButtons(progress)
+                ExpDialogChrome.polishGlassMessageShown(progress, glass)
             }
             progress.show()
             scope.launch {
@@ -170,18 +158,13 @@ object SerienStreamAuthSettingsController {
 
         logout?.setOnPreferenceClickListener {
             val ctx = fragment.requireContext()
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     ctx,
                     ctx.getString(R.string.serienstream_auth_logout_message),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.settings_serienstream_session_cookies_clear_title)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.serienstream_auth_logout_message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(R.string.serienstream_auth_sign_out) { _, _ ->
                     SerienStreamAuthManager.logout()
@@ -195,8 +178,7 @@ object SerienStreamAuthSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
@@ -236,14 +218,11 @@ object SerienStreamAuthSettingsController {
         val density = context.resources.displayMetrics.density
         val padding = (24 * density).toInt()
         val fieldGap = (10 * density).toInt()
-        val exp = ExperimentalMobileDesign.enabled()
-        fun styledField(block: android.widget.EditText.() -> Unit) = android.widget.EditText(context).apply {
+                fun styledField(block: android.widget.EditText.() -> Unit) = android.widget.EditText(context).apply {
             isSingleLine = true
-            if (exp) {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             block()
         }
         val email = styledField {
@@ -255,15 +234,11 @@ object SerienStreamAuthSettingsController {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
         }
-        val glass = if (exp) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.serienstream_auth_credentials_message),
             )
-        } else {
-            null
-        }
-        val contentView = if (glass != null) {
+        val contentView = run {
             glass.root.addView(
                 email,
                 android.widget.LinearLayout.LayoutParams(
@@ -279,13 +254,6 @@ object SerienStreamAuthSettingsController {
                 ).also { it.topMargin = fieldGap },
             )
             glass.root
-        } else {
-            android.widget.LinearLayout(context).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                setPadding(padding, padding / 2, padding, 0)
-                addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
         }
         val dialog = alertBuilder(context)
             .setTitle(R.string.settings_serienstream_session_login)
@@ -295,11 +263,8 @@ object SerienStreamAuthSettingsController {
             .setPositiveButton(R.string.settings_serienstream_session_login, null)
             .create()
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-            } else {
-                ExpDialogChrome.polishShown(dialog)
-            }
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 dialog.dismiss()
                 openBrowserLogin(fragment)
@@ -326,23 +291,17 @@ object SerienStreamAuthSettingsController {
         password: String,
     ) {
         val context = fragment.requireContext()
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.serienstream_auth_credentials_progress),
             )
-        } else {
-            null
-        }
         val builder = alertBuilder(context)
             .setTitle(R.string.settings_serienstream_session_login)
             .setCancelable(false)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.serienstream_auth_credentials_progress)
+        builder.setView(glass.root)
         val progress = builder.create()
         progress.setOnShowListener {
-            if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
-            else ExpDialogChrome.polishButtons(progress)
+            ExpDialogChrome.polishGlassMessageShown(progress, glass)
         }
         progress.show()
         scope.launch {
@@ -429,63 +388,35 @@ object SerienStreamAuthSettingsController {
             maxLines = 8
             setText(SerienStreamAuthManager.exportCookieHeader())
             setSelection(text?.length ?: 0)
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            val glass = ExpDialogChrome.buildGlassMessage(
-                context,
-                context.getString(R.string.serienstream_auth_paste_message),
-            )
-            glass.root.addView(
-                input,
-                android.widget.LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).also { it.topMargin = padding / 2 },
-            )
-            alertBuilder(context)
-                .setTitle(R.string.serienstream_auth_paste_title)
-                .setView(glass.root)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.serienstream_auth_paste_save) { _, _ ->
-                    onSubmit(input.text?.toString().orEmpty())
-                }
-                .create()
-                .also { dialog ->
-                    dialog.setOnShowListener {
-                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    }
-                    dialog.show()
-                }
-        } else {
-            val container = FrameLayout(context).apply {
-                setPadding(padding, padding / 2, padding, 0)
-                addView(
-                    input,
-                    FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ),
-                )
+        val glass = ExpDialogChrome.buildGlassMessage(
+            context,
+            context.getString(R.string.serienstream_auth_paste_message),
+        )
+        glass.root.addView(
+            input,
+            android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).also { it.topMargin = padding / 2 },
+        )
+        alertBuilder(context)
+            .setTitle(R.string.serienstream_auth_paste_title)
+            .setView(glass.root)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.serienstream_auth_paste_save) { _, _ ->
+                onSubmit(input.text?.toString().orEmpty())
             }
-            alertBuilder(context)
-                .setTitle(R.string.serienstream_auth_paste_title)
-                .setMessage(R.string.serienstream_auth_paste_message)
-                .setView(container)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.serienstream_auth_paste_save) { _, _ ->
-                    onSubmit(input.text?.toString().orEmpty())
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
-                .create()
-                .also { dialog ->
-                    ExpDialogChrome.polishButtons(dialog)
-                    dialog.show()
-                }
-        }
+                dialog.show()
+            }
     }
 }

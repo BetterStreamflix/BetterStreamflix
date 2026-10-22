@@ -48,7 +48,6 @@ import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -75,6 +74,9 @@ class MainMobileActivity : FragmentActivity() {
 
     private companion object {
         const val RESOLVER_TIMEOUT_MS = 12_000L
+
+        /** orderInCategory slot between home(10) and movies(30) — see menu XML. */
+        const val LIVE_HUB_MENU_ORDER = 20
     }
 
     private data class ResolverPayload(
@@ -139,19 +141,12 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.themeRes()
-            } else {
-                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
-            }
-        )
+        setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
         super.onCreate(savedInstanceState)
         // Finish a provider switch after CLEAR_TASK restart (Room reset deferred).
         UserPreferences.consumePendingProviderSwitch()
         UserPreferences.clearInvalidCurrentProvider()
-        ExperimentalMobileDesign.applyDynamicColors(this)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applySystemBarColors()
@@ -164,17 +159,12 @@ class MainMobileActivity : FragmentActivity() {
             )
         )
         setContentView(binding.root)
-        if (ExperimentalMobileDesign.enabled()) {
-            applyExperimentalNavigationChrome()
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
-                nav.setBackgroundResource(ExperimentalMobileDesign.navPillBackground())
-                ExpMotion.enterScreen(binding.root)
-                ExpMotion.popIn(nav)
-                ExpMotion.popIn(binding.btnMainSearch)
-            }
-        } else {
-            applyThemeNavigationChrome()
+        applyExperimentalNavigationChrome()
+        binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
+            nav.setBackgroundResource(R.drawable.bg_meta_pill)
+            ExpMotion.enterScreen(binding.root)
+            ExpMotion.popIn(nav)
+            ExpMotion.popIn(binding.btnMainSearch)
         }
         if (UserPreferences.castEnabled) {
             CastPlaybackHub.ensureCastContext(this)
@@ -272,20 +262,29 @@ class MainMobileActivity : FragmentActivity() {
         viewModel.checkUpdate()
 
         binding.bnvMain.setupWithNavController(navController)
-        if (ExperimentalMobileDesign.enabled()) {
-            with(ExpPressEffects) { binding.btnMainSearch.applyExpPress() }
-            binding.bnvMain.setOnItemReselectedListener {
+        // Downloads tab badge: live count of queued/active downloads.
+        lifecycleScope.launch {
+            com.dskja.betterstreamflix.download.OfflineBadgeStore
+                .activeKeys(this@MainMobileActivity)
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { keys ->
+                    val badge = binding.bnvMain.getOrCreateBadge(R.id.downloads)
+                    badge.isVisible = keys.isNotEmpty()
+                    if (keys.isNotEmpty()) badge.number = keys.size.coerceAtMost(99)
+                }
+        }
+        with(ExpPressEffects) { binding.btnMainSearch.applyExpPress() }
+        binding.bnvMain.setOnItemReselectedListener {
+            ExpMotion.hapticTap(binding.bnvMain)
+        }
+        var lastNavId = navController.currentDestination?.id
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id != lastNavId &&
+                binding.bnvMain.menu.findItem(destination.id) != null
+            ) {
                 ExpMotion.hapticTap(binding.bnvMain)
             }
-            var lastNavId = navController.currentDestination?.id
-            navController.addOnDestinationChangedListener { _, destination, _ ->
-                if (destination.id != lastNavId &&
-                    binding.bnvMain.menu.findItem(destination.id) != null
-                ) {
-                    ExpMotion.hapticTap(binding.bnvMain)
-                }
-                lastNavId = destination.id
-            }
+            lastNavId = destination.id
         }
         binding.btnMainSearch.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -639,11 +638,11 @@ class MainMobileActivity : FragmentActivity() {
             UserPreferences.currentProvider != null && isTopLevelProviderDestination(destinationId)
         val navVisibility = if (showBottomNav) View.VISIBLE else View.GONE
         binding.bnvMain.visibility = navVisibility
-        // Lumina: the floating glass pill wraps the nav — hide the container too.
+        // Nav container view shares the bottom-nav visibility state.
         binding.root.findViewById<View>(R.id.bv_main_nav)?.let { pill ->
             val wasVisible = pill.visibility == View.VISIBLE
             pill.visibility = navVisibility
-            if (ExperimentalMobileDesign.enabled() && showBottomNav && !wasVisible) {
+            if (showBottomNav && !wasVisible) {
                 ExpMotion.popIn(pill)
             }
         }
@@ -657,10 +656,10 @@ class MainMobileActivity : FragmentActivity() {
         val searchWasVisible = binding.btnMainSearch.visibility == View.VISIBLE
         if (showSearch) {
             binding.btnMainSearch.visibility = View.VISIBLE
-            if (ExperimentalMobileDesign.enabled() && !searchWasVisible) {
+            if (!searchWasVisible) {
                 ExpMotion.popIn(binding.btnMainSearch)
             }
-        } else if (ExperimentalMobileDesign.enabled() && searchWasVisible) {
+        } else if (searchWasVisible) {
             ExpMotion.fadeOutAndHide(binding.btnMainSearch)
         } else {
             binding.btnMainSearch.visibility = View.GONE
@@ -677,69 +676,65 @@ class MainMobileActivity : FragmentActivity() {
             CastPlaybackHub.isCasting &&
             destinationId != R.id.player
         if (show) {
-            if (ExperimentalMobileDesign.enabled()) {
-                // Prefer flat cast chrome on OEM forks that crash LayerDrawable
-                // linear gradients during draw (BETTERSTREAMFLIX-3J).
-                runCatching {
-                    controller.setBackgroundResource(ExperimentalMobileDesign.castMiniBackground())
-                }.onFailure {
-                    controller.setBackgroundResource(R.drawable.bg_exp_cast_mini_flat)
-                }
-                val wasVisible = controller.visibility == View.VISIBLE
-                controller.visibility = View.VISIBLE
-                controller.elevation = 10f * resources.displayMetrics.density
-                if (!wasVisible) ExpMotion.popIn(controller)
-                if (controller.getTag(R.id.exp_enter_animated_tag) != true) {
-                    controller.setTag(R.id.exp_enter_animated_tag, true)
-                    val primary = MaterialColors.getColor(
-                        controller, androidx.appcompat.R.attr.colorPrimary,
-                    )
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                        fun wire(group: android.view.ViewGroup) {
-                            for (i in 0 until group.childCount) {
-                                val child = group.getChildAt(i)
-                                if (child.isClickable) child.applyExpPress()
-                                when (child) {
-                                    is android.widget.ImageButton,
-                                    is android.widget.ImageView,
-                                    -> {
-                                        if (child.isClickable || child is android.widget.ImageButton) {
-                                            runCatching {
-                                                child.setBackgroundResource(
-                                                    ExperimentalMobileDesign.iconChipBackground(),
-                                                )
-                                            }
-                                            (child as android.widget.ImageView).imageTintList =
-                                                android.content.res.ColorStateList.valueOf(primary)
-                                            ExpMotion.popIn(child)
+            // Prefer flat cast chrome on OEM forks that crash LayerDrawable
+            // linear gradients during draw (BETTERSTREAMFLIX-3J).
+            runCatching {
+                controller.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            }.onFailure {
+                controller.setBackgroundResource(R.drawable.bg_exp_cast_mini_flat)
+            }
+            val wasVisible = controller.visibility == View.VISIBLE
+            controller.visibility = View.VISIBLE
+            controller.elevation = 10f * resources.displayMetrics.density
+            if (!wasVisible) ExpMotion.popIn(controller)
+            if (controller.getTag(R.id.exp_enter_animated_tag) != true) {
+                controller.setTag(R.id.exp_enter_animated_tag, true)
+                val primary = MaterialColors.getColor(
+                    controller, androidx.appcompat.R.attr.colorPrimary,
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    fun wire(group: android.view.ViewGroup) {
+                        for (i in 0 until group.childCount) {
+                            val child = group.getChildAt(i)
+                            if (child.isClickable) child.applyExpPress()
+                            when (child) {
+                                is android.widget.ImageButton,
+                                is android.widget.ImageView,
+                                -> {
+                                    if (child.isClickable || child is android.widget.ImageButton) {
+                                        runCatching {
+                                            child.setBackgroundResource(
+                                                R.drawable.bg_detail_icon_chip,
+                                            )
                                         }
-                                    }
-                                    is android.widget.ProgressBar -> {
-                                        child.progressTintList =
+                                        (child as android.widget.ImageView).imageTintList =
                                             android.content.res.ColorStateList.valueOf(primary)
-                                    }
-                                    is android.widget.TextView -> {
-                                        child.setTextColor(
-                                            MaterialColors.getColor(
-                                                child,
-                                                com.google.android.material.R.attr.colorOnSurface,
-                                            ),
-                                        )
+                                        ExpMotion.popIn(child)
                                     }
                                 }
-                                if (child is android.view.ViewGroup) wire(child)
+                                is android.widget.ProgressBar -> {
+                                    child.progressTintList =
+                                        android.content.res.ColorStateList.valueOf(primary)
+                                }
+                                is android.widget.TextView -> {
+                                    child.setTextColor(
+                                        MaterialColors.getColor(
+                                            child,
+                                            com.google.android.material.R.attr.colorOnSurface,
+                                        ),
+                                    )
+                                }
                             }
+                            if (child is android.view.ViewGroup) wire(child)
                         }
-                        if (controller is android.view.ViewGroup) wire(controller)
                     }
+                    if (controller is android.view.ViewGroup) wire(controller)
                 }
-            } else {
-                controller.visibility = View.VISIBLE
             }
         } else {
             controller.elevation = 0f
             controller.setTag(R.id.exp_enter_animated_tag, null)
-            if (ExperimentalMobileDesign.enabled() && controller.visibility == View.VISIBLE) {
+            if (controller.visibility == View.VISIBLE) {
                 ExpMotion.fadeOutAndHide(controller)
             } else {
                 controller.visibility = View.GONE
@@ -777,7 +772,28 @@ class MainMobileActivity : FragmentActivity() {
         // Live/IPTV providers (and never under kids / parental age-gate).
         binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible =
             com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
-        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
+
+        // BottomNavigationView rejects >6 items at menu-inflation time, so live_hub
+        // is not in the XML — it joins here for Live/IPTV providers, swapping in
+        // for an item this provider does not show (usually movies/tv_shows).
+        val navMenu = binding.bnvMain.menu
+        val liveItem = navMenu.findItem(R.id.live_hub)
+        if (liveHubVisible && liveItem == null) {
+            val hiddenSlot = intArrayOf(R.id.movies, R.id.tv_shows, R.id.downloads, R.id.favorites)
+                .firstOrNull { navMenu.findItem(it)?.isVisible == false }
+            hiddenSlot?.let { navMenu.removeItem(it) }
+            if (navMenu.size() < 6) {
+                navMenu.add(
+                    android.view.Menu.NONE,
+                    R.id.live_hub,
+                    LIVE_HUB_MENU_ORDER,
+                    R.string.main_menu_live,
+                ).setIcon(R.drawable.ic_menu_live)
+            }
+        } else if (!liveHubVisible && liveItem != null) {
+            navMenu.removeItem(R.id.live_hub)
+        }
+        navMenu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -1008,6 +1024,23 @@ class MainMobileActivity : FragmentActivity() {
             }
             return true
         }
+        if (intent.getBooleanExtra("open_search", false)) {
+            val targetedUs = intent.component?.packageName == packageName ||
+                intent.`package` == packageName ||
+                callingPackage == null ||
+                callingPackage == packageName
+            if (!targetedUs) {
+                Log.w("MainMobile", "Ignoring open_search from foreign caller=$callingPackage")
+                return true
+            }
+            val navHost =
+                supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+            val navController = navHost?.navController
+            if (navController != null && navController.currentDestination?.id != R.id.search) {
+                navController.navigate(R.id.search)
+            }
+            return true
+        }
         if (intent.getBooleanExtra("open_favorites", false)) {
             val navHost =
                 supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -1152,21 +1185,12 @@ class MainMobileActivity : FragmentActivity() {
     private fun showResolverConnectionErrorDialog(ws: String, token: String) {
         if (isFinishing || isDestroyed) return
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        val glass = com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
                 this,
                 getString(R.string.settings_resolver_connection_error),
             )
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.settings_resolver_connection_error)
+        builder.setView(glass.root)
         builder
             .setTitle(R.string.app_name)
             .setPositiveButton(R.string.settings_resolver_retry) { _, _ ->
@@ -1181,11 +1205,7 @@ class MainMobileActivity : FragmentActivity() {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                    }
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }
@@ -1194,21 +1214,12 @@ class MainMobileActivity : FragmentActivity() {
     private fun showPostBypassCloseDialog() {
         if (isFinishing || isDestroyed) return
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        val glass = com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
                 this,
                 getString(R.string.settings_resolver_bypass_done),
             )
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.settings_resolver_bypass_done)
+        builder.setView(glass.root)
         builder
             .setTitle(R.string.app_name)
             .setPositiveButton(R.string.settings_resolver_close_app) { _, _ ->
@@ -1219,11 +1230,7 @@ class MainMobileActivity : FragmentActivity() {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                    }
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }
@@ -1247,7 +1254,6 @@ class MainMobileActivity : FragmentActivity() {
 
     /** Slides the floating nav pill off-screen while the user scrolls down. */
     fun setExperimentalNavHidden(hidden: Boolean) {
-        if (!ExperimentalMobileDesign.enabled()) return
         val pill = binding.root.findViewById<View>(R.id.bv_main_nav) ?: return
         if (expNavHidden == hidden) return
         expNavHidden = hidden
@@ -1301,7 +1307,7 @@ class MainMobileActivity : FragmentActivity() {
         binding.bnvMain.itemTextColor = navColors
         binding.btnMainSearch.clipToOutline = true
         binding.btnMainSearch.imageTintList = ColorStateList.valueOf(primary)
-        binding.btnMainSearch.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+        binding.btnMainSearch.setBackgroundResource(R.drawable.bg_detail_icon_chip)
         binding.btnMainSearch.elevation = 6f * resources.displayMetrics.density
         binding.bnvMain.post {
             val menuView = binding.bnvMain.getChildAt(0) as? android.view.ViewGroup ?: return@post

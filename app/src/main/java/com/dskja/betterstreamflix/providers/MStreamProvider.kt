@@ -1,6 +1,6 @@
 package com.dskja.betterstreamflix.providers
 
-import android.util.Base64
+import java.util.Base64
 import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
@@ -38,17 +38,19 @@ import kotlin.String
 object MStreamProvider : Provider {
     private const val DEFAULT_DOMAIN = "moflix-stream.xyz"
 
-    private val LEGACY_URL = Base64.decode(
-        "aHR0cHM6Ly9tb2ZsaXg=", Base64.NO_WRAP
-    ).toString(Charsets.UTF_8) + Base64.decode(
-        "LXN0cmVhbS54eXo=", Base64.NO_WRAP
+    // java.util.Base64 (not android.util) — identical output, keeps the object
+    // initializable off-device (unit tests hit it via extractor selection).
+    private val LEGACY_URL = Base64.getDecoder().decode(
+        "aHR0cHM6Ly9tb2ZsaXg="
+    ).toString(Charsets.UTF_8) + Base64.getDecoder().decode(
+        "LXN0cmVhbS54eXo="
     ).toString(Charsets.UTF_8)
     override val baseUrl: String
         get() = currentBaseUrl()
-    override val name = Base64.decode(
-        "TW9mbGl4", Base64.NO_WRAP
-    ).toString(Charsets.UTF_8) + Base64.decode(
-        "LXN0cmVhbQ==", Base64.NO_WRAP
+    override val name = Base64.getDecoder().decode(
+        "TW9mbGl4"
+    ).toString(Charsets.UTF_8) + Base64.getDecoder().decode(
+        "LXN0cmVhbQ=="
     ).toString(Charsets.UTF_8)
 
     override val logo

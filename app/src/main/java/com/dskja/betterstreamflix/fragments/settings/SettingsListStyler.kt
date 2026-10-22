@@ -40,23 +40,16 @@ object SettingsListStyler {
         val recyclerView = findRecyclerView(root) ?: return
         if (recyclerView.getTag(R.id.settings_list_styler_tag) == true) return
 
-        val experimental = UserPreferences.experimentalNewAppDesign
-        val backgroundColor = if (experimental) {
-            com.google.android.material.color.MaterialColors.getColor(
-                root, com.google.android.material.R.attr.colorSurface, 0xFF0B0B0F.toInt(),
-            )
-        } else {
-            resolveThemeColor(root, R.attr.app_background_color, 0xFF181818.toInt())
-        }
+        val backgroundColor = resolveThemeColor(root, R.attr.app_background_color, 0xFF181818.toInt())
         root.setBackgroundColor(backgroundColor)
         recyclerView.setTag(R.id.settings_list_styler_tag, true)
         recyclerView.clipToPadding = false
         recyclerView.setBackgroundColor(backgroundColor)
         recyclerView.setPadding(
             0,
-            recyclerView.context.dp(if (isTv) 18 else if (experimental) 14 else 10),
+            recyclerView.context.dp(if (isTv) 18 else 10),
             0,
-            recyclerView.context.dp(if (isTv) 28 else if (experimental) 32 else 18),
+            recyclerView.context.dp(if (isTv) 28 else 18),
         )
 
         recyclerView.addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
@@ -94,11 +87,7 @@ object SettingsListStyler {
     }
 
     private fun styleRow(view: View, isTv: Boolean) {
-        if (UserPreferences.experimentalNewAppDesign) {
-            styleExperimentalRow(view, isTv)
-        } else {
-            styleClassicRow(view, isTv)
-        }
+        styleClassicRow(view, isTv)
     }
 
     private fun styleExperimentalRow(view: View, isTv: Boolean) {
@@ -168,21 +157,15 @@ object SettingsListStyler {
             context.dp(if (isTv) 6 else 3),
         )
         view.layoutParams = layoutParams
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.reducedGlass()) {
-            view.setBackgroundResource(
-                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
-            )
-        } else {
-            view.background = createRowBackground(
-                view = view,
-                isTv = isTv,
-                defaultColor = ColorUtils.setAlphaComponent(surface, 0xCC),
-                defaultStrokeColor = ColorUtils.setAlphaComponent(border, 0x55),
-                activeColor = highlight,
-                activeStrokeColor = highlightBorder,
-                radiusDp = if (isTv) 16 else 12,
-            )
-        }
+        view.background = createRowBackground(
+            view = view,
+            isTv = isTv,
+            defaultColor = ColorUtils.setAlphaComponent(surface, 0xCC),
+            defaultStrokeColor = ColorUtils.setAlphaComponent(border, 0x55),
+            activeColor = highlight,
+            activeStrokeColor = highlightBorder,
+            radiusDp = if (isTv) 16 else 12,
+        )
         view.minimumHeight = context.dp(if (isTv) 76 else 58)
         view.setPadding(
             context.dp(if (isTv) 22 else 14),
@@ -192,22 +175,13 @@ object SettingsListStyler {
         )
 
         title.typeface = outfit
-        val isLuminaGate = title.text?.toString() ==
-            context.getString(R.string.settings_experimental_new_design_title)
-        if (isLuminaGate) {
-            view.setBackgroundResource(
-                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
-            )
-            title.setTextColor(accent)
-        } else {
-            title.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    view,
-                    com.google.android.material.R.attr.colorOnSurface,
-                    0xFFE8E8E8.toInt(),
-                ),
-            )
-        }
+        title.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                view,
+                com.google.android.material.R.attr.colorOnSurface,
+                0xFFE8E8E8.toInt(),
+            ),
+        )
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 18f else 15f)
         title.letterSpacing = -0.015f
 

@@ -75,8 +75,6 @@ import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.activities.tools.BypassWebViewActivity
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.ContentExoControllerMobileBinding
@@ -302,6 +300,52 @@ class PlayerMobileFragment : Fragment(),
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
+
+    /** Unified cast sheet — hands the live stream to DLNA/Tizen and Smart-TV bridges. */
+    private val castSheetCallbacks = object : com.dskja.betterstreamflix.ui.CastSheet.Callbacks {
+        override fun currentStream(): com.dskja.betterstreamflix.ui.CastSheet.CurrentStream? {
+            if (isOfflinePlayback()) return null
+            val video = currentVideo ?: return null
+            val raw = player.currentMediaItem?.localConfiguration?.uri?.toString()
+                ?: video.source
+            val resolved = if (raw.startsWith("data:", ignoreCase = true)) {
+                decodeBase64Uri(raw)?.let { extractUrlFromPlaylist(it) }
+            } else {
+                raw
+            } ?: video.source.takeUnless { it.startsWith("data:", ignoreCase = true) }
+            val url = resolved?.takeUnless { it.startsWith("data:", ignoreCase = true) }
+                ?: return null
+            return com.dskja.betterstreamflix.ui.CastSheet.CurrentStream(
+                url = url,
+                title = resolvePlayerTitle(),
+                mimeType = video.type,
+                headers = lastCastHeaders,
+                positionMs = player.currentPosition,
+            )
+        }
+
+        override fun onDlnaStarted(renderer: com.dskja.betterstreamflix.cast.DlnaRenderer) {
+            if (::player.isInitialized && !playerReleased) {
+                runCatching { player.pause() }
+            }
+        }
+
+        override fun onDlnaStopped(positionMs: Long) {
+            if (::player.isInitialized && !playerReleased && positionMs > 0) {
+                runCatching {
+                    player.seekTo(positionMs)
+                    player.play()
+                }
+            }
+        }
+
+        override fun onSmartTvOpenUrl(deviceName: String) {
+            if (::player.isInitialized && !playerReleased) {
+                runCatching { player.pause() }
+            }
+        }
+    }
+
     private val stuckDetector = StuckBufferDetector()
     private var stuckHandler: android.os.Handler? = null
     private var stuckRunnable: Runnable? = null
@@ -331,6 +375,7 @@ class PlayerMobileFragment : Fragment(),
     private var playbackSoftStopped = false
     private var playerViewDetached = false
     private var playerReleased = false
+    private var speedBoostRestoreSpeed = 1f
     private var mediaSessionReleased = true
     private var chooserReceiverRegistered = false
     private var castNextQueueJob: Job? = null
@@ -500,31 +545,66 @@ class PlayerMobileFragment : Fragment(),
             bridge = binding.ivTrailerStreamBridge,
             contentId = args.id,
         )
-        if (ExperimentalMobileDesign.enabled()) {
-            // Skip fade-from-black when a Trailer→Stream cover is already up.
-            if (!trailerBridge) {
-                ExpMotion.enterScreen(binding.root)
-            }
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            binding.root.findViewById<View>(R.id.layout_next_episode_overlay)
-                ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            binding.root.findViewById<View>(R.id.ll_player_error)
-                ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+        // Skip fade-from-black when a Trailer→Stream cover is already up.
+        if (!trailerBridge) {
+            ExpMotion.enterScreen(binding.root)
         }
+        binding.root.findViewById<View>(R.id.layout_next_episode_overlay)
+            ?.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+        binding.root.findViewById<View>(R.id.ll_player_error)
+            ?.setBackgroundResource(R.drawable.bg_cinema_glass_card)
         runCatching { TrailerPlaybackController.silenceAllActive() }
+        com.dskja.betterstreamflix.player.SleepTimer.attach(viewLifecycleOwner.lifecycleScope) {
+            runCatching {
+                if (::player.isInitialized && !playerReleased) player.pause()
+            }
+        }
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
         gestureHelper = PlayerGestureHelper(
-            requireContext(), 
-            binding.pvPlayer, 
-            binding.llBrightness, 
-            binding.pbBrightness, 
+            requireContext(),
+            binding.pvPlayer,
+            binding.llBrightness,
+            binding.pbBrightness,
             binding.tvBrightnessPercentage,
-            binding.llVolume, 
-            binding.pbVolume, 
-            binding.tvVolumePercentage
+            binding.llVolume,
+            binding.pbVolume,
+            binding.tvVolumePercentage,
+            binding.tvSeekFeedback,
         )
+        // Double-tap seek: ±10s per tap side, clamped to the stream bounds.
+        gestureHelper.onSeekDelta = { delta ->
+            runCatching {
+                if (::player.isInitialized && !playerReleased &&
+                    player.isCurrentMediaItemSeekable
+                ) {
+                    val duration = player.duration
+                    val target = player.currentPosition + delta
+                    player.seekTo(
+                        when {
+                            duration > 0 -> target.coerceIn(0, duration)
+                            else -> target.coerceAtLeast(0)
+                        },
+                    )
+                }
+            }
+        }
+        // Hold-to-boost: 2x while held, restore the previous speed on release.
+        gestureHelper.onSpeedBoost = { boosting ->
+            runCatching {
+                if (::player.isInitialized && !playerReleased) {
+                    if (boosting) {
+                        speedBoostRestoreSpeed = player.playbackParameters.speed
+                        player.setPlaybackSpeed(2f)
+                    } else {
+                        player.setPlaybackSpeed(
+                            speedBoostRestoreSpeed.takeIf { it > 0f } ?: 1f,
+                        )
+                    }
+                }
+            }
+        }
         defaultControllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs.coerceAtLeast(2000)
         savedControllerShowTimeoutMs = defaultControllerShowTimeoutMs
         applyPlayerSafeAreaInsets()
@@ -1157,6 +1237,7 @@ class PlayerMobileFragment : Fragment(),
         endCardCountdownJob?.cancel()
         endCardCountdownJob = null
         endCardCountdownCancelled = true
+        com.dskja.betterstreamflix.player.SleepTimer.detach()
         hideEndCardChooser()
         stopProgressHandler()
         stopLiveEdgeWatcher()
@@ -1388,55 +1469,53 @@ class PlayerMobileFragment : Fragment(),
         }
         setupEpisodeNavigationButtons()
 
-        if (ExperimentalMobileDesign.enabled()) {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                listOf(
-                    binding.pvPlayer.controller.binding.btnExoBack,
-                    binding.pvPlayer.controller.binding.btnExoExternalPlayer,
-                    binding.pvPlayer.controller.binding.exoReplay,
-                    binding.pvPlayer.controller.binding.exoPlayPause,
-                    binding.pvPlayer.controller.binding.exoRew,
-                    binding.pvPlayer.controller.binding.exoFfwd,
-                    binding.pvPlayer.controller.binding.btnCustomPrev,
-                    binding.pvPlayer.controller.binding.btnCustomNext,
-                    binding.pvPlayer.controller.binding.btnExoUnlock,
-                    binding.pvPlayer.controller.binding.btnSkipIntro,
-                    binding.pvPlayer.controller.binding.btnExoLock,
-                    binding.pvPlayer.controller.binding.btnExoPictureInPicture,
-                    binding.pvPlayer.controller.binding.btnExoAspectRatio,
-                    binding.pvPlayer.controller.binding.btnExoAudio,
-                    binding.pvPlayer.controller.binding.exoSettings,
-                    binding.pvPlayer.controller.binding.btnGoLive,
-                    binding.btnNextEpisodeAction,
-                    binding.btnNextEpisodeDismiss,
-                ).forEach { it.applyExpPress() }
-                runCatching {
-                    binding.pvPlayer.controller.binding.mediaRouteButton.applyExpPress()
-                }
-            }
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
             listOf(
                 binding.pvPlayer.controller.binding.btnExoBack,
                 binding.pvPlayer.controller.binding.btnExoExternalPlayer,
+                binding.pvPlayer.controller.binding.exoReplay,
+                binding.pvPlayer.controller.binding.exoPlayPause,
+                binding.pvPlayer.controller.binding.exoRew,
+                binding.pvPlayer.controller.binding.exoFfwd,
+                binding.pvPlayer.controller.binding.btnCustomPrev,
+                binding.pvPlayer.controller.binding.btnCustomNext,
+                binding.pvPlayer.controller.binding.btnExoUnlock,
+                binding.pvPlayer.controller.binding.btnSkipIntro,
                 binding.pvPlayer.controller.binding.btnExoLock,
                 binding.pvPlayer.controller.binding.btnExoPictureInPicture,
                 binding.pvPlayer.controller.binding.btnExoAspectRatio,
                 binding.pvPlayer.controller.binding.btnExoAudio,
                 binding.pvPlayer.controller.binding.exoSettings,
-            ).forEach { btn ->
-                btn.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            }
+                binding.pvPlayer.controller.binding.btnGoLive,
+                binding.btnNextEpisodeAction,
+                binding.btnNextEpisodeDismiss,
+            ).forEach { it.applyExpPress() }
             runCatching {
-                binding.pvPlayer.controller.binding.mediaRouteButton
-                    .setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                binding.pvPlayer.controller.binding.mediaRouteButton.applyExpPress()
             }
-            listOf(
-                binding.pvPlayer.controller.binding.exoPlayPause,
-                binding.pvPlayer.controller.binding.exoRew,
-                binding.pvPlayer.controller.binding.exoFfwd,
-                binding.pvPlayer.controller.binding.exoReplay,
-            ).forEach { btn ->
-                btn.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
-            }
+        }
+        listOf(
+            binding.pvPlayer.controller.binding.btnExoBack,
+            binding.pvPlayer.controller.binding.btnExoExternalPlayer,
+            binding.pvPlayer.controller.binding.btnExoLock,
+            binding.pvPlayer.controller.binding.btnExoPictureInPicture,
+            binding.pvPlayer.controller.binding.btnExoAspectRatio,
+            binding.pvPlayer.controller.binding.btnExoAudio,
+            binding.pvPlayer.controller.binding.exoSettings,
+        ).forEach { btn ->
+            btn.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        }
+        runCatching {
+            binding.pvPlayer.controller.binding.mediaRouteButton
+                .setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        }
+        listOf(
+            binding.pvPlayer.controller.binding.exoPlayPause,
+            binding.pvPlayer.controller.binding.exoRew,
+            binding.pvPlayer.controller.binding.exoFfwd,
+            binding.pvPlayer.controller.binding.exoReplay,
+        ).forEach { btn ->
+            btn.setBackgroundResource(R.drawable.bg_meta_pill)
         }
 
         binding.pvPlayer.controller.binding.btnExoBack.setOnClickListener {
@@ -1475,45 +1554,41 @@ class PlayerMobileFragment : Fragment(),
         binding.pvPlayer.controller.binding.btnExoLock.setOnClickListener {
             ExpMotion.hapticTap(it)
             setControlsLocked(true)
-            if (ExperimentalMobileDesign.enabled()) {
-                binding.pvPlayer.controller.binding.btnExoUnlock.setBackgroundResource(
-                    ExperimentalMobileDesign.primaryButtonBackground(),
-                )
-                androidx.core.widget.ImageViewCompat.setImageTintList(
-                    binding.pvPlayer.controller.binding.btnExoUnlock,
-                    android.content.res.ColorStateList.valueOf(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            binding.pvPlayer.controller.binding.btnExoUnlock,
-                            com.google.android.material.R.attr.colorOnPrimary,
-                        ),
+            binding.pvPlayer.controller.binding.btnExoUnlock.setBackgroundResource(
+                R.drawable.bg_button_mobile,
+            )
+            androidx.core.widget.ImageViewCompat.setImageTintList(
+                binding.pvPlayer.controller.binding.btnExoUnlock,
+                android.content.res.ColorStateList.valueOf(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        binding.pvPlayer.controller.binding.btnExoUnlock,
+                        com.google.android.material.R.attr.colorOnPrimary,
                     ),
-                )
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    binding.pvPlayer.controller.binding.btnExoUnlock.applyExpPress()
-                }
-                ExpMotion.popIn(binding.pvPlayer.controller.binding.btnExoUnlock)
+                ),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.pvPlayer.controller.binding.btnExoUnlock.applyExpPress()
             }
+            ExpMotion.popIn(binding.pvPlayer.controller.binding.btnExoUnlock)
         }
 
         binding.pvPlayer.controller.binding.btnExoUnlock.setOnClickListener {
             ExpMotion.hapticTap(it)
             setControlsLocked(false)
-            if (ExperimentalMobileDesign.enabled()) {
-                val c = binding.pvPlayer.controller.binding
-                c.btnExoUnlock.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                androidx.core.widget.ImageViewCompat.setImageTintList(
-                    c.btnExoUnlock,
-                    android.content.res.ColorStateList.valueOf(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            c.btnExoUnlock,
-                            androidx.appcompat.R.attr.colorPrimary,
-                        ),
+            val c = binding.pvPlayer.controller.binding
+            c.btnExoUnlock.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+            androidx.core.widget.ImageViewCompat.setImageTintList(
+                c.btnExoUnlock,
+                android.content.res.ColorStateList.valueOf(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        c.btnExoUnlock,
+                        androidx.appcompat.R.attr.colorPrimary,
                     ),
-                )
-                ExpMotion.revealHeader(c.tvExoTitle, c.tvExoSubtitle)
-                ExpMotion.popIn(c.exoBottomBar)
-                ExpMotion.popIn(c.exoCenterControls)
-            }
+                ),
+            )
+            ExpMotion.revealHeader(c.tvExoTitle, c.tvExoSubtitle)
+            ExpMotion.popIn(c.exoBottomBar)
+            ExpMotion.popIn(c.exoCenterControls)
         }
 
         binding.pvPlayer.controller.binding.btnExoPictureInPicture.setOnClickListener {
@@ -1531,13 +1606,7 @@ class PlayerMobileFragment : Fragment(),
         binding.pvPlayer.controller.binding.btnExoAspectRatio.setOnClickListener {
             ExpMotion.hapticTap(it)
             val newResize = UserPreferences.playerResize.next()
-            if (ExperimentalMobileDesign.enabled()) {
-                showPlayerCue(newResize.stringRes)
-            } else {
-                zoomToast?.cancel()
-                zoomToast = Toast.makeText(requireContext(), newResize.stringRes, Toast.LENGTH_SHORT)
-                zoomToast?.show()
-            }
+            showPlayerCue(newResize.stringRes)
 
             UserPreferences.playerResize = newResize
             binding.pvPlayer.showController()
@@ -1697,11 +1766,9 @@ class PlayerMobileFragment : Fragment(),
 
             val wasGone = button.isGone
             button.isGone = false
-            if (ExperimentalMobileDesign.enabled()) {
-                button.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { button.applyExpPress() }
-                if (wasGone) ExpMotion.popIn(button)
-            }
+            button.setBackgroundResource(R.drawable.bg_meta_pill)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { button.applyExpPress() }
+            if (wasGone) ExpMotion.popIn(button)
             button.setOnClickListener listener@{
                 ExpMotion.hapticTap(button)
                 if (!hasEpisode()) return@listener
@@ -1822,7 +1889,7 @@ class PlayerMobileFragment : Fragment(),
 
     private fun showOfflinePreviousEpisodeDialog(previousEpisode: Video.Type.Episode) {
         if (!isAdded || _binding == null) return
-        MaterialAlertDialogBuilder(requireContext())
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle(R.string.player_offline_prev_title)
             .setMessage(R.string.player_offline_prev_message)
             .setPositiveButton(R.string.player_offline_next_online) { _, _ ->
@@ -1876,6 +1943,12 @@ class PlayerMobileFragment : Fragment(),
             if (isTearingDown || !isAdded) return@launch
             if (KidsBedtime.shouldBlockAutoplay()) {
                 finishForKidsBedtime()
+                return@launch
+            }
+            if (autoplay && com.dskja.betterstreamflix.player.SleepTimer.shouldBlockAutoplay()) {
+                // One-shot "end of video" sleep timer: hold at the end card,
+                // then disarm so manual navigation stays unaffected.
+                com.dskja.betterstreamflix.player.SleepTimer.onAutoplayBlocked()
                 return@launch
             }
             if (autoplay && viewModel.isVideoResolveInFlight()) {
@@ -1944,7 +2017,7 @@ class PlayerMobileFragment : Fragment(),
 
     private fun showOfflineNextEpisodeDialog(nextEpisode: Video.Type.Episode) {
         if (!isAdded || _binding == null) return
-        MaterialAlertDialogBuilder(requireContext())
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle(R.string.player_offline_next_title)
             .setMessage(R.string.player_offline_next_message)
             .setPositiveButton(R.string.player_offline_next_online) { _, _ ->
@@ -2180,9 +2253,8 @@ class PlayerMobileFragment : Fragment(),
                 super.onTracksChanged(tracks)
                 if (!mayRunPlayerListenerWork()) return
                 val marks = SkipIntroChapters.fromTracks(tracks)
-                if (marks.isNotEmpty()) {
-                    skipIntroChapters = marks
-                }
+                skipIntroChapters = marks
+                updateSeekbarChapterMarkers(marks)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -2901,34 +2973,24 @@ class PlayerMobileFragment : Fragment(),
             }
             if (!wasLive) {
                 controller.tvLiveIndicator.setTag(R.id.exp_enter_animated_tag, true)
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpMotion.popIn(controller.tvLiveIndicator)
-                }
+                ExpMotion.popIn(controller.tvLiveIndicator)
             }
-            if (ExperimentalMobileDesign.enabled()) {
-                runCatching {
-                    controller.tvLiveIndicator.startAnimation(
-                        android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
-                    )
-                }
-                controller.tvLiveIndicator.setBackgroundResource(
-                    ExperimentalMobileDesign.liveIndicatorBackground(),
+            runCatching {
+                controller.tvLiveIndicator.startAnimation(
+                    android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
                 )
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    controller.tvLiveIndicator.applyExpPress()
-                }
-                controller.btnGoLive.setBackgroundResource(
-                    ExperimentalMobileDesign.primaryButtonBackground(),
-                )
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    controller.btnGoLive.applyExpPress()
-                }
-            } else {
-                runCatching {
-                    controller.tvLiveIndicator.startAnimation(
-                        android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
-                    )
-                }
+            }
+            controller.tvLiveIndicator.setBackgroundResource(
+                R.drawable.bg_meta_pill,
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                controller.tvLiveIndicator.applyExpPress()
+            }
+            controller.btnGoLive.setBackgroundResource(
+                R.drawable.bg_button_mobile,
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                controller.btnGoLive.applyExpPress()
             }
             controller.btnGoLive.setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -3025,7 +3087,7 @@ class PlayerMobileFragment : Fragment(),
                 val goLive = binding.pvPlayer.controller.binding.btnGoLive
                 val wasVisible = goLive.isVisible
                 goLive.isVisible = behind
-                if (behind && !wasVisible && ExperimentalMobileDesign.enabled()) {
+                if (behind && !wasVisible) {
                     with(com.dskja.betterstreamflix.utils.ExpPressEffects) { goLive.applyExpPress() }
                     ExpMotion.popIn(goLive)
                     runCatching {
@@ -3089,14 +3151,12 @@ class PlayerMobileFragment : Fragment(),
             ExpMotion.hapticTap(it)
             showLiveChannelGuideSheet()
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            controller.tvLiveChannelMeta.setBackgroundResource(
-                ExperimentalMobileDesign.metaPillBackground(),
-            )
-            if (!wasVisible) ExpMotion.popIn(controller.tvLiveChannelMeta)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                controller.tvLiveChannelMeta.applyExpPress()
-            }
+        controller.tvLiveChannelMeta.setBackgroundResource(
+            R.drawable.bg_meta_pill,
+        )
+        if (!wasVisible) ExpMotion.popIn(controller.tvLiveChannelMeta)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            controller.tvLiveChannelMeta.applyExpPress()
         }
     }
 
@@ -3104,47 +3164,26 @@ class PlayerMobileFragment : Fragment(),
         if (!isLiveTvPlayback()) return
         val channels = com.dskja.betterstreamflix.iptv.IptvLiveSession.snapshot()
         if (channels.isEmpty()) {
-            if (ExperimentalMobileDesign.enabled()) {
-                showLiveChannelGuideEmptyExp()
-            } else {
-                Toast.makeText(requireContext(), R.string.player_live_no_more_channels, Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(requireContext(), R.string.player_live_no_more_channels, Toast.LENGTH_SHORT).show()
             return
         }
         val currentId = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()?.id
         val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
-        val useExp = ExperimentalMobileDesign.enabled()
         val root = android.widget.LinearLayout(requireContext()).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            if (useExp) {
-                setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
-            } else {
-                setBackgroundColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorSurface,
-                    ),
-                )
-            }
+            setBackgroundColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorSurface,
+                ),
+            )
             setPadding(20.dp(requireContext()), 16.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
         }
-        if (useExp) ExperimentalMobileDesign.applyReducedGlass(root)
-        if (useExp) ExpMotion.enterScreen(root)
         val title = android.widget.TextView(requireContext()).apply {
             text = getString(R.string.player_live_channel_guide)
-            if (useExp) setTextAppearance(R.style.TextAppearance_Lumina_Title)
-            else setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
             setPadding(0, 0, 0, 8.dp(requireContext()))
         }
         root.addView(title)
-        if (useExp) {
-            val rule = View(requireContext()).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(40.dp(requireContext()), 3.dp(requireContext()))
-                setBackgroundResource(R.drawable.bg_cinema_accent_rule)
-            }
-            root.addView(rule)
-            ExpMotion.revealHeader(title)
-            ExpMotion.pulseAccentRule(rule)
-        }
         val recent = com.dskja.betterstreamflix.iptv.IptvLiveSession.recent(6)
             .filter { it.id != currentId }
         if (recent.isNotEmpty()) {
@@ -3168,10 +3207,6 @@ class PlayerMobileFragment : Fragment(),
                         append("  ·  ").append(getString(R.string.player_live_recent_badge))
                         if (!subtitle.isNullOrBlank()) append('\n').append(subtitle)
                     }
-                    if (useExp) {
-                        setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                        setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
-                    }
                     setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
                     isClickable = true
                     isFocusable = true
@@ -3182,9 +3217,6 @@ class PlayerMobileFragment : Fragment(),
                         showLiveCue(R.string.player_live_zapping)
                         viewModel.playLiveChannel(channel)
                     }
-                }
-                if (useExp) {
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
                 }
                 val lp = android.widget.LinearLayout.LayoutParams(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -3203,7 +3235,6 @@ class PlayerMobileFragment : Fragment(),
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(0, 12.dp(requireContext()), 0, 0)
         }
-        val rowBg = if (useExp) ExperimentalMobileDesign.optionItemBackground() else 0
         var currentRow: View? = null
         channels.forEachIndexed { index, channel ->
             val subtitle = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatGuideSubtitle(channel)
@@ -3212,27 +3243,16 @@ class PlayerMobileFragment : Fragment(),
                     append(getString(R.string.player_live_channel_meta, index + 1, channel.name))
                     if (!subtitle.isNullOrBlank()) append('\n').append(subtitle)
                 }
-                if (useExp) setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                if (rowBg != 0) setBackgroundResource(rowBg)
                 setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
                 isClickable = true
                 isFocusable = true
                 if (channel.id == currentId) {
                     isSelected = true
-                    if (useExp) {
-                        setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                        setTextColor(
-                            com.google.android.material.color.MaterialColors.getColor(
-                                this, com.google.android.material.R.attr.colorOnPrimary,
-                            )
+                    setTextColor(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            this, androidx.appcompat.R.attr.colorPrimary,
                         )
-                    } else {
-                        setTextColor(
-                            com.google.android.material.color.MaterialColors.getColor(
-                                this, androidx.appcompat.R.attr.colorPrimary,
-                            )
-                        )
-                    }
+                    )
                 }
                 setOnClickListener {
                     ExpMotion.hapticTap(it)
@@ -3243,19 +3263,12 @@ class PlayerMobileFragment : Fragment(),
                     viewModel.playLiveChannel(channel)
                 }
             }
-            if (useExp) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
-            }
             val lp = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = 8.dp(requireContext()) }
             list.addView(row, lp)
             if (channel.id == currentId) currentRow = row
-            if (useExp && (index < 12 || channel.id == currentId)) {
-                row.alpha = 0f
-                row.postDelayed({ ExpMotion.popIn(row) }, 28L * index.coerceAtMost(12))
-            }
         }
         scroll.addView(list)
         root.addView(scroll)
@@ -3266,30 +3279,6 @@ class PlayerMobileFragment : Fragment(),
                 scroll.smoothScrollTo(0, row.top.coerceAtLeast(0))
             }
         }
-    }
-
-    private fun showLiveChannelGuideEmptyExp() {
-        val emptySheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
-        val emptyRoot = android.widget.LinearLayout(requireContext()).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
-            setPadding(20.dp(requireContext()), 20.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
-        }
-        ExperimentalMobileDesign.applyReducedGlass(emptyRoot)
-        val emptyTitle = android.widget.TextView(requireContext()).apply {
-            text = getString(R.string.player_live_channel_guide)
-            setTextAppearance(R.style.TextAppearance_Lumina_Title)
-            setPadding(0, 12.dp(requireContext()), 0, 0)
-        }
-        val emptyBody = android.widget.TextView(requireContext()).apply {
-            text = getString(R.string.player_live_no_more_channels)
-            setTextAppearance(R.style.TextAppearance_Lumina_Body)
-            setPadding(0, 12.dp(requireContext()), 0, 16.dp(requireContext()))
-        }
-        emptyRoot.addView(emptyTitle)
-        emptyRoot.addView(emptyBody)
-        emptySheet.setContentView(emptyRoot)
-        emptySheet.show()
     }
 
     private fun ensureLiveChannelGuide() {
@@ -3323,35 +3312,30 @@ class PlayerMobileFragment : Fragment(),
         val hasNext = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasNext()
         val prevWasGone = btnPrevious.isGone
         val nextWasGone = btnNext.isGone
-        if (ExperimentalMobileDesign.enabled()) {
-            val pill = ExperimentalMobileDesign.controlsPillBackground()
-            if (hasPrev) {
-                btnPrevious.animate().cancel()
-                btnPrevious.alpha = 1f
-                btnPrevious.isVisible = true
-                btnPrevious.setBackgroundResource(pill)
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { btnPrevious.applyExpPress() }
-                if (prevWasGone) ExpMotion.popIn(btnPrevious)
-            } else if (!prevWasGone) {
-                ExpMotion.fadeOutAndHide(btnPrevious)
-            } else {
-                btnPrevious.isGone = true
-            }
-            if (hasNext) {
-                btnNext.animate().cancel()
-                btnNext.alpha = 1f
-                btnNext.isVisible = true
-                btnNext.setBackgroundResource(pill)
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { btnNext.applyExpPress() }
-                if (nextWasGone) ExpMotion.popIn(btnNext)
-            } else if (!nextWasGone) {
-                ExpMotion.fadeOutAndHide(btnNext)
-            } else {
-                btnNext.isGone = true
-            }
+        val pill = R.drawable.bg_meta_pill
+        if (hasPrev) {
+            btnPrevious.animate().cancel()
+            btnPrevious.alpha = 1f
+            btnPrevious.isVisible = true
+            btnPrevious.setBackgroundResource(pill)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { btnPrevious.applyExpPress() }
+            if (prevWasGone) ExpMotion.popIn(btnPrevious)
+        } else if (!prevWasGone) {
+            ExpMotion.fadeOutAndHide(btnPrevious)
         } else {
-            btnPrevious.isGone = !hasPrev
-            btnNext.isGone = !hasNext
+            btnPrevious.isGone = true
+        }
+        if (hasNext) {
+            btnNext.animate().cancel()
+            btnNext.alpha = 1f
+            btnNext.isVisible = true
+            btnNext.setBackgroundResource(pill)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { btnNext.applyExpPress() }
+            if (nextWasGone) ExpMotion.popIn(btnNext)
+        } else if (!nextWasGone) {
+            ExpMotion.fadeOutAndHide(btnNext)
+        } else {
+            btnNext.isGone = true
         }
         btnPrevious.contentDescription = getString(R.string.player_live_prev_channel)
         btnNext.contentDescription = getString(R.string.player_live_next_channel)
@@ -3388,11 +3372,6 @@ class PlayerMobileFragment : Fragment(),
 
     private fun showPlayerCue(message: CharSequence, holdMs: Long = 1_200L) {
         // Failover timeline always uses an in-player pill so the story is readable.
-        val forcePill = holdMs >= FailoverTimelineUi.SUCCESS_CUE_MS
-        if (!ExperimentalMobileDesign.enabled() && !forcePill) {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-            return
-        }
         val host = binding.root as? android.view.ViewGroup ?: run {
             Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
             return
@@ -3405,14 +3384,8 @@ class PlayerMobileFragment : Fragment(),
             tag = "exp_live_cue"
             text = message
             gravity = android.view.Gravity.CENTER
-            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-            setBackgroundResource(
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExperimentalMobileDesign.metaPillBackground()
-                } else {
-                    R.drawable.bg_player_cue_tv
-                },
-            )
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Caption)
+            setBackgroundResource(R.drawable.bg_meta_pill)
             val padH = (16 * density).toInt()
             val padV = (10 * density).toInt()
             setPadding(padH, padV, padH, padV)
@@ -3504,7 +3477,7 @@ class PlayerMobileFragment : Fragment(),
         bindPlayerTitleLogo(controller.root, controller.ivExoLogo, controller.tvExoTitle, videoType)
         refreshEpisodeNoteChip(videoType)
         // Offline status lives in the subtitle (not the LIVE red pill on the time row).
-        if (ExperimentalMobileDesign.enabled() && (titleChanged || subtitleChanged)) {
+        if ((titleChanged || subtitleChanged)) {
             // Soft crossfade on episode/channel swaps; full reveal only first time.
             val first = controller.tvExoTitle.getTag(R.id.exp_enter_animated_tag) != true
             if (first) {
@@ -3844,47 +3817,41 @@ class PlayerMobileFragment : Fragment(),
             .into(binding.ivNextEpisodePoster)
 
         if (binding.layoutNextEpisodeOverlay.isGone) {
-            if (ExperimentalMobileDesign.enabled()) {
-                binding.layoutNextEpisodeOverlay.setBackgroundResource(
-                    ExperimentalMobileDesign.glassCardBackground(),
-                )
-                binding.tvNextEpisodeMeta.setBackgroundResource(
-                    ExperimentalMobileDesign.metaPillBackground(),
-                )
-                binding.tvNextEpisodeCountdown.setBackgroundResource(
-                    ExperimentalMobileDesign.metaPillBackground(),
-                )
-                binding.layoutNextEpisodeOverlay.isVisible = true
-                ExpMotion.revealHeader(
-                    binding.tvNextEpisodeLabel,
-                    binding.root.findViewById(R.id.v_next_episode_rule),
-                    binding.tvNextEpisodeMeta,
-                    binding.tvNextEpisodeTitle,
-                    binding.tvNextEpisodeCountdown,
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_next_episode_rule))
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    binding.btnNextEpisodeAction.applyExpPress()
-                    binding.btnNextEpisodeDismiss.applyExpPress()
-                }
-                binding.btnNextEpisodeAction.setBackgroundResource(
-                    ExperimentalMobileDesign.primaryButtonBackground(),
-                )
-                binding.btnNextEpisodeDismiss.setBackgroundResource(
-                    ExperimentalMobileDesign.chipBackground(),
-                )
-                listOf(
-                    binding.ivNextEpisodePoster,
-                    binding.btnNextEpisodeAction,
-                    binding.btnNextEpisodeDismiss,
-                ).forEachIndexed { index, view ->
-                    view.alpha = 0f
-                    view.postDelayed({ ExpMotion.popIn(view) }, 28L * index)
-                }
-            } else {
-                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
-                binding.layoutNextEpisodeOverlay.startAnimation(fadeIn)
-                binding.layoutNextEpisodeOverlay.isVisible = true
+            binding.layoutNextEpisodeOverlay.setBackgroundResource(
+                R.drawable.bg_cinema_glass_card,
+            )
+            binding.tvNextEpisodeMeta.setBackgroundResource(
+                R.drawable.bg_meta_pill,
+            )
+            binding.tvNextEpisodeCountdown.setBackgroundResource(
+                R.drawable.bg_meta_pill,
+            )
+            binding.layoutNextEpisodeOverlay.isVisible = true
+            ExpMotion.revealHeader(
+                binding.tvNextEpisodeLabel,
+                binding.root.findViewById(R.id.v_next_episode_rule),
+                binding.tvNextEpisodeMeta,
+                binding.tvNextEpisodeTitle,
+                binding.tvNextEpisodeCountdown,
+            )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_next_episode_rule))
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.btnNextEpisodeAction.applyExpPress()
+                binding.btnNextEpisodeDismiss.applyExpPress()
+            }
+            binding.btnNextEpisodeAction.setBackgroundResource(
+                R.drawable.bg_button_mobile,
+            )
+            binding.btnNextEpisodeDismiss.setBackgroundResource(
+                R.drawable.bg_outlined_chip,
+            )
+            listOf(
+                binding.ivNextEpisodePoster,
+                binding.btnNextEpisodeAction,
+                binding.btnNextEpisodeDismiss,
+            ).forEachIndexed { index, view ->
+                view.alpha = 0f
+                view.postDelayed({ ExpMotion.popIn(view) }, 28L * index)
             }
         }
     }
@@ -3892,14 +3859,7 @@ class PlayerMobileFragment : Fragment(),
     private fun hideNextEpisodeOverlay() {
         val b = _binding ?: return
         if (b.layoutNextEpisodeOverlay.isVisible) {
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.fadeOutAndHide(b.layoutNextEpisodeOverlay)
-            } else {
-                val ctx = context ?: return
-                val fadeOut = android.view.animation.AnimationUtils.loadAnimation(ctx, R.anim.fade_out)
-                b.layoutNextEpisodeOverlay.startAnimation(fadeOut)
-                b.layoutNextEpisodeOverlay.isGone = true
-            }
+            ExpMotion.fadeOutAndHide(b.layoutNextEpisodeOverlay)
         }
     }
 
@@ -3981,11 +3941,18 @@ class PlayerMobileFragment : Fragment(),
         )
         endCardCountdownCancelled = false
         endCardCountdownJob?.cancel()
+        val sleepTimerHoldsEndCard = com.dskja.betterstreamflix.player.SleepTimer
+            .shouldBlockAutoplay()
+        if (sleepTimerHoldsEndCard) {
+            // One-shot: the armed "end of video" timer holds this end card,
+            // then disarms so manual navigation stays unaffected.
+            com.dskja.betterstreamflix.player.SleepTimer.onAutoplayBlocked()
+        }
         val shouldCountdown = EndCardPolicy.shouldAutoplayAfterCountdown(
             autoplayEnabled = UserPreferences.autoplay,
             hasNextEpisode = hasNext,
             countdownCancelled = false,
-            bedtimeBlocks = KidsBedtime.shouldBlockAutoplay(),
+            bedtimeBlocks = KidsBedtime.shouldBlockAutoplay() || sleepTimerHoldsEndCard,
         )
         if (shouldCountdown) {
             card.tvEndCardCountdown.isVisible = true
@@ -4241,10 +4208,8 @@ class PlayerMobileFragment : Fragment(),
         val actionBtn = root.findViewById<android.widget.TextView>(R.id.btn_player_error_action)
         actionBtn?.isVisible = true
         actionBtn?.setText(R.string.player_stuck_try_another_server)
-        if (ExperimentalMobileDesign.enabled()) {
-            actionBtn?.let {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
-            }
+        actionBtn?.let {
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
         }
         actionBtn?.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -4254,21 +4219,15 @@ class PlayerMobileFragment : Fragment(),
             if (close is android.widget.TextView) {
                 close.setText(R.string.player_stuck_pick_server)
             }
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
-            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
             close.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 hideStuckOverlay()
                 openServerPickerFromStuck()
             }
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            overlay.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExpMotion.fadeInAndShow(overlay)
-        } else {
-            overlay.isVisible = true
-        }
+        overlay.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.fadeInAndShow(overlay)
     }
 
     /** @return true when a next hoster hop was started. */
@@ -4348,10 +4307,8 @@ class PlayerMobileFragment : Fragment(),
         if (action != StreamFailureReason.Action.NONE && actionLabelRes != null) {
             actionBtn?.isVisible = true
             actionBtn?.setText(actionLabelRes)
-            if (ExperimentalMobileDesign.enabled()) {
-                actionBtn?.let {
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
-                }
+            actionBtn?.let {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
             }
             actionBtn?.setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -4368,9 +4325,7 @@ class PlayerMobileFragment : Fragment(),
             actionBtn?.setOnClickListener(null)
         }
         root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
-            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
             close.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 val openServers = {
@@ -4379,32 +4334,23 @@ class PlayerMobileFragment : Fragment(),
                         binding.settings.showServers()
                     }
                 }
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpMotion.fadeOutAndHide(overlay)
-                    overlay.postDelayed({ openServers() }, 220L)
-                } else {
-                    overlay.isGone = true
-                    openServers()
-                }
+                ExpMotion.fadeOutAndHide(overlay)
+                overlay.postDelayed({ openServers() }, 220L)
             }
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            overlay.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExpMotion.fadeInAndShow(overlay)
-            ExpMotion.revealHeader(
-                root.findViewById(R.id.tv_player_error_title),
-                root.findViewById(R.id.tv_player_error_message),
-            )
-            root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
-                close.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                ExpMotion.popIn(close)
-            }
-            actionBtn?.let {
-                it.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                ExpMotion.popIn(it)
-            }
-        } else {
-            overlay.isVisible = true
+        overlay.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.fadeInAndShow(overlay)
+        ExpMotion.revealHeader(
+            root.findViewById(R.id.tv_player_error_title),
+            root.findViewById(R.id.tv_player_error_message),
+        )
+        root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
+            close.setBackgroundResource(R.drawable.bg_button_mobile)
+            ExpMotion.popIn(close)
+        }
+        actionBtn?.let {
+            it.setBackgroundResource(R.drawable.bg_button_mobile)
+            ExpMotion.popIn(it)
         }
     }
 
@@ -4562,10 +4508,25 @@ class PlayerMobileFragment : Fragment(),
         skipIntroContentId = id
         skipIntroConsumed = false
         skipIntroChapters = emptyList()
+        updateSeekbarChapterMarkers(emptyList())
         activeSkipOpportunity = null
         skipIntroProbe?.release()
         skipIntroProbe = null
         showSkipIntroButton(false)
+    }
+
+    /** Renders embedded chapter marks as dots on the player seek bar. */
+    private fun updateSeekbarChapterMarkers(marks: List<SmartSkipIntro.ChapterMark>) {
+        val bar = _binding?.pvPlayer
+            ?.findViewById<androidx.media3.ui.DefaultTimeBar>(R.id.exo_progress)
+            ?: return
+        val accent = androidx.core.content.ContextCompat.getColor(
+            requireContext(), R.color.profile_accent,
+        )
+        bar.setAdMarkerColor(accent)
+        bar.setPlayedAdMarkerColor(accent)
+        val times = LongArray(marks.size) { i -> marks[i].startMs }
+        bar.setAdGroupTimesMs(times, BooleanArray(marks.size), marks.size)
     }
 
     private fun ensureSkipIntroProbe() {
@@ -4612,23 +4573,10 @@ class PlayerMobileFragment : Fragment(),
         val btnSkipIntro = b.pvPlayer.controller.binding.btnSkipIntro
         if (show && btnSkipIntro.isGone) {
             btnSkipIntro.isVisible = true
-            if (ExperimentalMobileDesign.enabled()) {
-                btnSkipIntro.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
-                ExpMotion.popIn(btnSkipIntro)
-            } else {
-                val ctx = context ?: return
-                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(ctx, R.anim.fade_in)
-                btnSkipIntro.startAnimation(fadeIn)
-            }
+            btnSkipIntro.setBackgroundResource(R.drawable.bg_meta_pill)
+            ExpMotion.popIn(btnSkipIntro)
         } else if (!show && btnSkipIntro.isVisible) {
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.fadeOutAndHide(btnSkipIntro)
-            } else {
-                val ctx = context ?: return
-                val fadeOut = android.view.animation.AnimationUtils.loadAnimation(ctx, R.anim.fade_out)
-                btnSkipIntro.startAnimation(fadeOut)
-                btnSkipIntro.isGone = true
-            }
+            ExpMotion.fadeOutAndHide(btnSkipIntro)
         }
     }
 
@@ -4791,6 +4739,15 @@ class PlayerMobileFragment : Fragment(),
             CastPlaybackHub.ensureCastContext(requireContext())
             CastButtonFactory.setUpMediaRouteButton(requireContext(), routeButton)
             routeButton.isVisible = true
+            // Unified cast sheet — DLNA/Tizen renderers, Smart-TV remote, mirroring.
+            // The MediaRouteButton keeps its icon/state; tapping opens the sheet,
+            // whose Chromecast row owns the actual Google route dialog.
+            routeButton.setOnClickListener {
+                com.dskja.betterstreamflix.ui.CastSheet.show(
+                    requireContext(),
+                    castSheetCallbacks,
+                )
+            }
 
             castPlayer = CastPlaybackHub.obtainPlayer(requireContext())
             CastPlaybackHub.setSessionAvailabilityListener(object : SessionAvailabilityListener {
@@ -4965,15 +4922,11 @@ class PlayerMobileFragment : Fragment(),
 
     private fun showCastInfo(messageRes: Int) {
         val message = getString(messageRes)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.showInfo(
-                requireContext(),
-                R.string.player_cast_content_description,
-                message,
-            ) { ctx -> MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx)) }
-        } else {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-        }
+        ExpDialogChrome.showInfo(
+            requireContext(),
+            R.string.player_cast_content_description,
+            message,
+        ) { ctx -> androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(ctx)) }
     }
 
     private fun switchPlaybackToCast() {

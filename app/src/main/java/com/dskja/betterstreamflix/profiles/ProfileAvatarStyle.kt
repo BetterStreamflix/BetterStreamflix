@@ -1,264 +1,109 @@
 package com.dskja.betterstreamflix.profiles
 
 import androidx.annotation.ColorInt
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.dskja.betterstreamflix.R
 
-/** Avatar palettes: two-stop gradient, highlight tint, and on-orb glyph color. */
+/**
+ * Curated flat illustrated avatars (vector art, no generated imagery).
+ * Each entry ships a full-bleed 108dp vector and an accent color used for
+ * rings, summary icons and tints.
+ */
 object ProfileAvatarStyle {
 
-    data class Palette(
+    data class Avatar(
         val key: String,
         @StringRes val titleRes: Int,
-        @ColorInt val start: Int,
-        @ColorInt val end: Int,
-        @ColorInt val highlight: Int,
-        @ColorInt val onOrb: Int,
-        /** Illustrated motif drawn behind the monogram. */
-        val motif: Motif,
-        /** Optional mid-stop for richer multi-stop fills. */
-        @ColorInt val mid: Int = 0,
+        @DrawableRes val drawableRes: Int,
+        @ColorInt val accent: Int,
     )
 
-    enum class Motif { ARC, DIAMOND, BARS, RING, SPARK, CHEVRON, WAVE, ORBIT, FACE, PORTRAIT }
-
-    // Opaque ARGB — JVM-safe (no android.graphics.Color).
-    private val PALETTES = listOf(
-        Palette(
-            key = "crimson",
-            titleRes = R.string.profile_avatar_crimson_signal,
-            start = 0xFF6B0C18.toInt(),
-            end = 0xFFE23A45.toInt(),
-            mid = 0xFFB02030.toInt(),
-            highlight = 0x88FFB0B8.toInt(),
-            onOrb = 0xFFFFF8F8.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "ember",
-            titleRes = R.string.profile_avatar_ember_forge,
-            start = 0xFF5C2410.toInt(),
-            end = 0xFFE8904A.toInt(),
-            mid = 0xFFC06028.toInt(),
-            highlight = 0x88FFE0B8.toInt(),
-            onOrb = 0xFFFFF8F0.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "aurora",
-            titleRes = R.string.profile_avatar_aurora_tide,
-            start = 0xFF0A3834.toInt(),
-            end = 0xFF4ECFBE.toInt(),
-            mid = 0xFF1A8A7A.toInt(),
-            highlight = 0x88B8FFF4.toInt(),
-            onOrb = 0xFFF0FFFC.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "slate",
-            titleRes = R.string.profile_avatar_slate_noir,
-            start = 0xFF1C2228.toInt(),
-            end = 0xFF8A93A0.toInt(),
-            mid = 0xFF4A5560.toInt(),
-            highlight = 0x88E8ECF0.toInt(),
-            onOrb = 0xFFF8F9FA.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "forest",
-            titleRes = R.string.profile_avatar_forest_grove,
-            start = 0xFF123024.toInt(),
-            end = 0xFF4F9A6E.toInt(),
-            mid = 0xFF2A6A48.toInt(),
-            highlight = 0x88C8F0D4.toInt(),
-            onOrb = 0xFFF2FFF6.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "ocean",
-            titleRes = R.string.profile_avatar_ocean_depth,
-            start = 0xFF0C2440.toInt(),
-            end = 0xFF3D7CC9.toInt(),
-            mid = 0xFF1A5088.toInt(),
-            highlight = 0x88B8D8FF.toInt(),
-            onOrb = 0xFFF0F6FF.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "gold",
-            titleRes = R.string.profile_avatar_gold_atelier,
-            start = 0xFF4A0A0E.toInt(),
-            end = 0xFFE50914.toInt(),
-            mid = 0xFFB20710.toInt(),
-            highlight = 0x88FFB0B8.toInt(),
-            onOrb = 0xFFFFF8F8.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "rose",
-            titleRes = R.string.profile_avatar_rose_velvet,
-            start = 0xFF4A2030.toInt(),
-            end = 0xFFD484A8.toInt(),
-            mid = 0xFFA05070.toInt(),
-            highlight = 0x88FFD0E4.toInt(),
-            onOrb = 0xFFFFF5FA.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "violet",
-            titleRes = R.string.profile_avatar_violet_flare,
-            start = 0xFF2E1458.toInt(),
-            end = 0xFF9B6BFF.toInt(),
-            mid = 0xFF5A38A8.toInt(),
-            highlight = 0x88E0C8FF.toInt(),
-            onOrb = 0xFFF8F4FF.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "mint",
-            titleRes = R.string.profile_avatar_mint_breeze,
-            start = 0xFF0A3830.toInt(),
-            end = 0xFF5EE0B0.toInt(),
-            mid = 0xFF28A080.toInt(),
-            highlight = 0x88C8FFE8.toInt(),
-            onOrb = 0xFFF0FFF8.toInt(),
-            motif = Motif.WAVE,
-        ),
-        Palette(
-            key = "indigo",
-            titleRes = R.string.profile_avatar_indigo_night,
-            start = 0xFF141C48.toInt(),
-            end = 0xFF5B6FE8.toInt(),
-            mid = 0xFF3040A0.toInt(),
-            highlight = 0x88C0CAFF.toInt(),
-            onOrb = 0xFFF2F4FF.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "copper",
-            titleRes = R.string.profile_avatar_copper_glow,
-            start = 0xFF4A2010.toInt(),
-            end = 0xFFD4844A.toInt(),
-            mid = 0xFFA05028.toInt(),
-            highlight = 0x88FFD0A8.toInt(),
-            onOrb = 0xFFFFF6EE.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "arctic",
-            titleRes = R.string.profile_avatar_arctic_ice,
-            start = 0xFF142E3A.toInt(),
-            end = 0xFF7EC8E0.toInt(),
-            mid = 0xFF3A88A0.toInt(),
-            highlight = 0x88D0F0FF.toInt(),
-            onOrb = 0xFFF5FCFF.toInt(),
-            motif = Motif.RING,
-        ),
-        Palette(
-            key = "sunset",
-            titleRes = R.string.profile_avatar_sunset_flare,
-            start = 0xFF581828.toInt(),
-            end = 0xFFF07850.toInt(),
-            mid = 0xFFC04838.toInt(),
-            highlight = 0x88FFC8A0.toInt(),
-            onOrb = 0xFFFFF8F4.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "neon",
-            titleRes = R.string.profile_avatar_neon_lime,
-            start = 0xFF143812.toInt(),
-            end = 0xFF8BE04A.toInt(),
-            mid = 0xFF4A9828.toInt(),
-            highlight = 0x88D8FFA8.toInt(),
-            onOrb = 0xFFF6FFF0.toInt(),
-            motif = Motif.SPARK,
-        ),
-        Palette(
-            key = "cobalt",
-            titleRes = R.string.profile_avatar_cobalt_rush,
-            start = 0xFF081E48.toInt(),
-            end = 0xFF2A7BFF.toInt(),
-            mid = 0xFF1450B0.toInt(),
-            highlight = 0x88A8C8FF.toInt(),
-            onOrb = 0xFFF0F6FF.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "magenta",
-            titleRes = R.string.profile_avatar_magenta_pulse,
-            start = 0xFF481038.toInt(),
-            end = 0xFFE048A8.toInt(),
-            mid = 0xFFA02870.toInt(),
-            highlight = 0x88FFB8E0.toInt(),
-            onOrb = 0xFFFFF5FA.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
-        Palette(
-            key = "charcoal",
-            titleRes = R.string.profile_avatar_charcoal_ink,
-            start = 0xFF12141A.toInt(),
-            end = 0xFF5A6270.toInt(),
-            mid = 0xFF343840.toInt(),
-            highlight = 0x88C8D0DC.toInt(),
-            onOrb = 0xFFF4F6FA.toInt(),
-            motif = Motif.FACE,
-        ),
-        Palette(
-            key = "teal",
-            titleRes = R.string.profile_avatar_teal_current,
-            start = 0xFF082E34.toInt(),
-            end = 0xFF2AB8C8.toInt(),
-            mid = 0xFF148088.toInt(),
-            highlight = 0x88A8F0F8.toInt(),
-            onOrb = 0xFFF0FFFE.toInt(),
-            motif = Motif.WAVE,
-        ),
-        Palette(
-            key = "peach",
-            titleRes = R.string.profile_avatar_peach_bloom,
-            start = 0xFF583020.toInt(),
-            end = 0xFFF0A878.toInt(),
-            mid = 0xFFC07048.toInt(),
-            highlight = 0x88FFE0C8.toInt(),
-            onOrb = 0xFFFFF8F4.toInt(),
-            motif = Motif.PORTRAIT,
-        ),
+    private val AVATARS = listOf(
+        Avatar("popcorn", R.string.profile_avatar_popcorn, R.drawable.avatar_popcorn, 0xFFA01B22.toInt()),
+        Avatar("reel", R.string.profile_avatar_reel, R.drawable.avatar_reel, 0xFF26313D.toInt()),
+        Avatar("clapper", R.string.profile_avatar_clapper, R.drawable.avatar_clapper, 0xFF152238.toInt()),
+        Avatar("ticket", R.string.profile_avatar_ticket, R.drawable.avatar_ticket, 0xFFC58A1A.toInt()),
+        Avatar("crown", R.string.profile_avatar_crown, R.drawable.avatar_crown, 0xFF4A148C.toInt()),
+        Avatar("astro", R.string.profile_avatar_astro, R.drawable.avatar_astro, 0xFF142850.toInt()),
+        Avatar("rocket", R.string.profile_avatar_rocket, R.drawable.avatar_rocket, 0xFFB71C1C.toInt()),
+        Avatar("bolt", R.string.profile_avatar_bolt, R.drawable.avatar_bolt, 0xFF00838F.toInt()),
+        Avatar("heart", R.string.profile_avatar_heart, R.drawable.avatar_heart, 0xFFC2185B.toInt()),
+        Avatar("ninja", R.string.profile_avatar_ninja, R.drawable.avatar_ninja, 0xFF37474F.toInt()),
+        Avatar("ghost", R.string.profile_avatar_ghost, R.drawable.avatar_ghost, 0xFF5E35B1.toInt()),
+        Avatar("alien", R.string.profile_avatar_alien, R.drawable.avatar_alien, 0xFF1B5E20.toInt()),
+        Avatar("monster", R.string.profile_avatar_monster, R.drawable.avatar_monster, 0xFF7CB342.toInt()),
+        Avatar("robot", R.string.profile_avatar_robot, R.drawable.avatar_robot, 0xFF455A64.toInt()),
+        Avatar("cat", R.string.profile_avatar_cat, R.drawable.avatar_cat, 0xFF0E6E6B.toInt()),
+        Avatar("fox", R.string.profile_avatar_fox, R.drawable.avatar_fox, 0xFFD9622B.toInt()),
+        Avatar("owl", R.string.profile_avatar_owl, R.drawable.avatar_owl, 0xFF3D2E66.toInt()),
+        Avatar("panda", R.string.profile_avatar_panda, R.drawable.avatar_panda, 0xFF57B894.toInt()),
+        Avatar("bear", R.string.profile_avatar_bear, R.drawable.avatar_bear, 0xFF5D4037.toInt()),
+        Avatar("penguin", R.string.profile_avatar_penguin, R.drawable.avatar_penguin, 0xFF1B4F72.toInt()),
     )
 
-    private val byKey = PALETTES.associateBy { it.key }
+    private val byKey = AVATARS.associateBy { it.key }
 
-    /** Curated set for Create/Edit — avoids crowding the card with every signal. */
+    /** Profiles stored before the illustrated set shipped used palette keys. */
+    private val LEGACY_KEYS = mapOf(
+        "crimson" to "popcorn",
+        "ember" to "fox",
+        "aurora" to "cat",
+        "slate" to "robot",
+        "forest" to "bear",
+        "ocean" to "penguin",
+        "gold" to "ticket",
+        "rose" to "heart",
+        "violet" to "ghost",
+        "mint" to "panda",
+        "indigo" to "owl",
+        "copper" to "reel",
+        "arctic" to "astro",
+        "sunset" to "crown",
+        "neon" to "monster",
+        "cobalt" to "clapper",
+        "magenta" to "alien",
+        "charcoal" to "ninja",
+        "teal" to "rocket",
+        "peach" to "bolt",
+    )
+
     private val FEATURED_KEYS = listOf(
-        "crimson",
-        "ember",
-        "aurora",
-        "slate",
-        "forest",
-        "ocean",
-        "gold",
-        "rose",
+        "popcorn",
+        "cat",
+        "fox",
+        "panda",
+        "ghost",
+        "robot",
+        "rocket",
+        "astro",
     )
 
-    fun all(): List<Palette> = PALETTES
+    /** Maps any stored/legacy key to a valid avatar key. */
+    fun resolveKey(avatarKey: String?): String = when {
+        avatarKey.isNullOrBlank() -> AVATARS.first().key
+        byKey.containsKey(avatarKey) -> avatarKey
+        else -> LEGACY_KEYS[avatarKey] ?: AVATARS.first().key
+    }
 
-    /** Eight hero styles for create/edit; always includes [selectedKey] if set. */
-    fun featured(selectedKey: String? = null): List<Palette> {
+    fun all(): List<Avatar> = AVATARS
+
+    /** Eight hero avatars for create/edit; always includes [selectedKey] if set. */
+    fun featured(selectedKey: String? = null): List<Avatar> {
         val base = FEATURED_KEYS.mapNotNull { byKey[it] }
         if (selectedKey.isNullOrBlank()) return base
-        val selected = byKey[selectedKey] ?: return base
+        val selected = byKey[resolveKey(selectedKey)] ?: return base
         if (base.any { it.key == selected.key }) return base
         return listOf(selected) + base
     }
 
-    fun paletteFor(avatarKey: String): Palette =
-        byKey[avatarKey] ?: PALETTES.first()
+    fun avatarFor(avatarKey: String): Avatar = byKey.getValue(resolveKey(avatarKey))
+
+    @DrawableRes
+    fun drawableFor(avatarKey: String): Int = avatarFor(avatarKey).drawableRes
 
     @ColorInt
-    fun colorFor(avatarKey: String): Int = paletteFor(avatarKey).end
-
-    @ColorInt
-    fun startFor(avatarKey: String): Int = paletteFor(avatarKey).start
+    fun colorFor(avatarKey: String): Int = avatarFor(avatarKey).accent
 
     fun initialFor(displayName: String): String {
         val trimmed = displayName.trim()

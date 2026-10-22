@@ -99,6 +99,30 @@ class TrailerCatalogTest {
     }
 
     @Test
+    fun youtubeThumbChain_prefersChosenQualityThenFallsBack() {
+        assertEquals(
+            listOf(
+                "https://img.youtube.com/vi/abc/maxresdefault.jpg",
+                "https://img.youtube.com/vi/abc/sddefault.jpg",
+                "https://img.youtube.com/vi/abc/hqdefault.jpg",
+                "https://img.youtube.com/vi/abc/mqdefault.jpg",
+            ),
+            TrailerCatalog.youtubeThumbChain("abc", TrailerCatalog.THUMB_QUALITY_HIGH),
+        )
+        assertEquals(
+            listOf(
+                "https://img.youtube.com/vi/abc/hqdefault.jpg",
+                "https://img.youtube.com/vi/abc/mqdefault.jpg",
+            ),
+            TrailerCatalog.youtubeThumbChain("abc", TrailerCatalog.THUMB_QUALITY_DEFAULT),
+        )
+        assertEquals(
+            "https://img.youtube.com/vi/abc/sddefault.jpg",
+            TrailerCatalog.youtubeThumbChain("abc", TrailerCatalog.THUMB_QUALITY_STANDARD).first(),
+        )
+    }
+
+    @Test
     fun preferredPlayableUrl_prefersYoutubeOverVimeo() {
         val entries = listOf(
             TrailerEntry("V", "https://vimeo.com/1", site = "Vimeo"),

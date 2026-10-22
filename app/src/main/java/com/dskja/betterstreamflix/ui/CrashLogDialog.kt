@@ -15,7 +15,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
  * Full-featured local crash log viewer with copy / share / clear.
@@ -24,16 +23,12 @@ object CrashLogDialog {
     fun show(context: Context) {
         val text = CrashReporter.latestCrashText(context)
         if (text.isNullOrBlank()) {
-            if (ExperimentalMobileDesign.enabled()) {
-                com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
-                    context,
-                    R.string.settings_view_crash_log_title,
-                    context.getString(R.string.settings_view_crash_log_empty),
-                ) { ctx ->
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
-                }
-            } else {
-                Toast.makeText(context, R.string.settings_view_crash_log_empty, Toast.LENGTH_SHORT).show()
+            com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
+                context,
+                R.string.settings_view_crash_log_title,
+                context.getString(R.string.settings_view_crash_log_empty),
+            ) { ctx ->
+                androidx.appcompat.app.AlertDialog.Builder(ctx)
             }
             return
         }
@@ -47,22 +42,14 @@ object CrashLogDialog {
         body.text = text
         body.setTextIsSelectable(true)
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context).setView(view)
-        } else {
-            AlertDialog.Builder(context).setView(view)
-        }
-        if (!ExperimentalMobileDesign.enabled()) {
-            builder.setTitle(R.string.settings_view_crash_log_title)
-                .setPositiveButton(android.R.string.ok, null)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context).setView(view)
+        builder.setTitle(R.string.settings_view_crash_log_title)
+            .setPositiveButton(android.R.string.ok, null)
         val dialog = builder.create()
 
         fun wire(button: View?, action: () -> Unit) {
             button ?: return
-            if (ExperimentalMobileDesign.enabled()) {
-                button.applyExpPress()
-            }
+            button.applyExpPress()
             button.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 action()
@@ -101,34 +88,31 @@ object CrashLogDialog {
             }
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
-            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(view)
-            view.findViewById<View>(R.id.sv_crash_log_body)
-                ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            ExpMotion.enterScreen(view)
-            ExpMotion.revealHeader(
-                view.findViewById(R.id.tv_crash_log_title),
-                view.findViewById(R.id.v_crash_log_rule),
-            )
-            ExpMotion.pulseAccentRule(view.findViewById(R.id.v_crash_log_rule))
-            view.findViewById<View>(R.id.sv_crash_log_body)?.let { ExpMotion.popIn(it) }
-            listOf(
-                R.id.btn_crash_log_copy,
-                R.id.btn_crash_log_share,
-                R.id.btn_crash_log_clear,
-            ).forEachIndexed { index, id ->
-                view.findViewById<View>(id)?.let { btn ->
-                    btn.setBackgroundResource(
-                        when (id) {
-                            R.id.btn_crash_log_copy -> ExperimentalMobileDesign.primaryButtonBackground()
-                            else -> ExperimentalMobileDesign.chipBackground()
-                        },
-                    )
-                    btn.applyExpPress()
-                    btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
-                }
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        view.setBackgroundResource(R.drawable.bg_profile_dialog)
+        view.findViewById<View>(R.id.sv_crash_log_body)
+            ?.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+        ExpMotion.enterScreen(view)
+        ExpMotion.revealHeader(
+            view.findViewById(R.id.tv_crash_log_title),
+            view.findViewById(R.id.v_crash_log_rule),
+        )
+        ExpMotion.pulseAccentRule(view.findViewById(R.id.v_crash_log_rule))
+        view.findViewById<View>(R.id.sv_crash_log_body)?.let { ExpMotion.popIn(it) }
+        listOf(
+            R.id.btn_crash_log_copy,
+            R.id.btn_crash_log_share,
+            R.id.btn_crash_log_clear,
+        ).forEachIndexed { index, id ->
+            view.findViewById<View>(id)?.let { btn ->
+                btn.setBackgroundResource(
+                    when (id) {
+                        R.id.btn_crash_log_copy -> R.drawable.bg_button_mobile
+                        else -> R.drawable.bg_outlined_chip
+                    },
+                )
+                btn.applyExpPress()
+                btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
             }
         }
 

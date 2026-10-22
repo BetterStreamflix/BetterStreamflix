@@ -236,6 +236,8 @@ object MEGAKinoProvider : Provider, ProviderConfigUrl {
                 }
             }
             lastTokenTime = System.currentTimeMillis()
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (_: Exception) {
         }
     }

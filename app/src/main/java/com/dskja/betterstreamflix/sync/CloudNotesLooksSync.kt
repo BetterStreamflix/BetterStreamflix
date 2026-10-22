@@ -56,18 +56,9 @@ object CloudNotesLooksSync {
         }
     }
 
-    /**
-     * Clamp kids/adult looks on apply so a kids row never paints an adult shell and
-     * kids_bright does not stick on adult profiles unless already chosen.
-     */
-    fun clampLookForActiveProfile(look: String, kidsActive: Boolean): String {
-        val resolved = ThemeManager.clampLookForKids(look, kidsActive)
-        return when {
-            kidsActive -> resolved
-            resolved == ThemeManager.KIDS_BRIGHT -> ThemeManager.CINEMA_INK
-            else -> resolved
-        }
-    }
+    /** Single Dark look — any stored look collapses onto Dark. */
+    fun clampLookForActiveProfile(look: String, kidsActive: Boolean): String =
+        ThemeManager.clampLookForKids(look, kidsActive)
 
     /** Resolve compact/comfort for cloud upsert (null/blank/unknown → Comfort). */
     fun resolveLeanbackDensityForSync(raw: String?): String =

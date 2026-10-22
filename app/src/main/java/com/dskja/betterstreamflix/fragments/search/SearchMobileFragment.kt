@@ -27,9 +27,7 @@ import com.dskja.betterstreamflix.databinding.FragmentSearchMobileBinding
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.VoiceRecognitionHelper
@@ -52,6 +50,10 @@ class SearchMobileFragment : Fragment() {
     }
 
     private var appAdapter = AppAdapter()
+
+    /** Scroll state + owning query kept across view recreation (detail → back). */
+    private var searchListState: android.os.Parcelable? = null
+    private var searchListStateQuery: String? = null
 
     private lateinit var voiceHelper: VoiceRecognitionHelper
 
@@ -77,26 +79,8 @@ class SearchMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvSearch)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_search_eyebrow),
-                binding.root.findViewById(R.id.tv_search_brand),
-                binding.root.findViewById(R.id.tv_search_tagline),
-                binding.root.findViewById(R.id.v_search_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_search_rule))
-            binding.root.findViewById<View>(R.id.cl_search)?.let { ExpMotion.popIn(it) }
-            binding.root.findViewById<View>(R.id.sw_global_search)?.let { toggle ->
-                toggle.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                ExpMotion.popIn(toggle)
-            }
-        }
-
         initializeSearch()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -137,20 +121,17 @@ class SearchMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { retryLastSearch() }) {
                                 return@collect
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
                             Toast.makeText(
                                 requireContext(),
                                 state.error.message ?: "",
                                 Toast.LENGTH_SHORT
                             ).show()
-                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             ui.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
-                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 val doRetry = { retryLastSearch() }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
@@ -198,8 +179,25 @@ class SearchMobileFragment : Fragment() {
         if (::voiceHelper.isInitialized) {
             runCatching { voiceHelper.stopRecognition() }
         }
+        _binding?.let {
+            searchListState = it.rvSearch.layoutManager?.onSaveInstanceState()
+            searchListStateQuery = viewModel.query
+        }
         super.onDestroyView()
         _binding = null
+    }
+
+    /** Restores the result scroll position once, only while the same query owns the list. */
+    private fun restoreSearchListIfPending() {
+        val state = searchListState ?: return
+        if (viewModel.query != searchListStateQuery) {
+            searchListState = null
+            return
+        }
+        binding.rvSearch.post {
+            _binding?.rvSearch?.layoutManager?.onRestoreInstanceState(state)
+        }
+        searchListState = null
     }
 
     private fun retryLastSearch() {
@@ -231,17 +229,7 @@ class SearchMobileFragment : Fragment() {
                     hideKeyboard()
 
                     if (query.isBlank()) {
-                        if (ExperimentalMobileDesign.enabled()) {
-                            com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
-                                requireContext(),
-                                R.string.search_input_hint,
-                                getString(R.string.search_empty_query),
-                            ) { ctx ->
-                                com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
-                            }
-                        } else {
-                            Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
-                        }
+                        Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
                         return@setOnEditorActionListener true
                     }
 
@@ -313,9 +301,6 @@ class SearchMobileFragment : Fragment() {
                 if (isListening) {
                     ui.btnSearchVoice.startAnimation(blink)
                     ui.etSearch.hint = getString(R.string.voice_prompt)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        ExpMotion.popIn(ui.btnSearchVoice)
-                    }
                 } else {
                     ui.btnSearchVoice.clearAnimation()
                     val isIptv = UserPreferences.currentProvider is IptvProvider
@@ -333,12 +318,7 @@ class SearchMobileFragment : Fragment() {
 
         binding.btnSearchVoice.apply {
             val showVoice = voiceHelper.isAvailable()
-            val wasVisible = visibility == View.VISIBLE
             visibility = if (showVoice) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-                if (showVoice && !wasVisible) ExpMotion.popIn(this)
-            }
 
             setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -346,70 +326,7 @@ class SearchMobileFragment : Fragment() {
             }
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
-            val searchField = binding.root.findViewById<View>(R.id.cl_search)
-            searchField?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-            binding.btnSearchClear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            binding.btnSearchVoice.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            binding.etSearch.setOnFocusChangeListener { _, hasFocus ->
-                searchField?.isActivated = hasFocus
-                searchField?.animate()
-                    ?.scaleX(if (hasFocus) 1.01f else 1f)
-                    ?.scaleY(if (hasFocus) 1.01f else 1f)
-                    ?.setDuration(160L)
-                    ?.start()
-                if (hasFocus) {
-                    searchField?.elevation = 6f * resources.displayMetrics.density
-                } else {
-                    searchField?.elevation = 0f
-                }
-            }
-            binding.swGlobalSearch.let { toggle ->
-                if (ExperimentalMobileDesign.enabled()) {
-                    toggle.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                    val density = resources.displayMetrics.density
-                    toggle.setPadding(
-                        (12 * density).toInt(),
-                        (8 * density).toInt(),
-                        (12 * density).toInt(),
-                        (8 * density).toInt(),
-                    )
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { toggle.applyExpPress() }
-                    fun tintTrack(checked: Boolean) {
-                        val primary = com.google.android.material.color.MaterialColors.getColor(
-                            toggle, androidx.appcompat.R.attr.colorPrimary,
-                        )
-                        val muted = com.google.android.material.color.MaterialColors.getColor(
-                            toggle, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                        )
-                        toggle.thumbTintList = android.content.res.ColorStateList.valueOf(
-                            if (checked) primary else muted,
-                        )
-                        toggle.trackTintList = android.content.res.ColorStateList.valueOf(
-                            if (checked) {
-                                androidx.core.graphics.ColorUtils.setAlphaComponent(primary, 0x66)
-                            } else {
-                                androidx.core.graphics.ColorUtils.setAlphaComponent(muted, 0x44)
-                            },
-                        )
-                    }
-                    tintTrack(toggle.isChecked)
-                    toggle.setOnCheckedChangeListener { v, checked ->
-                        ExpMotion.hapticTap(v)
-                        tintTrack(checked)
-                    }
-                }
-                if (toggle.getTag(R.id.exp_enter_animated_tag) != true) {
-                    toggle.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.popIn(toggle)
-                }
-            }
-        }
-
         binding.btnSearchClear.apply {
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-            }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 binding.etSearch.setText("")
@@ -558,10 +475,6 @@ class SearchMobileFragment : Fragment() {
         val padH = 12.dp(requireContext())
         val padV = 8.dp(requireContext())
         val gap = 8.dp(requireContext())
-        if (ExperimentalMobileDesign.enabled() && strip.getTag(R.id.exp_enter_animated_tag) != true) {
-            strip.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.popIn(strip)
-        }
         val bound = SearchMemoriesUi.bind(
             context = requireContext(),
             row = row,
@@ -574,9 +487,7 @@ class SearchMobileFragment : Fragment() {
                 when (outcome) {
                     SearchMemories.Outcome.FAILED -> R.drawable.bg_search_memory_chip_failed
                     SearchMemories.Outcome.EMPTY -> R.drawable.bg_search_memory_chip_empty
-                    SearchMemories.Outcome.SUCCESS ->
-                        if (ExperimentalMobileDesign.enabled()) ExperimentalMobileDesign.chipBackground()
-                        else R.drawable.bg_search_sort_chip
+                    SearchMemories.Outcome.SUCCESS -> R.drawable.bg_search_sort_chip
                 }
             },
             onRetry = { entry ->
@@ -605,14 +516,7 @@ class SearchMobileFragment : Fragment() {
                 viewModel.search(q)
             },
             previousQueries = previousQueries,
-            animateNew = if (ExperimentalMobileDesign.enabled()) {
-                { chip, index ->
-                    chip.alpha = 0f
-                    chip.postDelayed({ ExpMotion.popIn(chip) }, 40L * index)
-                }
-            } else {
-                null
-            },
+            animateNew = null,
             applyPress = { view ->
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
             },
@@ -663,24 +567,9 @@ class SearchMobileFragment : Fragment() {
             val emptyRule = binding.root.findViewById<View>(R.id.v_search_empty_rule)
             val showEmpty = rows.isEmpty() && viewModel.query.isNotBlank()
             if (showEmpty) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    emptyView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                }
-                if (emptyView.visibility != View.VISIBLE) {
-                    emptyView.visibility = View.VISIBLE
-                    emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
-                    if (ExperimentalMobileDesign.enabled()) {
-                        ExpMotion.revealHeader(emptyView, emptyRule, cta)
-                        ExpMotion.pulseAccentRule(emptyRule)
-                    } else {
-                        ExpMotion.fadeInAndShow(emptyView)
-                    }
-                } else {
-                    emptyView.isVisible = true
-                    emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
-                }
+                emptyView.visibility = View.VISIBLE
+                emptyRule?.isVisible = false
                 cta?.let { chip ->
-                    val wasVisible = chip.isVisible
                     chip.isVisible = true
                     if (chip is android.widget.TextView) {
                         chip.setText(
@@ -691,29 +580,19 @@ class SearchMobileFragment : Fragment() {
                             },
                         )
                     }
-                    if (ExperimentalMobileDesign.enabled()) {
-                        chip.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-                        if (!wasVisible) ExpMotion.popIn(chip)
-                    }
                     chip.setOnClickListener {
                         ExpMotion.hapticTap(it)
                         clearSearchField()
                     }
                 }
             } else {
-                if (ExperimentalMobileDesign.enabled() && emptyView.isVisible) {
-                    ExpMotion.fadeOutAndHide(emptyView)
-                    emptyRule?.let { ExpMotion.fadeOutAndHide(it) }
-                    cta?.let { ExpMotion.fadeOutAndHide(it) }
-                } else {
-                    emptyView.isVisible = false
-                    emptyRule?.isVisible = false
-                    cta?.isVisible = false
-                }
+                emptyView.isVisible = false
+                emptyRule?.isVisible = false
+                cta?.isVisible = false
             }
         }
         appAdapter.submitList(rows)
+        restoreSearchListIfPending()
 
         if (hasMore && viewModel.query.isNotBlank() && rows.size < SearchMobileRows.MAX_LOCAL) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
@@ -729,6 +608,7 @@ class SearchMobileFragment : Fragment() {
             "$name - $count $resultText"
         }
         appAdapter.submitList(plan.items)
+        restoreSearchListIfPending()
         appAdapter.setOnLoadMoreListener(null)
 
         val isEmpty = !plan.stillLoading && !plan.hasHits && viewModel.query.isNotBlank()
@@ -736,24 +616,9 @@ class SearchMobileFragment : Fragment() {
             val cta = binding.root.findViewById<View>(R.id.btn_search_empty_cta)
             val emptyRule = binding.root.findViewById<View>(R.id.v_search_empty_rule)
             if (isEmpty) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    emptyView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                }
-                if (emptyView.visibility != View.VISIBLE) {
-                    emptyView.visibility = View.VISIBLE
-                    emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
-                    if (ExperimentalMobileDesign.enabled()) {
-                        ExpMotion.revealHeader(emptyView, emptyRule, cta)
-                        ExpMotion.pulseAccentRule(emptyRule)
-                    } else {
-                        ExpMotion.fadeInAndShow(emptyView)
-                    }
-                } else {
-                    emptyView.isVisible = true
-                    emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
-                }
+                emptyView.visibility = View.VISIBLE
+                emptyRule?.isVisible = false
                 cta?.let { chip ->
-                    val wasVisible = chip.isVisible
                     chip.isVisible = true
                     if (chip is android.widget.TextView) {
                         chip.setText(
@@ -764,26 +629,15 @@ class SearchMobileFragment : Fragment() {
                             },
                         )
                     }
-                    if (ExperimentalMobileDesign.enabled()) {
-                        chip.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-                        if (!wasVisible) ExpMotion.popIn(chip)
-                    }
                     chip.setOnClickListener {
                         ExpMotion.hapticTap(it)
                         clearSearchField()
                     }
                 }
             } else {
-                if (ExperimentalMobileDesign.enabled() && emptyView.isVisible) {
-                    ExpMotion.fadeOutAndHide(emptyView)
-                    emptyRule?.let { ExpMotion.fadeOutAndHide(it) }
-                    cta?.let { ExpMotion.fadeOutAndHide(it) }
-                } else {
-                    emptyView.isVisible = false
-                    emptyRule?.isVisible = false
-                    cta?.isVisible = false
-                }
+                emptyView.isVisible = false
+                emptyRule?.isVisible = false
+                cta?.isVisible = false
             }
         }
         return plan.stillLoading && !plan.hasHits

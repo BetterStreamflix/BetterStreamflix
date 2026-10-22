@@ -184,18 +184,23 @@ class TvShowViewModel(
                             }
                             ?: state.tvShow.seasons)
                             .sortedWith(::compareSeasonsForDisplay),
-                        recommendations = state.tvShow.recommendations.map { show ->
-                            when (show) {
-                                is Movie -> moviesById[show.id]
-                                    ?.takeIf { !show.isSame(it) }
-                                    ?.let { show.copy().merge(it) }
-                                    ?: show
-                                is TvShow -> tvShowsById[show.id]
-                                    ?.takeIf { !show.isSame(it) }
-                                    ?.let { show.copy().merge(it) }
-                                    ?: show
-                            }
-                        },
+                        recommendations = com.dskja.betterstreamflix.home.SeriesFastForward
+                            .filterTasteHidden(
+                                com.dskja.betterstreamflix.BetterStreamflixApp.instance
+                                    .applicationContext,
+                                state.tvShow.recommendations.map { show ->
+                                    when (show) {
+                                        is Movie -> moviesById[show.id]
+                                            ?.takeIf { !show.isSame(it) }
+                                            ?.let { show.copy().merge(it) }
+                                            ?: show
+                                        is TvShow -> tvShowsById[show.id]
+                                            ?.takeIf { !show.isSame(it) }
+                                            ?.let { show.copy().merge(it) }
+                                            ?: show
+                                    }
+                                },
+                            ),
                     ).also { tvShow ->
                         tvShowDb?.let { tvShow.merge(it) }
                     }
@@ -217,6 +222,9 @@ class TvShowViewModel(
 
     /** In-page Episodes tab: remembered season for this show instance (not process-global). */
     var selectedSeasonId: String? = null
+
+    /** Auto-focus on the next episode fires once per detail open; re-binds must not yank the scroll. */
+    var episodesAutoFocused: Boolean = false
 
     private val loadingSeasonIds = mutableSetOf<String>()
     private val failedSeasonIds = mutableSetOf<String>()
@@ -355,6 +363,8 @@ class TvShowViewModel(
             db.seasonDao().insertAll(orderedTvShow.seasons)
 
             _state.emit(State.SuccessLoading(orderedTvShow))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getTvShow: ", e)
             val fallback = metadataOnlyFallback(id)
@@ -472,6 +482,8 @@ class TvShowViewModel(
             markSeasonEpisodesSettled(season.id)
 
             _seasonState.emit(SeasonState.SuccessLoading(tvShow, season, episodes))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getSeason: ", e)
             markSeasonEpisodeFailure(season.id)

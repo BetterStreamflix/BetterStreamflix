@@ -93,6 +93,7 @@ class AmbientModeController(
                     enabled = true,
                     highEndOk = highEndOk(),
                     idleElapsedMs = elapsed,
+                    idleThresholdMs = UserPreferences.cinemaAmbientIdleMs,
                     poolSize = pool.size,
                     modalBlocking = modalBlocking() || isModalBlocking(),
                     alreadyActive = active,
@@ -439,7 +440,7 @@ class AmbientModeController(
             return
         }
         if (!enabled() || !highEndOk() || pool.isEmpty() || modalBlocking() || isModalBlocking()) return
-        val remaining = (AmbientModePolicy.IDLE_ENTER_MS -
+        val remaining = (UserPreferences.cinemaAmbientIdleMs -
             (System.currentTimeMillis() - lastActivityAt)).coerceAtLeast(1_000L)
         handler.postDelayed(idleCheck, remaining)
     }

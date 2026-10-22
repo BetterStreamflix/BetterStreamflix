@@ -24,10 +24,8 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.format
@@ -59,6 +57,9 @@ class SeasonMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (episode → back). */
+    private var seasonListState: android.os.Parcelable? = null
     private var loadedEpisodes: List<Episode> = emptyList()
 
     override fun onCreateView(
@@ -78,10 +79,7 @@ class SeasonMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         binding.root.findViewById<View>(com.dskja.betterstreamflix.R.id.iv_detail_back)
             ?.also { back ->
                 androidx.appcompat.widget.TooltipCompat.setTooltipText(
@@ -92,18 +90,6 @@ class SeasonMobileFragment : Fragment() {
                 androidx.navigation.Navigation.findNavController(binding.root).navigateUp()
             }
         ExpMotion.staggerFirstFill(binding.rvEpisodes)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_season_eyebrow),
-                binding.tvSeasonTitle,
-                binding.root.findViewById(R.id.tv_season_tagline),
-                binding.root.findViewById(R.id.v_season_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_season_rule))
-            ExpMotion.popIn(binding.spSeasonPicker)
-            ExpMotion.popIn(binding.btnSeasonDownload)
-        }
-
         initializeSeason()
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -126,7 +112,7 @@ class SeasonMobileFragment : Fragment() {
                             root = binding.isLoading.root,
                             context = requireContext(),
                             error = state.error,
-                            showToast = !ExperimentalMobileDesign.enabled(),
+                            showToast = true,
                             onRetry = { viewModel.getSeasonEpisodes(args.seasonId) },
                         )
                     }
@@ -136,6 +122,7 @@ class SeasonMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        seasonListState = _binding?.rvEpisodes?.layoutManager?.onSaveInstanceState()
         super.onDestroyView()
         _binding = null
     }
@@ -168,34 +155,13 @@ class SeasonMobileFragment : Fragment() {
             currentSeasonTitle = args.seasonTitle,
         )
 
-        if (ExperimentalMobileDesign.enabled()) {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.spSeasonPicker.applyExpPress()
-                binding.btnSeasonTrailer.applyExpPress()
-                binding.btnSeasonDownload.applyExpPress()
-            }
-            binding.spSeasonPicker.setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
-            binding.btnSeasonTrailer.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            binding.btnSeasonDownload.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-        }
-
         wireSeasonTrailerButton()
 
         binding.btnSeasonDownload.setOnClickListener {
             ExpMotion.hapticTap(it)
             val episodes = loadedEpisodes
             if (episodes.isEmpty()) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
-                        requireContext(),
-                        R.string.season_download,
-                        getString(R.string.season_download_empty),
-                    ) { ctx ->
-                        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
-                    }
-                } else {
-                    Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             // One-tap season → Smart-Download queue (quota checked inside enqueueSeason).
@@ -275,9 +241,6 @@ class SeasonMobileFragment : Fragment() {
             if (url.isNullOrBlank()) return@launch
 
             binding.btnSeasonTrailer.visibility = View.VISIBLE
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.popIn(binding.btnSeasonTrailer)
-            }
             binding.btnSeasonTrailer.setOnClickListener { view ->
                 ExpMotion.hapticTap(view)
                 TrailerPlaybackController.play(this@SeasonMobileFragment, url)
@@ -290,6 +253,12 @@ class SeasonMobileFragment : Fragment() {
         appAdapter.submitList(episodes.onEach { episode ->
             episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
         })
+        seasonListState?.let { state ->
+            binding.rvEpisodes.post {
+                _binding?.rvEpisodes?.layoutManager?.onRestoreInstanceState(state)
+            }
+            seasonListState = null
+        }
         if (episodes.isNotEmpty()) {
             binding.btnSeasonDownload.text = getString(
                 R.string.detail_download_season_count,
@@ -312,14 +281,6 @@ class SeasonMobileFragment : Fragment() {
         binding.rvEpisodes.visibility = if (empty) View.GONE else View.VISIBLE
         binding.btnSeasonDownload.isEnabled = !empty
         binding.btnSeasonDownload.alpha = if (empty) 0.4f else 1f
-        if (!empty && ExperimentalMobileDesign.enabled()) {
-            val chip = binding.btnSeasonDownload
-            if (chip.getTag(R.id.exp_enter_animated_tag) != true) {
-                chip.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.popIn(chip)
-            }
-        }
-
         val episodeIndex = episodes
             .sortedByDescending { it.watchHistory?.lastEngagementTimeUtcMillis }
             .firstOrNull { it.watchHistory != null }

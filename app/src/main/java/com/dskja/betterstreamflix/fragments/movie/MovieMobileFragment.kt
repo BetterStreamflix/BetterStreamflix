@@ -20,9 +20,7 @@ import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
@@ -39,6 +37,13 @@ class MovieMobileFragment : Fragment() {
     private val viewModel by viewModelsFactory { MovieViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (people/genre → back). */
+    private var detailListState: android.os.Parcelable? = null
+
+    private companion object {
+        const val KEY_DETAIL_LIST_STATE = "detail_list_state"
+    }
     private var currentMovie: Movie? = null
     // Avoid navArgs during field init (BETTERSTREAMFLIX-46 / Fragment null arguments).
     private var selectedTab: DetailTab = DetailTab.SIMILAR
@@ -60,16 +65,15 @@ class MovieMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        detailListState = detailListState ?: savedInstanceState?.let {
+            androidx.core.os.BundleCompat.getParcelable(
+                it, KEY_DETAIL_LIST_STATE, android.os.Parcelable::class.java,
+            )
+        }
         if (args.openTab.equals("about", ignoreCase = true)) {
             selectedTab = DetailTab.ABOUT
         }
-        ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.staggerFirstFill(binding.rvMovie)
-        }
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)
         appAdapter.onDetailTabSelectedListener = { tab ->
@@ -106,7 +110,7 @@ class MovieMobileFragment : Fragment() {
                             root = binding.isLoading.root,
                             context = requireContext(),
                             error = state.error,
-                            showToast = !ExperimentalMobileDesign.enabled(),
+                            showToast = true,
                             onRetry = { viewModel.getMovie(args.id) },
                         )
                     }
@@ -126,9 +130,18 @@ class MovieMobileFragment : Fragment() {
         com.dskja.betterstreamflix.ui.TrailerPlayPipeline.endSession()
         com.dskja.betterstreamflix.ui.TrailerStreamCrossfade.clear()
         com.dskja.betterstreamflix.player.PlayerCleanExit.clearHomeRestore()
-        _binding?.let { appAdapter.onSaveInstanceState(it.rvMovie) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.rvMovie)
+            detailListState = it.rvMovie.layoutManager?.onSaveInstanceState()
+        }
         _binding = null
         super.onDestroyView()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = detailListState ?: _binding?.rvMovie?.layoutManager?.onSaveInstanceState()
+        if (state != null) outState.putParcelable(KEY_DETAIL_LIST_STATE, state)
     }
 
 
@@ -165,6 +178,7 @@ class MovieMobileFragment : Fragment() {
         currentMovie = movie
         prefetchLogo(movie.logo)
         DetailHeaderController.wireCast(this, binding.root)
+        restoreDetailScrollIfPending()
 
         val signature = contentSignature(movie)
         if (lastContentSignature == signature) {
@@ -225,6 +239,19 @@ class MovieMobileFragment : Fragment() {
         )
         if (scrollTabsToTop) {
             binding.rvMovie.post { binding.rvMovie.smoothScrollToPosition(1) }
+        }
+    }
+
+    /**
+     * Restores the pre-navigation scroll offset once. Runs before the content
+     * signature check — the adapter survives view recreation with its items, so
+     * the offset applies even when displayMovie skips the rebind.
+     */
+    private fun restoreDetailScrollIfPending() {
+        val state = detailListState ?: return
+        detailListState = null
+        binding.rvMovie.post {
+            _binding?.rvMovie?.layoutManager?.onRestoreInstanceState(state)
         }
     }
 

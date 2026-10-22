@@ -4,7 +4,7 @@
     <item>
         <shape android:shape="rectangle">
             <solid android:color="@color/cinema_cta_fill" />
-            <corners android:radius="@dimen/cinema_radius_lg" />
+            <corners android:radius="26dp" />
         </shape>
     </item>
 </ripple>

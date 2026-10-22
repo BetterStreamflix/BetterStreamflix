@@ -10,8 +10,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.ArtworkUrls
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.loadMovieBanner
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
 
@@ -37,7 +35,6 @@ object DetailCoverAtmosphere {
                 transition(DrawableTransitionOptions.withCrossFade(320))
             }
         }
-        maybeKenBurns(cover)
     }
 
     fun bindTvShow(cover: ImageView, soft: ImageView?, tvShow: TvShow) {
@@ -55,7 +52,6 @@ object DetailCoverAtmosphere {
                 transition(DrawableTransitionOptions.withCrossFade(320))
             }
         }
-        maybeKenBurns(cover)
     }
 
     private fun bindSoft(soft: ImageView?, softUrlKey: String?, load: (ImageView) -> Unit) {
@@ -79,12 +75,5 @@ object DetailCoverAtmosphere {
             soft.setImageDrawable(null)
             soft.visibility = View.GONE
         }
-    }
-
-    private fun maybeKenBurns(cover: ImageView) {
-        if (!ExperimentalMobileDesign.enabled()) return
-        if (cover.getTag(R.id.exp_enter_animated_tag) == true) return
-        cover.setTag(R.id.exp_enter_animated_tag, true)
-        ExpMotion.kenBurns(cover, drift = !ExperimentalMobileDesign.heroParallax())
     }
 }

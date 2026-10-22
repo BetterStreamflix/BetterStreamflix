@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.database.AppDatabase
+import com.dskja.betterstreamflix.home.SeriesFastForward
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
@@ -32,7 +33,14 @@ class GenreViewModel(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<State>(State.Loading)
-    
+
+    /** Parental gate + taste hard-hidden removal, in that order. */
+    private suspend fun cleanShows(shows: List<com.dskja.betterstreamflix.models.Show>): List<com.dskja.betterstreamflix.models.Show> =
+        SeriesFastForward.filterTasteHidden(
+            com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext,
+            ParentalControlUtils.filterShows(shows),
+        )
+
     init {
         // Listen for provider changes and reload data
         viewModelScope.launch {
@@ -142,7 +150,7 @@ class GenreViewModel(
             ) {
                 provider.getGenre(id)
             }.let {
-                it.copy(shows = ParentalControlUtils.filterShows(it.shows))
+                it.copy(shows = cleanShows(it.shows))
             }
 
             // Providers keyed by slug often ignore a numeric TMDb id, and vice versa.
@@ -161,6 +169,8 @@ class GenreViewModel(
             page = 1
 
             _state.emit(State.SuccessLoading(genre, true))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("GenreViewModel", "getGenre: ", e)
             _state.emit(State.FailedLoading(e))
@@ -176,7 +186,7 @@ class GenreViewModel(
             ) {
                 provider.getGenre(genreId)
             }.let {
-                it.copy(shows = ParentalControlUtils.filterShows(it.shows))
+                it.copy(shows = cleanShows(it.shows))
             }
         }.getOrNull()?.takeIf { it.shows.isNotEmpty() }
 
@@ -194,7 +204,7 @@ class GenreViewModel(
                 ) {
                     provider.getGenre(id, page + 1)
                 }.let {
-                    it.copy(shows = ParentalControlUtils.filterShows(it.shows))
+                    it.copy(shows = cleanShows(it.shows))
                 }
 
                 page += 1
@@ -210,6 +220,8 @@ class GenreViewModel(
                         hasMore = genre.shows.isNotEmpty(),
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("GenreViewModel", "loadMoreGenreShows: ", e)
                 _state.emit(State.FailedLoading(e))

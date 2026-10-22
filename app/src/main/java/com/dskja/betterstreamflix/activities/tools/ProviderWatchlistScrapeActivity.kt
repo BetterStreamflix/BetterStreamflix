@@ -31,7 +31,6 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -112,17 +111,9 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.themeRes()
-            } else {
-                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
-            },
-        )
+        setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        if (ExperimentalMobileDesign.enabled()) {
-            DynamicColors.applyToActivityIfAvailable(this)
-        }
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(
             R.layout.activity_watchlist_import,
@@ -141,18 +132,15 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
         importButton = findViewById(R.id.watchlist_import)
         cancelButton = findViewById(R.id.watchlist_cancel)
 
-        if (ExperimentalMobileDesign.enabled()) {
-            val content = findViewById<android.view.View>(android.R.id.content)
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(content)
-            ExperimentalMobileDesign.applyReducedGlass(content)
-            statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                importButton.applyExpPress()
-                cancelButton.applyExpPress()
-            }
-            importButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            cancelButton.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+        val content = findViewById<android.view.View>(android.R.id.content)
+        com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(content)
+        statusView.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            importButton.applyExpPress()
+            cancelButton.applyExpPress()
         }
+        importButton.setBackgroundResource(R.drawable.bg_button_mobile)
+        cancelButton.setBackgroundResource(R.drawable.bg_outlined_chip)
 
         statusView.setText(R.string.watchlist_import_login_hint)
         val screenTitle = if (saveSessionOnly) {
@@ -161,10 +149,8 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             getString(R.string.settings_watchlist_import_title)
         }
         title = screenTitle
-        if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
-        }
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
         importButton.setText(
             if (saveSessionOnly) {
                 R.string.settings_serienstream_session_login
@@ -326,15 +312,10 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
                 val show = newProgress in 1..99
-                if (ExperimentalMobileDesign.enabled()) {
-                    if (show && progressBar.visibility != android.view.View.VISIBLE) {
-                        com.dskja.betterstreamflix.utils.ExpMotion.fadeInAndShow(progressBar)
-                    } else if (!show && progressBar.visibility == android.view.View.VISIBLE) {
-                        com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(progressBar)
-                    }
-                } else {
-                    progressBar.visibility =
-                        if (show) android.view.View.VISIBLE else android.view.View.GONE
+                if (show && progressBar.visibility != android.view.View.VISIBLE) {
+                    com.dskja.betterstreamflix.utils.ExpMotion.fadeInAndShow(progressBar)
+                } else if (!show && progressBar.visibility == android.view.View.VISIBLE) {
+                    com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(progressBar)
                 }
             }
         }
@@ -494,7 +475,7 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
                 ) -> hasSession && leftLoginAfterVisit
             else -> leftLogin || hasSession || (cookies.isNotBlank() && bypassSolved && sawLoginPage)
         }
-        if (ExperimentalMobileDesign.enabled() && importButton.isEnabled && !wasEnabled) {
+        if (importButton.isEnabled && !wasEnabled) {
             com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
         }
         if (lastLoadError != null && !leftLogin && !hasSession) {
@@ -511,8 +492,7 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             }
             leftLogin && hasSession && leftLoginAfterVisit -> {
                 statusView.setText(R.string.watchlist_import_ready)
-                if (ExperimentalMobileDesign.enabled() &&
-                    statusView.getTag(R.id.exp_enter_animated_tag) != "ready"
+                if (statusView.getTag(R.id.exp_enter_animated_tag) != "ready"
                 ) {
                     statusView.setTag(R.id.exp_enter_animated_tag, "ready")
                     com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
@@ -852,7 +832,7 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
 
     private fun notifyUser(message: CharSequence, titleRes: Int = R.string.settings_watchlist_import_title) {
         ExpDialogChrome.notify(this, message, titleRes) { ctx ->
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            androidx.appcompat.app.AlertDialog.Builder(ctx)
         }
     }
 
@@ -864,13 +844,8 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
         message: CharSequence,
         titleRes: Int = R.string.settings_watchlist_import_title,
     ) {
-        if (!ExperimentalMobileDesign.enabled()) {
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
         val glass = ExpDialogChrome.buildGlassMessage(this, message)
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(titleRes)
             .setView(glass.root)
             .setPositiveButton(android.R.string.ok, null)
@@ -897,14 +872,12 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             getString(R.string.watchlist_import_done, count)
         }
         statusView.text = message
-        if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(statusView)
-            statusView.postDelayed({
-                notifyUserAndFinish(message)
-            }, 280L)
-            return
-        }
+        com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(statusView)
+        statusView.postDelayed({
+            notifyUserAndFinish(message)
+        }, 280L)
+        return
         notifyUserAndFinish(message)
     }
 

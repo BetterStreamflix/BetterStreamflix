@@ -28,6 +28,11 @@ object SubtitleStudioSettingsController {
         val sizePref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_SIZE")
         val colorPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_FONT_COLOR")
         val bgPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_BACKGROUND")
+        val textAlphaPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_TEXT_OPACITY")
+        val edgePref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_EDGE")
+        val fontPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_FONT")
+        val windowPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_WINDOW")
+        val marginPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_MARGIN")
         val previewPref = fragment.findPreference<SubtitleStudioPreviewPreference>("SUBTITLE_STUDIO_PREVIEW")
         if (sizePref == null && colorPref == null && bgPref == null && presetPref == null) return
 
@@ -47,7 +52,7 @@ object SubtitleStudioSettingsController {
             val size = UserPreferences.captionTextSize
             if (sizeOptions.any { abs(it - size) < 0.02f }) {
                 sizePref?.value = closestSizeValue(size)
-                sizePref?.clearSummaryText()
+                sizePref?.setSummaryText(sizePref?.entry)
             } else {
                 sizePref?.value = null
                 sizePref?.setSummaryText(
@@ -59,7 +64,7 @@ object SubtitleStudioSettingsController {
             val matchesPalette = colorFromKey(mappedKey)?.getRgb() == fg.getRgb()
             if (matchesPalette) {
                 colorPref?.value = mappedKey
-                colorPref?.clearSummaryText()
+                colorPref?.setSummaryText(colorPref?.entry)
             } else {
                 colorPref?.value = null
                 colorPref?.setSummaryText(
@@ -72,13 +77,26 @@ object SubtitleStudioSettingsController {
             val alpha = UserPreferences.captionStyle.backgroundColor.getAlpha()
             if (backgroundOptions.any { abs(it - alpha) <= 8 }) {
                 bgPref?.value = closestBackgroundValue(alpha)
-                bgPref?.clearSummaryText()
+                bgPref?.setSummaryText(bgPref?.entry)
             } else {
                 bgPref?.value = null
                 bgPref?.setSummaryText(
                     context.getString(R.string.subtitle_studio_custom_value, alpha),
                 )
             }
+            textAlphaPref?.value = closestAlphaValue(
+                UserPreferences.captionStyle.foregroundColor.getAlpha(),
+            )
+            textAlphaPref?.setSummaryText(textAlphaPref?.entry)
+            val style = UserPreferences.captionStyle
+            edgePref?.value = style.edgeType.toString()
+            edgePref?.setSummaryText(edgePref?.entry)
+            fontPref?.value = UserPreferences.captionTypefaceIndex.toString()
+            fontPref?.setSummaryText(fontPref?.entry)
+            windowPref?.value = closestBackgroundValue(style.windowColor.getAlpha())
+            windowPref?.setSummaryText(windowPref?.entry)
+            marginPref?.value = closestMarginValue(UserPreferences.captionMargin)
+            marginPref?.setSummaryText(marginPref?.entry)
             refreshPreview()
         }
 
@@ -123,8 +141,77 @@ object SubtitleStudioSettingsController {
                 current.windowColor,
                 current.edgeType,
                 current.edgeColor,
-                null,
+                UserPreferences.captionTypefaceOrDefault(),
             )
+            syncFromPrefs()
+            true
+        }
+        textAlphaPref?.setOnPreferenceChangeListener { _, newValue ->
+            val alpha = (newValue as? String)?.toIntOrNull()
+                ?: return@setOnPreferenceChangeListener false
+            val current = UserPreferences.captionStyle
+            UserPreferences.captionStyle = CaptionStyleCompat(
+                current.foregroundColor.setAlpha(alpha.coerceIn(0, 255)),
+                current.backgroundColor,
+                current.windowColor,
+                current.edgeType,
+                current.edgeColor,
+                UserPreferences.captionTypefaceOrDefault(),
+            )
+            syncFromPrefs()
+            true
+        }
+        edgePref?.setOnPreferenceChangeListener { _, newValue ->
+            val edge = (newValue as? String)?.toIntOrNull()
+                ?: return@setOnPreferenceChangeListener false
+            val current = UserPreferences.captionStyle
+            UserPreferences.captionStyle = CaptionStyleCompat(
+                current.foregroundColor,
+                current.backgroundColor,
+                current.windowColor,
+                edge.coerceIn(0, 4),
+                if (edge == CaptionStyleCompat.EDGE_TYPE_NONE) current.edgeColor else Color.BLACK,
+                UserPreferences.captionTypefaceOrDefault(),
+            )
+            syncFromPrefs()
+            true
+        }
+        fontPref?.setOnPreferenceChangeListener { _, newValue ->
+            val index = (newValue as? String)?.toIntOrNull()
+                ?: return@setOnPreferenceChangeListener false
+            UserPreferences.captionTypefaceIndex = index
+            // captionStyle re-reads the persisted index — push typeface into the live style.
+            val current = UserPreferences.captionStyle
+            UserPreferences.captionStyle = CaptionStyleCompat(
+                current.foregroundColor,
+                current.backgroundColor,
+                current.windowColor,
+                current.edgeType,
+                current.edgeColor,
+                UserPreferences.captionTypefaceOrDefault(),
+            )
+            syncFromPrefs()
+            true
+        }
+        windowPref?.setOnPreferenceChangeListener { _, newValue ->
+            val alpha = (newValue as? String)?.toIntOrNull()
+                ?: return@setOnPreferenceChangeListener false
+            val current = UserPreferences.captionStyle
+            UserPreferences.captionStyle = CaptionStyleCompat(
+                current.foregroundColor,
+                current.backgroundColor,
+                Color.BLACK.setAlpha(alpha.coerceIn(0, 255)),
+                current.edgeType,
+                current.edgeColor,
+                UserPreferences.captionTypefaceOrDefault(),
+            )
+            syncFromPrefs()
+            true
+        }
+        marginPref?.setOnPreferenceChangeListener { _, newValue ->
+            val margin = (newValue as? String)?.toIntOrNull()
+                ?: return@setOnPreferenceChangeListener false
+            UserPreferences.captionMargin = margin.coerceIn(0, 200)
             syncFromPrefs()
             true
         }
@@ -146,6 +233,16 @@ object SubtitleStudioSettingsController {
     private fun closestBackgroundValue(alpha: Int): String {
         val options = listOf(0, 128, 191, 255)
         return (options.minByOrNull { kotlin.math.abs(it - alpha) } ?: 128).toString()
+    }
+
+    private fun closestAlphaValue(alpha: Int): String {
+        val options = listOf(255, 217, 179, 128)
+        return (options.minByOrNull { kotlin.math.abs(it - alpha) } ?: 255).toString()
+    }
+
+    private fun closestMarginValue(margin: Int): String {
+        val options = listOf(8, 24, 48, 80)
+        return (options.minByOrNull { kotlin.math.abs(it - margin) } ?: 24).toString()
     }
 
     private fun colorKey(argb: Int): String = when (argb.getRgb()) {

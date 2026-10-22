@@ -26,11 +26,8 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpAmbientGlow
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
@@ -49,6 +46,11 @@ class HomeMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+
+    /** Vertical rv_home scroll state, kept across view recreation (back-nav). */
+    private var homeListState: android.os.Parcelable? = null
+    /** Provider+profile owning [homeListState]; a swap discards the stale offset. */
+    private var homeListStateOwner: String? = null
     private var homeBindSignature: String? = null
 
     val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
@@ -73,7 +75,30 @@ class HomeMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        savedInstanceState?.let {
+            homeListState = homeListState ?: androidx.core.os.BundleCompat.getParcelable(
+                it,
+                KEY_HOME_LIST_STATE,
+                android.os.Parcelable::class.java,
+            )
+            homeListStateOwner = homeListStateOwner ?: it.getString(KEY_HOME_LIST_OWNER)
+        }
+
         initializeHome()
+
+        binding.srlHome.apply {
+            setColorSchemeColors(
+                androidx.core.content.ContextCompat.getColor(
+                    requireContext(), R.color.profile_accent,
+                ),
+            )
+            setProgressBackgroundColorSchemeColor(
+                androidx.core.content.ContextCompat.getColor(
+                    requireContext(), R.color.cinema_elevated,
+                ),
+            )
+            setOnRefreshListener { viewModel.getHome() }
+        }
 
         // Provider changes: ViewModel.getHome is the single caller; fragment only refreshes chrome.
         viewLifecycleOwner.lifecycleScope.launch {
@@ -92,25 +117,24 @@ class HomeMobileFragment : Fragment() {
                         hideCatalogWarning()
                     }
                     is HomeViewModel.State.SuccessLoading -> {
+                        binding.srlHome.isRefreshing = false
                         displayHome(state.categories, state.watchlistDigestEpisodes)
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                         showCatalogWarning(state.providerWarning)
                     }
                     is HomeViewModel.State.FailedLoading -> {
+                        binding.srlHome.isRefreshing = false
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
                                 return@collect
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
                             Toast.makeText(
                                 requireContext(),
                                 state.error.message ?: "",
                                 Toast.LENGTH_SHORT
                             ).show()
-                        }
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             val doRetry = { viewModel.getHome() }
                             btnIsLoadingRetry.setOnClickListener { doRetry() }
                             btnIsLoadingClearCache.setOnClickListener {
@@ -167,9 +191,41 @@ class HomeMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        _binding?.let { appAdapter.onSaveInstanceState(it.rvHome) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.rvHome)
+            homeListState = it.rvHome.layoutManager?.onSaveInstanceState()
+            homeListStateOwner = homeDataOwner()
+        }
         _binding = null
         super.onDestroyView()
+    }
+
+    private fun homeDataOwner(): String =
+        (UserPreferences.currentProvider?.name ?: "") +
+            "|" + com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Keep the offset through process death — onSaveInstanceState precedes
+        // onDestroyView, so read the live LayoutManager state with the field fallback.
+        val state = homeListState ?: _binding?.rvHome?.layoutManager?.onSaveInstanceState()
+        if (state != null) {
+            outState.putParcelable(KEY_HOME_LIST_STATE, state)
+            outState.putString(KEY_HOME_LIST_OWNER, homeListStateOwner ?: homeDataOwner())
+        }
+    }
+
+    /**
+     * Restores the pre-navigation scroll offset once, only while the same
+     * provider/profile owns the catalog — a dataset swap falls back to top.
+     */
+    private fun restoreHomeScrollIfPending() {
+        val state = homeListState ?: return
+        homeListState = null
+        if (homeListStateOwner != homeDataOwner()) return
+        binding.rvHome.post {
+            _binding?.rvHome?.layoutManager?.onRestoreInstanceState(state)
+        }
     }
 
     private fun initializeHome() {
@@ -191,9 +247,6 @@ class HomeMobileFragment : Fragment() {
         binding.ivProviderLogo.apply {
             isClickable = true
             isFocusable = true
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-            }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 findNavController().navigate(R.id.providers)
@@ -201,30 +254,10 @@ class HomeMobileFragment : Fragment() {
         }
         
         // Default shell hides the background; experimental keeps a full-bleed hero plane.
-        binding.ivHomeBackground.visibility =
-            if (ExperimentalMobileDesign.enabled()) View.VISIBLE else View.GONE
+        binding.ivHomeBackground.visibility = View.GONE
 
-        if (ExperimentalMobileDesign.enabled()) {
-            if (ExperimentalMobileDesign.heroParallax()) {
-                applyExperimentalParallax()
-            }
-            ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
-            refreshProviderChip()
-            ExpMotion.brandReveal(
-                binding.ivProviderLogo,
-                binding.root.findViewById(R.id.tv_home_brand),
-                binding.root.findViewById(R.id.tv_home_tagline),
-                binding.root.findViewById(R.id.v_home_brand_rule),
-            )
-            ExpMotion.enterScreen(binding.root)
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            ExpMotion.kenBurns(
-                binding.ivHomeBackground,
-                drift = !ExperimentalMobileDesign.heroParallax(),
-            )
-            ExpMotion.staggerFirstFill(binding.rvHome)
-        }
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.staggerFirstFill(binding.rvHome)
     }
 
     private fun refreshProviderLogo() {
@@ -236,47 +269,10 @@ class HomeMobileFragment : Fragment() {
             .error(R.drawable.ic_provider_default_logo)
             .fitCenter()
             .into(logoView)
-        refreshProviderChip()
-    }
-
-    private fun refreshProviderChip() {
-        // Ink Lock: provider identity is the logo only — keep the hero uncluttered.
-        if (!ExperimentalMobileDesign.enabled()) return
-        _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_provider_chip)
-            ?.visibility = View.GONE
     }
 
     private fun refreshProfileChip() {
         HomeProfileChip.refresh(this, _binding?.root, showName = true)
-    }
-
-    private var heroScrollOffset = 0
-
-    private fun applyExperimentalParallax() {
-        binding.rvHome.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                heroScrollOffset += dy
-                // Hero drifts up slower than content, glow/veil follow it.
-                val parallax = (heroScrollOffset * 0.38f).coerceIn(0f, 900f)
-                binding.ivHomeBackground.translationY = -parallax
-                binding.root.findViewById<View>(R.id.v_home_atmosphere)
-                    ?.translationY = -parallax
-                val brandDrift = -parallax * 0.5f
-                val brandAlpha = (1f - parallax / 340f).coerceIn(0f, 1f)
-                listOf(
-                    R.id.tv_home_brand,
-                    R.id.tv_home_tagline,
-                    R.id.v_home_brand_rule,
-                    R.id.iv_provider_logo,
-                    R.id.tv_home_profile_chip,
-                ).forEach { id ->
-                    binding.root.findViewById<View>(id)?.apply {
-                        translationY = brandDrift
-                        alpha = brandAlpha
-                    }
-                }
-            }
-        })
     }
 
     private fun showCatalogWarning(warning: String?) {
@@ -290,25 +286,7 @@ class HomeMobileFragment : Fragment() {
         }
         banner.text = text
         banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
-        if (ExperimentalMobileDesign.enabled()) {
-            banner.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            val density = banner.resources.displayMetrics.density
-            banner.setPadding(
-                (14 * density).toInt(),
-                (10 * density).toInt(),
-                (14 * density).toInt(),
-                (10 * density).toInt(),
-            )
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { banner.applyExpPress() }
-            if (banner.visibility != View.VISIBLE) {
-                banner.visibility = View.VISIBLE
-                ExpMotion.popIn(banner)
-            } else {
-                banner.visibility = View.VISIBLE
-            }
-        } else {
-            banner.visibility = View.VISIBLE
-        }
+        banner.visibility = View.VISIBLE
         banner.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.getHome()
@@ -317,11 +295,7 @@ class HomeMobileFragment : Fragment() {
 
     private fun hideCatalogWarning() {
         _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_catalog_warning)?.apply {
-            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                ExpMotion.fadeOutAndHide(this)
-            } else {
-                visibility = View.GONE
-            }
+            visibility = View.GONE
             setOnClickListener(null)
         }
     }
@@ -330,9 +304,6 @@ class HomeMobileFragment : Fragment() {
         categories: List<Category>,
         watchlistDigestEpisodes: List<Episode> = emptyList(),
     ) {
-        if (ExperimentalMobileDesign.enabled()) {
-            updateExperimentalHero(categories)
-        }
 
         categories
             .find { Category.isFeaturedName(it.name) }
@@ -490,7 +461,7 @@ class HomeMobileFragment : Fragment() {
             appAdapter.submitList(without)
         }
         appAdapter.onProviderOutageBannerClickListener = {
-            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openProviderTrust()
+            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openContentScreen()
             runCatching { findNavController().navigate(R.id.settings) }
         }
         appAdapter.onProviderOutageBannerDismissListener = {
@@ -524,6 +495,10 @@ class HomeMobileFragment : Fragment() {
                 else -> AppAdapter.Type.CATEGORY_MOBILE_ITEM
             }
         }
+        // Restore before the unchanged-check: the adapter keeps its items across
+        // view recreation, so the offset can be re-applied even when the dataset
+        // signature skips the rebind below.
+        restoreHomeScrollIfPending()
         if (homeUnchanged(visibleCategories, watchlistDigestEpisodes)) return
 
         // Stamp SWIPER types only on the isolated FEATURED clones — never on
@@ -681,11 +656,6 @@ class HomeMobileFragment : Fragment() {
             onCtaClick = { findNavController().navigate(R.id.providers) },
         )
 
-        if (ExperimentalMobileDesign.enabled()) {
-            // One-shot enter only — skip continuous kenburns on the hero (expensive on mid devices).
-            ExpMotion.startAnimation(binding.rvHome, R.anim.exp_fade_slide_up)
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_home_brand_rule))
-        }
     }
 
     /** Logo-only Room merges reuse the bound shelves. Returns true when submit can be skipped. */
@@ -728,84 +698,25 @@ class HomeMobileFragment : Fragment() {
         ) {
             val pos = parent.getChildAdapterPosition(view)
             val count = parent.adapter?.itemCount ?: return
-            if (pos == RecyclerView.NO_POSITION || pos >= count - 1) return
-            val item = (parent.adapter as? AppAdapter)?.items?.getOrNull(pos)
+            if (pos == RecyclerView.NO_POSITION) return
+            val items = (parent.adapter as? AppAdapter)?.items
+            val item = items?.getOrNull(pos)
             val featured = item is Category && Category.isFeaturedName(item.name)
-            outRect.bottom = if (featured) 0 else gapPx
-        }
-    }
-
-    private var currentHeroArt: String? = null
-
-    private fun updateExperimentalHero(categories: List<Category>) {
-        val featuredCat = categories.find { Category.isFeaturedName(it.name) }
-        val index = FeaturedTvRotation.coerceIndex(
-            featuredCat?.selectedIndex ?: 0,
-            featuredCat?.list?.size ?: 0,
-        )
-        val featured = featuredCat?.list?.getOrNull(index)
-        updateExperimentalHeroArt(featured as? com.dskja.betterstreamflix.models.Show)
-    }
-
-    /** Keeps the hero backdrop + ambient glow in sync with the featured swiper. */
-    fun updateExperimentalHeroArt(show: com.dskja.betterstreamflix.models.Show?) {
-        if (_binding == null || !ExperimentalMobileDesign.enabled()) return
-        val art = when (show) {
-            is Movie -> com.dskja.betterstreamflix.utils.ArtworkUrls
-                .featuredBannerOrPoster(show.banner, show.poster)
-            is TvShow -> com.dskja.betterstreamflix.utils.ArtworkUrls
-                .featuredBannerOrPoster(show.banner, show.poster)
-            else -> null
-        }
-        if (art == currentHeroArt) return
-        currentHeroArt = art
-        if (!art.isNullOrBlank()) {
-            val (w, h) = com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
-                .artworkOverride(binding.ivHomeBackground)
-            Glide.with(binding.ivHomeBackground)
-                .load(art)
-                .override(w, h)
-                .transition(DrawableTransitionOptions.withCrossFade(450))
-                .centerCrop()
-                .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
-                    override fun onLoadFailed(
-                        e: com.bumptech.glide.load.engine.GlideException?,
-                        model: Any?,
-                        target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
-                        isFirstResource: Boolean,
-                    ) = false
-
-                    override fun onResourceReady(
-                        resource: android.graphics.drawable.Drawable,
-                        model: Any,
-                        target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
-                        dataSource: com.bumptech.glide.load.DataSource,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        val root = _binding?.root ?: return false
-                        val bitmap = (resource as? android.graphics.drawable.BitmapDrawable)?.bitmap
-                        root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
-                            // Soft static tint only — avoid re-triggering glow fade on every swipe.
-                            if (glow.tag != art) {
-                                glow.tag = art
-                                ExpAmbientGlow.apply(bitmap, glow)
-                            }
-                        }
-                        return false
-                    }
-                })
-                .into(binding.ivHomeBackground)
-            // Kenburns removed: continuous scale animation caused jank on home scroll.
-        } else {
-            binding.ivHomeBackground.setImageResource(R.drawable.bg_exp_lumina_sky)
-            binding.root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
-                glow.tag = null
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    glow,
-                    androidx.appcompat.R.attr.colorPrimary,
-                )
-                ExpAmbientGlow.applyColor(primary, glow)
+            if (pos < count - 1) {
+                outRect.bottom = if (featured) 0 else gapPx
+            }
+            // The shelf directly after the Featured hero needs real breathing
+            // room — its title row would otherwise hug the hero's bottom scrim
+            // and read as clipped/overlapping ("Latest Episodes" inside Featured).
+            val prev = items?.getOrNull(pos - 1)
+            if (prev is Category && Category.isFeaturedName(prev.name)) {
+                outRect.top = gapPx * 3
             }
         }
+    }
+
+    private companion object {
+        const val KEY_HOME_LIST_STATE = "home_list_state"
+        const val KEY_HOME_LIST_OWNER = "home_list_owner"
     }
 }

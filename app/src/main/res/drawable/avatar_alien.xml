@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- head -->
+    <path
+        android:fillColor="#9CCC65"
+        android:pathData="M54,30q20,0 20,24q0,18 -20,30q-20,-12 -20,-30q0,-24 20,-24z" />
+    <!-- eyes -->
+    <path
+        android:fillColor="#212121"
+        android:pathData="M38,50q7,-6 14,0q-3,10 -10,8q-6,-2 -4,-8z" />
+    <path
+        android:fillColor="#212121"
+        android:pathData="M70,50q-7,-6 -14,0q3,10 10,8q6,-2 4,-8z" />
+    <!-- mouth -->
+    <path
+        android:strokeColor="#558B2F"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M48,72q6,4 12,0" />
+</vector>

@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/cinema_ink"
+    android:fillViewport="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="28dp">
+
+        <View
+            android:layout_width="44dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="14dp"
+            android:background="@drawable/bg_detail_season_chip"
+            android:backgroundTint="@color/cinema_glass_strong" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/outfit"
+            android:letterSpacing="0.18"
+            android:text="@string/cast_sheet_label"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_accent"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/syne"
+            android:text="@string/cast_sheet_title"
+            android:textColor="@color/cinema_text"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <!-- Active DLNA session -->
+        <LinearLayout
+            android:id="@+id/ll_cast_dlna_active"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_detail_season_chip"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_cast"
+                app:tint="@color/cinema_accent"
+                tools:ignore="UseAppTint" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_cast_dlna_active_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/outfit"
+                    android:maxLines="1"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="Samsung TV" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/outfit"
+                    android:letterSpacing="0.1"
+                    android:text="@string/cast_sheet_playing_on_tv"
+                    android:textAllCaps="true"
+                    android:textColor="@color/cinema_accent"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btn_cast_dlna_stop"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_detail_season_chip"
+                android:backgroundTint="@color/cinema_destructive"
+                android:fontFamily="@font/outfit"
+                android:gravity="center"
+                android:minHeight="36dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/cast_sheet_stop"
+                android:textAllCaps="true"
+                android:textColor="@color/cinema_ink"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Google Cast row -->
+        <LinearLayout
+            android:id="@+id/ll_cast_google_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_detail_season_chip"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_cast_google_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/outfit"
+                    android:maxLines="1"
+                    android:text="@string/cast_sheet_google_cast"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/outfit"
+                    android:letterSpacing="0.1"
+                    android:text="@string/cast_sheet_google_cast_sub"
+                    android:textAllCaps="true"
+                    android:textColor="@color/cinema_text_faint"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/fl_cast_route_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- DLNA section -->
+        <TextView
+            android:id="@+id/tv_cast_dlna_scan_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="@font/outfit"
+            android:letterSpacing="0.14"
+            android:text="@string/cast_sheet_scanning"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text_faint"
+            android:textSize="10sp" />
+
+        <LinearLayout
+            android:id="@+id/ll_cast_dlna_scanning"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:indeterminateTint="@color/cinema_accent" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="@font/manrope"
+                android:text="@string/cast_sheet_looking"
+                android:textColor="@color/cinema_text_muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ll_cast_dlna_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/tv_cast_dlna_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/manrope"
+            android:text="@string/cast_sheet_no_dlna"
+            android:textColor="@color/cinema_text_faint"
+            android:textSize="13sp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <!-- Smart-TV remote section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:fontFamily="@font/outfit"
+            android:letterSpacing="0.14"
+            android:text="@string/cast_sheet_remote_section"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text_faint"
+            android:textSize="10sp" />
+
+        <LinearLayout
+            android:id="@+id/ll_cast_tv_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+
+        <!-- Pair by IP -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_detail_season_chip"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/outfit"
+                android:letterSpacing="0.1"
+                android:text="@string/cast_sheet_pair_label"
+                android:textAllCaps="true"
+                android:textColor="@color/cinema_text_faint"
+                android:textSize="10sp" />
+
+            <EditText
+                android:id="@+id/et_cast_tv_ip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_detail_season_chip"
+                android:backgroundTint="@color/cinema_glass"
+                android:fontFamily="@font/outfit"
+                android:hint="@string/cast_sheet_pair_hint"
+                android:importantForAutofill="no"
+                android:inputType="numberDecimal|text"
+                android:minHeight="40dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:singleLine="true"
+                android:textColor="@color/cinema_text"
+                android:textColorHint="@color/cinema_text_faint"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_cast_kind_tizen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_detail_season_chip"
+                    android:backgroundTint="@color/cinema_glass_strong"
+                    android:fontFamily="@font/outfit"
+                    android:gravity="center"
+                    android:minHeight="32dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/cast_sheet_kind_tizen"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btn_cast_kind_webos"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_detail_season_chip"
+                    android:fontFamily="@font/outfit"
+                    android:gravity="center"
+                    android:minHeight="32dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/cast_sheet_kind_webos"
+                    android:textColor="@color/cinema_text_muted"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/btn_cast_pair"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_detail_season_chip"
+                    android:backgroundTint="@color/cinema_cta_fill"
+                    android:fontFamily="@font/outfit"
+                    android:gravity="center"
+                    android:minHeight="32dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="@string/cast_sheet_pair"
+                    android:textAllCaps="true"
+                    android:textColor="@color/cinema_cta_ink"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Screen mirroring -->
+        <LinearLayout
+            android:id="@+id/ll_cast_mirror_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_detail_season_chip"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/outfit"
+                    android:text="@string/cast_sheet_mirror"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/outfit"
+                    android:letterSpacing="0.1"
+                    android:text="@string/cast_sheet_mirror_sub"
+                    android:textAllCaps="true"
+                    android:textColor="@color/cinema_text_faint"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/outfit"
+                android:text="›"
+                android:textColor="@color/cinema_text_faint"
+                android:textSize="20sp" />
+        </LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

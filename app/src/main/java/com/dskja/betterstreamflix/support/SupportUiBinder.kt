@@ -10,7 +10,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSupportProviderCardBinding
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 
 object SupportUiBinder {
@@ -19,7 +18,7 @@ object SupportUiBinder {
         context: Context,
         container: LinearLayout,
         horizontal: Boolean = false,
-        animate: Boolean = ExperimentalMobileDesign.enabled(),
+        animate: Boolean = true,
     ) {
         container.removeAllViews()
         val inflater = LayoutInflater.from(context)
@@ -36,32 +35,30 @@ object SupportUiBinder {
             card.root.setOnClickListener(open)
             card.btnSupportProviderCta.setOnClickListener(open)
             wireInteractive(card.root)
-            if (ExperimentalMobileDesign.enabled()) {
-                card.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                (card.ivSupportProviderIcon.parent as? View)?.setBackgroundResource(
-                    ExperimentalMobileDesign.iconChipBackground(),
-                )
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    card.root,
-                    androidx.appcompat.R.attr.colorPrimary,
-                )
-                val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                    card.root,
-                    com.google.android.material.R.attr.colorOnSurface,
-                )
-                val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                    card.root,
-                    com.google.android.material.R.attr.colorOnSurfaceVariant,
-                )
-                card.ivSupportProviderIcon.imageTintList =
-                    android.content.res.ColorStateList.valueOf(primary)
-                card.tvSupportProviderTitle.setTextColor(onSurface)
-                card.tvSupportProviderDescription.setTextColor(onVariant)
-                card.btnSupportProviderCta.setBackgroundResource(
-                    ExperimentalMobileDesign.primaryButtonBackground(),
-                )
-                card.btnSupportProviderCta.applyExpPress()
-            }
+            card.root.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            (card.ivSupportProviderIcon.parent as? View)?.setBackgroundResource(
+                R.drawable.bg_detail_icon_chip,
+            )
+            val primary = com.google.android.material.color.MaterialColors.getColor(
+                card.root,
+                androidx.appcompat.R.attr.colorPrimary,
+            )
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                card.root,
+                com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                card.root,
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            card.ivSupportProviderIcon.imageTintList =
+                android.content.res.ColorStateList.valueOf(primary)
+            card.tvSupportProviderTitle.setTextColor(onSurface)
+            card.tvSupportProviderDescription.setTextColor(onVariant)
+            card.btnSupportProviderCta.setBackgroundResource(
+                R.drawable.bg_button_mobile,
+            )
+            card.btnSupportProviderCta.applyExpPress()
 
             val lp = if (horizontal) {
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -78,23 +75,13 @@ object SupportUiBinder {
             container.addView(card.root, lp)
 
             if (animate) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    card.root.postDelayed({ ExpMotion.popIn(card.root) }, 40L * index)
-                } else {
-                    val anim = AnimationUtils.loadAnimation(context, R.anim.support_fade_slide_up)
-                    anim.startOffset = (index * 40L)
-                    card.root.startAnimation(anim)
-                }
+                card.root.postDelayed({ ExpMotion.popIn(card.root) }, 40L * index)
             }
         }
     }
 
     fun wireInteractive(view: View) {
-        if (ExperimentalMobileDesign.enabled()) {
-            view.applyExpPress()
-        } else {
-            applyFocusScale(view)
-        }
+        view.applyExpPress()
     }
 
     fun applyFocusScale(view: View) {

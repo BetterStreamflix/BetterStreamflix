@@ -26,18 +26,10 @@
     <color name="cinema_tmdb">#FF01B4E4</color>
     <color name="cinema_player_btn_focus">#80808080</color>
 
-    <!-- Cinema-Ink Light — cool paper shell (no cream/terracotta mix). -->
-    <color name="cinema_ink_light">#FFEEF0F4</color>
-    <color name="cinema_ink_light_surface">#FFFFFFFF</color>
-    <color name="cinema_ink_light_elevated">#FFF4F6FA</color>
-    <color name="cinema_ink_light_text">#FF121218</color>
-    <color name="cinema_ink_light_text_muted">#FF5C6478</color>
-    <color name="cinema_ink_light_accent">#FF1A4DFF</color>
-    <color name="cinema_ink_light_scrim">#99EEF0F4</color>
-
     <!-- Shared TV DPAD focus stroke (HC overlay swaps via theme attr where used). -->
     <color name="tv_focus_stroke">#FFFFFFFF</color>
     <color name="tv_focus_stroke_high_contrast">#FFFFFF00</color>
+
     <color name="a11y_hc_background">#FF000000</color>
     <color name="a11y_hc_surface">#FF000000</color>
     <color name="a11y_hc_text">#FFFFFFFF</color>

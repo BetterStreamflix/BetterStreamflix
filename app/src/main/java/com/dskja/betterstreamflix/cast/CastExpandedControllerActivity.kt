@@ -14,7 +14,7 @@ class CastExpandedControllerActivity : ExpandedControllerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         com.dskja.betterstreamflix.utils.AccessibilityPreferences.applyHighContrastOverlayAuto(this)
         super.onCreate(savedInstanceState)
-        // TV-safe polish without ExperimentalMobileDesign gate (Fire / Leanback remotes).
+        // TV-safe polish — kept remote-friendly (Fire / Leanback remotes).
         window?.decorView?.let { decor ->
             ExpMotion.enterScreen(decor)
             decor.post { polishCastControls(decor) }

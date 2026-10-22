@@ -39,7 +39,6 @@ import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
@@ -49,7 +48,6 @@ import com.dskja.betterstreamflix.utils.loadTvShowPoster
 import com.dskja.betterstreamflix.utils.toActivity
 import com.dskja.betterstreamflix.spoilers.SpoilerShield
 import com.dskja.betterstreamflix.spoilers.SpoilerShieldUi
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -93,19 +91,6 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
                 )
             }
         }
-    }
-
-    if (ExperimentalMobileDesign.enabled() &&
-        binding.root.getTag(R.id.exp_enter_animated_tag) != true
-    ) {
-        binding.root.setTag(R.id.exp_enter_animated_tag, true)
-        ExpMotion.revealHeader(
-            binding.tvTvShowTitle,
-            binding.ivTvShowLogo,
-            binding.btnTvShowWatchNow,
-            binding.btnTvShowTrailer,
-            binding.btnTvShowDownload,
-        )
     }
 
     val ratingText = DetailRating.format(tvShow.rating)
@@ -181,12 +166,7 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
                     openGenre(genres.first())
                 } else {
                     val labels = genres.map { it.name }.toTypedArray()
-                    val builder = if (ExperimentalMobileDesign.enabled()) {
-                        MaterialAlertDialogBuilder(context)
-                    } else {
-                        AlertDialog.Builder(context)
-                    }
-                    builder
+                    AlertDialog.Builder(context)
                         .setTitle(R.string.genre_section_label)
                         .setItems(labels) { _, which ->
                             genres.getOrNull(which)?.let(::openGenre)

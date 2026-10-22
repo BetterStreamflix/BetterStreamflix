@@ -15,8 +15,6 @@ import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -37,44 +35,22 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 /** Shared Profiles binder for Mobile + TV settings. */
 object ProfilesSettingsController {
     private fun alertBuilder(context: Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     private fun notifyUser(
         context: Context,
         message: CharSequence,
         titleRes: Int = R.string.profile_switch_title,
     ) {
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.showInfo(context, titleRes, message, ::alertBuilder)
-        } else {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-        }
+        ExpDialogChrome.showInfo(context, titleRes, message, ::alertBuilder)
     }
 
     private fun styleExpInput(input: EditText, context: Context) {
         val pad = (24 * context.resources.displayMetrics.density).toInt()
-        if (ExperimentalMobileDesign.enabled()) {
-            input.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-            input.setPadding(pad, pad, pad, pad)
-            input.setTextAppearance(R.style.TextAppearance_Lumina_Body)
-        } else {
-            input.setPadding(pad, pad / 2, pad, pad / 2)
-        }
+        input.setBackgroundResource(R.drawable.bg_search_edittext)
+        input.setPadding(pad, pad, pad, pad)
+        input.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
     }
-
-    private val integrationPrefKeys = mapOf(
-        "PROFILE_INT_TRAKT" to UserProfile.Integration.TRAKT,
-        "PROFILE_INT_JELLYFIN" to UserProfile.Integration.JELLYFIN,
-        "PROFILE_INT_PLEX" to UserProfile.Integration.PLEX,
-        "PROFILE_INT_DEBRID" to UserProfile.Integration.DEBRID,
-        "PROFILE_INT_SIMKL" to UserProfile.Integration.SIMKL,
-        "PROFILE_INT_OPENSUBTITLES" to UserProfile.Integration.OPENSUBTITLES,
-        "PROFILE_INT_TMDB" to UserProfile.Integration.TMDB,
-    )
 
     fun bind(
         fragment: Fragment,
@@ -118,6 +94,11 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_AVATAR")?.setOnPreferenceClickListener {
             showAvatarPicker(fragment, findPreference)
+            true
+        }
+
+        findPreference("PROFILE_INTEGRATIONS")?.setOnPreferenceClickListener {
+            showIntegrationsDialog(fragment, findPreference)
             true
         }
 
@@ -307,21 +288,6 @@ object ProfilesSettingsController {
             true
         }
 
-        integrationPrefKeys.forEach { (prefKey, integration) ->
-            findPreference(prefKey)?.let { pref ->
-                val switch = pref as? SwitchPreferenceCompat ?: return@let
-                switch.setOnPreferenceChangeListener { _, newValue ->
-                    ProfileManager.setIntegrationEnabled(
-                        ProfileManager.activeProfileId,
-                        integration,
-                        newValue as Boolean,
-                    )
-                    refresh(findPreference, context, fragment)
-                    true
-                }
-            }
-        }
-
         refresh(findPreference, context, fragment)
     }
 
@@ -340,7 +306,7 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_AVATAR")?.apply {
             val key = profile?.avatarKey ?: ProfileManager.avatarKeys.first()
-            summary = context.getString(ProfileAvatarStyle.paletteFor(key).titleRes)
+            summary = context.getString(ProfileAvatarStyle.avatarFor(key).titleRes)
             val preview = context.getDrawable(R.drawable.bg_profile_avatar_preview)?.mutate()
             if (preview != null) {
                 DrawableCompat.setTint(preview, ProfileAvatarStyle.colorFor(key))
@@ -399,15 +365,15 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_PIN_CLEAR")?.isVisible = profile?.pinHash != null
 
+        findPreference("PROFILE_INTEGRATIONS")?.summary = integrationsSummary(context, profile)
+
         // Year review is adult-only — hide entry on Kids / Guest (YR-001).
         findPreference("PROFILE_YEAR_REVIEW")?.isVisible =
             profile != null && !profile.isKids && !profile.isGuest
 
-        val active = profile
-        integrationPrefKeys.forEach { (prefKey, integration) ->
-            (findPreference(prefKey) as? SwitchPreferenceCompat)?.isChecked =
-                active?.let { ProfileManager.isIntegrationEnabled(it, integration) } ?: true
-        }
+        // Parent Dashboard only exists when at least one Kids profile is present.
+        findPreference("PARENT_DASHBOARD_OPEN")?.isVisible =
+            ProfileManager.profiles().any { it.isKids }
 
         findPreference(ProfileHeroPreference.KEY)?.let { pref ->
             (pref as? ProfileHeroPreference)?.refresh()
@@ -415,10 +381,72 @@ object ProfilesSettingsController {
         }
     }
 
+    private val PROFILE_INTEGRATION_ITEMS = listOf(
+        UserProfile.Integration.TRAKT to R.string.profile_integration_trakt,
+        UserProfile.Integration.JELLYFIN to R.string.profile_integration_jellyfin,
+        UserProfile.Integration.PLEX to R.string.profile_integration_plex,
+        UserProfile.Integration.DEBRID to R.string.profile_integration_debrid,
+        UserProfile.Integration.SIMKL to R.string.profile_integration_simkl,
+        UserProfile.Integration.OPENSUBTITLES to R.string.profile_integration_opensubtitles,
+        UserProfile.Integration.TMDB to R.string.profile_integration_tmdb,
+    )
+
+    private fun integrationsSummary(context: Context, profile: UserProfile?): CharSequence {
+        val enabled = profile?.enabledIntegrations.orEmpty()
+            .ifEmpty { UserProfile.Integration.ALL }
+        return if (enabled.containsAll(UserProfile.Integration.ALL)) {
+            context.getString(R.string.profile_integrations_summary_all)
+        } else if (enabled.isEmpty()) {
+            context.getString(R.string.profile_integrations_summary_none)
+        } else {
+            val names = PROFILE_INTEGRATION_ITEMS
+                .filter { it.first in enabled }
+                .joinToString(" · ") { context.getString(it.second) }
+            context.getString(
+                R.string.profile_integrations_summary_some,
+                enabled.count { it in UserProfile.Integration.ALL },
+                names,
+            )
+        }
+    }
+
+    private fun showIntegrationsDialog(
+        fragment: Fragment,
+        findPreference: (String) -> Preference?,
+    ) {
+        val context = fragment.requireContext()
+        val profile = ProfileManager.activeProfile() ?: return
+        val enabledNow = profile.enabledIntegrations.ifEmpty { UserProfile.Integration.ALL }
+        val checked = BooleanArray(PROFILE_INTEGRATION_ITEMS.size) { index ->
+            PROFILE_INTEGRATION_ITEMS[index].first in enabledNow
+        }
+        // Item label: "Trakt — Signed in" so users see the global account state
+        // while deciding which integrations this profile may use.
+        val labels = PROFILE_INTEGRATION_ITEMS.map { (key, nameRes) ->
+            val status = com.dskja.betterstreamflix.platform.IntegrationStatus.globalOnly(key)
+            context.getString(nameRes) + " · " +
+                com.dskja.betterstreamflix.platform.IntegrationStatus.label(context, status)
+        }.toTypedArray()
+        alertBuilder(context)
+            .setTitle(R.string.profile_integrations_dialog_title)
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val selected = PROFILE_INTEGRATION_ITEMS
+                    .mapIndexedNotNull { index, (key, _) -> if (checked[index]) key else null }
+                    .toSet()
+                ProfileManager.setEnabledIntegrations(profile.id, selected)
+                refresh(findPreference, context, fragment)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun activeSummary(context: Context, profile: UserProfile): String {
         val kids = if (profile.isKids) " · ${context.getString(R.string.profile_kids_badge_short)}" else ""
         val pin = if (profile.pinHash != null) " · ${context.getString(R.string.profile_picker_locked)}" else ""
-        val avatar = context.getString(ProfileAvatarStyle.paletteFor(profile.avatarKey).titleRes)
+        val avatar = context.getString(ProfileAvatarStyle.avatarFor(profile.avatarKey).titleRes)
         return "${profile.displayName}$kids$pin · $avatar"
     }
 
@@ -469,17 +497,12 @@ object ProfilesSettingsController {
         onProfileSwitched: (() -> Unit)?,
     ) {
         val ctx = fragment.requireContext()
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 ctx,
                 fragment.getString(R.string.profile_switch_prompt, created.displayName),
             )
-        } else {
-            null
-        }
         val builder = alertBuilder(ctx)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(fragment.getString(R.string.profile_switch_prompt, created.displayName))
+        builder.setView(glass.root)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 performSwitch(fragment, findPreference, created, onProfileSwitched)
@@ -490,8 +513,7 @@ object ProfilesSettingsController {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    else ExpDialogChrome.polishButtons(dialog)
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }
@@ -514,8 +536,7 @@ object ProfilesSettingsController {
         input: EditText,
         onPositive: () -> Unit,
     ) {
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, message).also { g ->
+        val glass = ExpDialogChrome.buildGlassMessage(context, message).also { g ->
                 val density = context.resources.displayMetrics.density
                 g.root.addView(
                     input,
@@ -524,26 +545,19 @@ object ProfilesSettingsController {
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     ).also { it.topMargin = (12 * density).toInt() },
                 )
-            }
-        } else {
-            null
         }
         val builder = alertBuilder(context).setTitle(title)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(message).setView(input)
+        builder.setView(glass.root).setView(input)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ -> onPositive() }
             .setNegativeButton(android.R.string.cancel, null)
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        with(ExpPressEffects) { input.applyExpPress() }
-                        ExpMotion.popIn(input)
-                    } else {
-                        ExpDialogChrome.polishButtons(dialog)
-                    }
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                    with(ExpPressEffects) { input.applyExpPress() }
+                    ExpMotion.popIn(input)
+
                 }
                 dialog.show()
             }
@@ -597,28 +611,19 @@ object ProfilesSettingsController {
         val context = fragment.requireContext()
         val profile = ProfileManager.activeProfile() ?: return
         if (ProfileManager.profiles().size <= 1) {
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.showInfo(
-                    context,
-                    R.string.profile_delete_title,
-                    context.getString(R.string.profile_cannot_delete_last),
-                    ::alertBuilder,
-                )
-            } else {
-                Toast.makeText(context, R.string.profile_cannot_delete_last, Toast.LENGTH_SHORT).show()
-            }
+            ExpDialogChrome.showInfo(
+                context,
+                R.string.profile_delete_title,
+                context.getString(R.string.profile_cannot_delete_last),
+                ::alertBuilder,
+            )
             return
         }
 
         val deleteMessage = context.getString(R.string.profile_delete_confirm, profile.displayName)
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, deleteMessage)
-        } else {
-            null
-        }
+        val glass = ExpDialogChrome.buildGlassMessage(context, deleteMessage)
         val builder = alertBuilder(context)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(deleteMessage)
+        builder.setView(glass.root)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val wasActive = profile.id == ProfileManager.activeProfileId
@@ -632,8 +637,7 @@ object ProfilesSettingsController {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    else ExpDialogChrome.polishButtons(dialog)
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }
@@ -655,7 +659,7 @@ object ProfilesSettingsController {
             row.removeAllViews()
             val density = context.resources.displayMetrics.density
             preview.bind(selected, profile.displayName, textSizeSp = 22f)
-            label.setText(ProfileAvatarStyle.paletteFor(selected).titleRes)
+            label.setText(ProfileAvatarStyle.avatarFor(selected).titleRes)
             ProfileAvatarStyle.all().forEach { palette ->
                 val orb = ProfileAvatarView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(
@@ -671,9 +675,7 @@ object ProfilesSettingsController {
                     isClickable = true
                     contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        with(ExpPressEffects) { applyExpPress() }
-                    }
+                    with(ExpPressEffects) { applyExpPress() }
                     setOnClickListener {
                         ExpMotion.hapticTap(it)
                         selected = palette.key
@@ -686,20 +688,17 @@ object ProfilesSettingsController {
         refreshChoices()
 
         val dialog = (
-            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-            else AlertDialog.Builder(context)
+            androidx.appcompat.app.AlertDialog.Builder(context)
         ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val cancel = view.findViewById<TextView>(R.id.btn_profile_avatar_cancel)
         val ok = view.findViewById<TextView>(R.id.btn_profile_avatar_ok)
-        if (ExperimentalMobileDesign.enabled()) {
-            cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            with(ExpPressEffects) {
-                cancel.applyExpPress()
-                ok.applyExpPress()
-            }
+        cancel.setBackgroundResource(R.drawable.bg_outlined_chip)
+        ok.setBackgroundResource(R.drawable.bg_button_mobile)
+        with(ExpPressEffects) {
+            cancel.applyExpPress()
+            ok.applyExpPress()
         }
         cancel.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -712,11 +711,8 @@ object ProfilesSettingsController {
             dialog.dismiss()
         }
         dialog.setOnShowListener {
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.applyReducedGlass(view)
-                view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                ExpDialogChrome.polishShown(dialog)
-            }
+            view.setBackgroundResource(R.drawable.bg_profile_dialog)
+            ExpDialogChrome.polishShown(dialog)
         }
         dialog.show()
     }

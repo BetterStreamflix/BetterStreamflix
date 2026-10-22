@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import android.net.Uri
 import android.util.Log
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.MeinecloudEmbedHelper
@@ -228,6 +229,8 @@ abstract class Extractor {
                         Log.d("Extractor", "Universal Bridge resolved: $finalLink -> $redirectUrl")
                         finalLink = redirectUrl
                     }
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     Log.e("Extractor", "Universal Bridge (mysync) error: ${e.message}")
                     // Don't swallow timeouts / hard failures — let failover see them.
@@ -244,88 +247,122 @@ abstract class Extractor {
                 tryDebrid(finalLink)?.let { return it }
             }
 
-            val urlRegex = Regex("^(https?://)?(www\\.)?")
-            val compareUrl = finalLink.lowercase().replace(urlRegex, "")
-
-            var foundExtractor: Extractor? = null
-
-            for (extractor in extractors) {
-                if (compareUrl.startsWith(extractor.mainUrl.replace(urlRegex, ""))) {
-                    foundExtractor = extractor
-                    break
-                } else {
-                    for (aliasUrl in extractor.aliasUrls) {
-                        val aliasHost = aliasUrl.lowercase().replace(urlRegex, "")
-                            .substringBefore('/')
-                        // Skip broken aliases with no real host (e.g. "mivalyo" / "_").
-                        if (aliasHost.isBlank() || aliasHost == "_" || !aliasHost.contains('.')) {
-                            continue
-                        }
-                        if (compareUrl.startsWith(aliasHost)) {
-                            foundExtractor = extractor
-                            break
-                        }
-                    }
-                }
-                if (foundExtractor != null) break
-            }
-
-            if (foundExtractor == null) {
-                for (extractor in extractors) {
-                    if (compareUrl.startsWith(
-                            extractor.mainUrl.replace(
-                                Regex("^(https?://)?(www\\.)?(.*?)(\\.[a-z]+)"),
-                                "$3"
-                            )
-                        )
-                    ) {
-                        foundExtractor = extractor
-                        break
-                    } else {
-                        for (aliasUrl in extractor.aliasUrls) {
-                            val stripped = aliasUrl.replace(
-                                Regex("^(https?://)?(www\\.)?(.*?)(\\.[a-z]+)"),
-                                "$3"
-                            )
-                            if (stripped.isBlank() || stripped == "_" || stripped.contains("://")) {
-                                continue
-                            }
-                            if (compareUrl.startsWith(stripped)) {
-                                foundExtractor = extractor
-                                break
-                            }
-                        }
-                    }
-                    if (foundExtractor != null) break
-                }
-            }
-
-            if (foundExtractor == null) {
-                for (extractor in extractors) {
-                    if (extractor.rotatingDomain.any { it.containsMatchIn(compareUrl) }) {
-                        foundExtractor = extractor
-                        break
-                    }
-                }
-            }
-
-            if (foundExtractor == null) {
-                for (extractor in extractors) {
-                    if ((server?.name?.lowercase() ?: "").contains(extractor.name.lowercase())) {
-                        foundExtractor = extractor
-                        break
-                    }
-                }
-            }
+            val foundExtractor = findExtractorForLink(finalLink, server)
 
             if (foundExtractor != null) {
                 Log.i("BetterStreamflix", "[EXTRACTOR] -> Starting: ${foundExtractor.name} (URL: $finalLink)")
                 val video = foundExtractor.extract(finalLink)
-                Log.i("BetterStreamflix", "[VIDEO] -> Extracted: ${video.source}")
+                // Don't log the full source URL — signed streams carry secret tokens.
+                val src = runCatching { Uri.parse(video.source) }.getOrNull()
+                Log.i(
+                    "BetterStreamflix",
+                    "[VIDEO] -> Extracted: ${src?.scheme ?: "?"}://${src?.host ?: "?"} (${video.source.length} chars)"
+                )
                 return video
             }
 
             throw Exception("No extractors found for URL: $finalLink")
+        }
+
+        /**
+         * Picks the extractor responsible for [link]. Pure string matching (no I/O) so it
+         * stays unit-testable. Matching is host-boundary aware: a host only matches when
+         * it equals a known host or is a subdomain of it — prefix matching the raw URL let
+         * lookalike hosts like "vidxgo.co.evil.com" hijack an extractor.
+         */
+        internal fun findExtractorForLink(link: String, server: Video.Server? = null): Extractor? {
+            val urlRegex = Regex("^(https?://)?(www\\.)?")
+            val compareUrl = link.lowercase().replace(urlRegex, "")
+            // Host portion only (no path/query/port).
+            val linkHost = compareUrl.substringBefore('/').substringBefore('?').substringBefore(':')
+            val linkPath = compareUrl.substringAfter('/', "")
+
+            fun hostPartOf(url: String): String =
+                url.lowercase().replace(urlRegex, "")
+                    .substringBefore('/').substringBefore('?').substringBefore(':')
+
+            // Some mainUrls carry a required path (e.g. "jkanime.net/jkplayer/") —
+            // matching must keep that path-prefix semantics, not just the host.
+            fun pathPrefixOf(url: String): String =
+                url.lowercase().replace(urlRegex, "").substringBefore('?')
+                    .substringAfter('/', "").removeSuffix("/")
+
+            fun registrableNameOf(host: String): String {
+                val labels = host.split('.').filter { it.isNotBlank() }
+                return if (labels.size >= 2) labels[labels.size - 2] else host
+            }
+
+            fun matchesHost(url: String): Boolean {
+                val host = hostPartOf(url)
+                if (host.isBlank() || !(linkHost == host || linkHost.endsWith(".$host"))) {
+                    return false
+                }
+                val pathPrefix = pathPrefixOf(url)
+                return pathPrefix.isEmpty() || linkPath.startsWith(pathPrefix)
+            }
+
+            fun matchesRegistrableName(url: String): Boolean {
+                val name = registrableNameOf(hostPartOf(url))
+                if (name.isBlank() || registrableNameOf(linkHost) != name) return false
+                val pathPrefix = pathPrefixOf(url)
+                return pathPrefix.isEmpty() || linkPath.startsWith(pathPrefix)
+            }
+
+            // Some extractors resolve mainUrl from provider state — a throwing getter
+            // must not kill the whole dispatch loop.
+            fun mainUrlOf(e: Extractor): String? = runCatching { e.mainUrl }.getOrNull()
+            fun aliasesOf(e: Extractor): List<String> =
+                runCatching { e.aliasUrls }.getOrDefault(emptyList())
+
+            // Pass 1: exact host or a subdomain of a known host/alias.
+            for (extractor in extractors) {
+                val mainUrl = mainUrlOf(extractor)
+                if ((mainUrl != null && matchesHost(mainUrl)) ||
+                    aliasesOf(extractor).any { alias ->
+                        val aliasHost = hostPartOf(alias)
+                        // Skip broken aliases with no real host (e.g. "mivalyo" / "_").
+                        aliasHost.isNotBlank() && aliasHost != "_" && aliasHost.contains('.') &&
+                            matchesHost(alias)
+                    }
+                ) {
+                    return extractor
+                }
+            }
+
+            // Pass 2: same registrable name under a different TLD (rotating domains).
+            for (extractor in extractors) {
+                val mainUrl = mainUrlOf(extractor)
+                if ((mainUrl != null && matchesRegistrableName(mainUrl)) ||
+                    aliasesOf(extractor).any { alias ->
+                        val aliasHost = hostPartOf(alias)
+                        aliasHost.isNotBlank() && aliasHost != "_" && !aliasHost.contains("://") &&
+                            matchesRegistrableName(alias)
+                    }
+                ) {
+                    return extractor
+                }
+            }
+
+            // Pass 3: rotating-domain regexes must hit the registrable part of the
+            // host (last two labels), not just any label or the path — otherwise
+            // lookalikes like "filemoon.evil.com" would match "^filemoon".
+            val registrablePart = linkHost.split('.').filter { it.isNotBlank() }
+                .let { if (it.size >= 2) it.takeLast(2).joinToString(".") else linkHost }
+            for (extractor in extractors) {
+                if (extractor.rotatingDomain.any { it.containsMatchIn(registrablePart) }) {
+                    return extractor
+                }
+            }
+
+            for (extractor in extractors) {
+                val serverName = server?.name?.lowercase() ?: ""
+                val extractorName = runCatching { extractor.name.lowercase() }.getOrNull()
+                if (extractorName != null && serverName.contains(extractorName)) {
+                    return extractor
+                }
+            }
+
+            return null
         }
 
         private suspend fun tryDebrid(link: String): Video? {

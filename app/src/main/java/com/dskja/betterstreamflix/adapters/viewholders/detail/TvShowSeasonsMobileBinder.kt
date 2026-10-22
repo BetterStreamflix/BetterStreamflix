@@ -16,13 +16,10 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.toActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,17 +50,6 @@ internal fun TvShowViewHolder.bindTvShowSeasonsMobile(binding: ContentTvShowSeas
             ExpMotion.hapticTap(it)
             showSeasonPicker(binding, seasons, seasonUi)
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            applyExpPress()
-        }
-    }
-
-    if (ExperimentalMobileDesign.enabled() &&
-        binding.root.getTag(R.id.exp_enter_animated_tag) != true
-    ) {
-        binding.root.setTag(R.id.exp_enter_animated_tag, true)
-        ExpMotion.popIn(binding.btnTvShowSeasonPicker)
-        ExpMotion.staggerFirstFill(binding.rvTvShowEpisodes)
     }
 
     bindSeasonEpisodes(binding, selectedSeason, seasonUi)
@@ -99,12 +85,7 @@ private fun TvShowViewHolder.showSeasonPicker(
     }.toTypedArray()
     val selectedIndex = seasons.indexOfFirst { it.id == seasonUi?.selectedSeasonId }
         .coerceAtLeast(0)
-    val builder = if (ExperimentalMobileDesign.enabled()) {
-        MaterialAlertDialogBuilder(context)
-    } else {
-        AlertDialog.Builder(context)
-    }
-    builder
+    AlertDialog.Builder(context)
         .setTitle(R.string.tv_show_seasons)
         .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
             val season = seasons.getOrNull(which) ?: return@setSingleChoiceItems
@@ -152,6 +133,8 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             val scrollKey = "${season.id}:$upNextIndex"
             if (binding.rvTvShowEpisodes.getTag(R.id.detail_episodes_scroll_key) != scrollKey) {
                 binding.rvTvShowEpisodes.setTag(R.id.detail_episodes_scroll_key, scrollKey)
+                val mayAutoFocus = seasonUi?.episodesAutoFocused != true
+                if (mayAutoFocus) seasonUi?.episodesAutoFocused = true
                 binding.rvTvShowEpisodes.post {
                     if (upNextIndex < 0) return@post
                     val episodeLm =
@@ -162,7 +145,7 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
                         upNextIndex,
                         binding.rvTvShowEpisodes.height / 3,
                     )
-                    scrollOuterDetailToSeasons(binding)
+                    if (mayAutoFocus) scrollOuterDetailToSeasons(binding)
                 }
             }
         }
@@ -285,5 +268,9 @@ private fun scrollOuterDetailToSeasons(binding: ContentTvShowSeasonsMobileBindin
     val outer = parent as? RecyclerView ?: return
     val holder = outer.findContainingViewHolder(binding.root) ?: return
     val outerLm = outer.layoutManager as? LinearLayoutManager ?: return
-    outerLm.scrollToPositionWithOffset(holder.bindingAdapterPosition, 0)
+    val position = holder.bindingAdapterPosition
+    if (position == RecyclerView.NO_POSITION) return
+    // Never fight the user: only pull the block up when it is entirely below the fold.
+    if (position <= outerLm.findLastVisibleItemPosition()) return
+    outerLm.scrollToPositionWithOffset(position, 0)
 }

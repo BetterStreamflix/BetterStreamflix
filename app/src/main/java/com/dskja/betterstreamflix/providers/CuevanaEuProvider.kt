@@ -309,6 +309,8 @@ object CuevanaEuProvider : Provider {
                     )
                 }
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             emptyList()
         }
@@ -917,6 +919,8 @@ object CuevanaEuProvider : Provider {
                     }
                 )
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getEpisodesBySeason error: ${e.message}", e)
             fallbackGetEpisodesBySeason(seasonId)
@@ -1102,6 +1106,8 @@ object CuevanaEuProvider : Provider {
             Log.d(TAG, "fetchRyusakiStreamUrl response: $responseBody")
             val streamJson = json.decodeFromString<RyusakiStreamResponse>(responseBody)
             streamJson.streamUrl
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "fetchRyusakiStreamUrl error: ${e.message}", e)
             null
@@ -1122,6 +1128,8 @@ object CuevanaEuProvider : Provider {
                 if (!iframeUrl.isNullOrBlank()) {
                     finalUrl = iframeUrl
                 }
+            } catch (e: java.util.concurrent.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "getVideo iframe unwrap error: ${e.message}")
             }
@@ -1135,6 +1143,8 @@ object CuevanaEuProvider : Provider {
                 if (redirectUrl.isNotEmpty()) {
                     finalUrl = redirectUrl
                 }
+            } catch (e: java.util.concurrent.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "getVideo redirect error: ${e.message}")
             }
@@ -1202,6 +1212,8 @@ object CuevanaEuProvider : Provider {
             } ?: return null
 
             json.decodeFromString<FastApiEnvelope<T>>(body).data
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getFastApi error for $path: ${e.message}", e)
             null

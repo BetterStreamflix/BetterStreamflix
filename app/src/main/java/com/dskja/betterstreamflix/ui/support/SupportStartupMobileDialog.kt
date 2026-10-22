@@ -14,7 +14,6 @@ import com.dskja.betterstreamflix.support.SupportLinkOpener
 import com.dskja.betterstreamflix.support.SupportProvider
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 class SupportStartupMobileDialog(
@@ -44,43 +43,40 @@ class SupportStartupMobileDialog(
 
         binding.cbSupportStartupNever.isChecked = UserPreferences.neverShowSupportOnStart
 
-        if (ExperimentalMobileDesign.enabled()) {
-            (binding.root.getChildAt(0) as? android.view.View)
-                ?.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            ExpMotion.enterScreen(binding.root)
-            ExpMotion.revealHeader(
-                binding.tvSupportStartupTitle,
-                binding.vSupportStartupAccentRule,
-                binding.tvSupportStartupBody,
-            )
-            ExpMotion.pulseAccentRule(binding.vSupportStartupAccentRule)
-            binding.btnSupportStartupClose.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-            binding.btnSupportStartupClose.alpha = 1f
-            binding.btnSupportStartupPrimary.setBackgroundResource(
-                ExperimentalMobileDesign.primaryButtonBackground(),
-            )
-            listOf(
-                binding.btnSupportStartupSponsors,
-                binding.btnSupportStartupBmc,
-                binding.btnSupportStartupCommunity,
-            ).forEach { btn ->
-                btn.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            }
-            val ctas = listOf(
-                binding.btnSupportStartupClose,
-                binding.btnSupportStartupPrimary,
-                binding.btnSupportStartupSponsors,
-                binding.btnSupportStartupBmc,
-                binding.btnSupportStartupCommunity,
-            )
-            ctas.forEach { it.applyExpPress() }
-            binding.cbSupportStartupNever.applyExpPress()
-            (ctas + binding.cbSupportStartupNever).forEachIndexed { index, btn ->
-                btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
-            }
+        (binding.root.getChildAt(0) as? android.view.View)
+            ?.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.revealHeader(
+            binding.tvSupportStartupTitle,
+            binding.vSupportStartupAccentRule,
+            binding.tvSupportStartupBody,
+        )
+        ExpMotion.pulseAccentRule(binding.vSupportStartupAccentRule)
+        binding.btnSupportStartupClose.setBackgroundResource(
+            R.drawable.bg_detail_icon_chip,
+        )
+        binding.btnSupportStartupClose.alpha = 1f
+        binding.btnSupportStartupPrimary.setBackgroundResource(
+            R.drawable.bg_button_mobile,
+        )
+        listOf(
+            binding.btnSupportStartupSponsors,
+            binding.btnSupportStartupBmc,
+            binding.btnSupportStartupCommunity,
+        ).forEach { btn ->
+            btn.setBackgroundResource(R.drawable.bg_outlined_chip)
+        }
+        val ctas = listOf(
+            binding.btnSupportStartupClose,
+            binding.btnSupportStartupPrimary,
+            binding.btnSupportStartupSponsors,
+            binding.btnSupportStartupBmc,
+            binding.btnSupportStartupCommunity,
+        )
+        ctas.forEach { it.applyExpPress() }
+        binding.cbSupportStartupNever.applyExpPress()
+        (ctas + binding.cbSupportStartupNever).forEachIndexed { index, btn ->
+            btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
         }
 
         binding.btnSupportStartupClose.setOnClickListener {

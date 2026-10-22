@@ -72,28 +72,7 @@ object ProfileManager {
         "CAPTION_STYLE_MARGIN",
     )
 
-    val avatarKeys = listOf(
-        "crimson",
-        "ember",
-        "aurora",
-        "slate",
-        "forest",
-        "ocean",
-        "gold",
-        "rose",
-        "violet",
-        "mint",
-        "indigo",
-        "copper",
-        "arctic",
-        "sunset",
-        "neon",
-        "cobalt",
-        "magenta",
-        "charcoal",
-        "teal",
-        "peach",
-    )
+    val avatarKeys = ProfileAvatarStyle.all().map { it.key }
 
     private lateinit var appContext: Context
 
@@ -257,13 +236,12 @@ object ProfileManager {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         val trimmedName = name.trim()
         require(trimmedName.isNotEmpty()) { "Profile name cannot be empty" }
-        require(avatarKey in avatarKeys) { "Unknown avatar key: $avatarKey" }
 
         val now = System.currentTimeMillis()
         val profile = UserProfile(
             id = UUID.randomUUID().toString().replace("-", "").take(12),
             displayName = trimmedName,
-            avatarKey = avatarKey,
+            avatarKey = ProfileAvatarStyle.resolveKey(avatarKey),
             isKids = isKids,
             maxAgeRating = if (isKids) KIDS_DEFAULT_MAX_AGE else null,
             createdAtMillis = now,
@@ -359,10 +337,8 @@ object ProfileManager {
     fun clearPin(profileId: String): Boolean =
         updateProfile(profileId) { it.copy(pinHash = null) }
 
-    fun updateAvatar(profileId: String, avatarKey: String): Boolean {
-        require(avatarKey in avatarKeys) { "Unknown avatar key: $avatarKey" }
-        return updateProfile(profileId) { it.copy(avatarKey = avatarKey) }
-    }
+    fun updateAvatar(profileId: String, avatarKey: String): Boolean =
+        updateProfile(profileId) { it.copy(avatarKey = ProfileAvatarStyle.resolveKey(avatarKey)) }
 
     fun updateKids(profileId: String, isKids: Boolean): Boolean {
         val target = profiles().find { it.id == profileId }
@@ -511,13 +487,11 @@ object ProfileManager {
             Context.MODE_PRIVATE,
         )
         val key = scopedPrefKeyFor("SELECTED_THEME", profile.id)
-        val desired = com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
-        val stored = prefs.getString(key, null)
-        val needsKidsClamp = profile.isKids &&
-            stored != null &&
-            com.dskja.betterstreamflix.utils.ThemeManager.resolveLook(stored) !=
-            com.dskja.betterstreamflix.utils.ThemeManager.KIDS_BRIGHT
-        if (!force && prefs.contains(key) && !needsKidsClamp) return
+        // Single Dark look — rewrite any stale value (kids_bright / retired palettes).
+        if (!force && prefs.getString(key, null) ==
+            com.dskja.betterstreamflix.utils.ThemeManager.CINEMA_INK
+        ) return
+        val desired = com.dskja.betterstreamflix.utils.ThemeManager.CINEMA_INK
         // Active-profile writes go through UserPreferences so getters stay consistent.
         if (profile.id == activeProfileId) {
             UserPreferences.selectedTheme = desired

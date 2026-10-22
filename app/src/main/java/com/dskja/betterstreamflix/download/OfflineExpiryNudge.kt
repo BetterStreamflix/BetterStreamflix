@@ -5,8 +5,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * One-shot keep / delete dialog for stale offline downloads.
@@ -25,20 +23,9 @@ object OfflineExpiryNudge {
         val context = fragment.requireContext()
         OfflineExpiryPolicy.recordShown()
         val message = buildMessage(context, stale)
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, message)
-        } else {
-            null
-        }
-        builder.setTitle(R.string.offline_expiry_nudge_title)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(message)
-        builder
+        AlertDialog.Builder(context)
+            .setTitle(R.string.offline_expiry_nudge_title)
+            .setMessage(message)
             .setPositiveButton(R.string.offline_expiry_nudge_keep) { _, _ ->
                 OfflineExpiryPolicy.recordDismissed()
                 onKeep(stale)
@@ -56,11 +43,7 @@ object OfflineExpiryNudge {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        ExpDialogChrome.polishButtons(dialog)
-                    }
+                    ExpDialogChrome.polishButtons(dialog)
                 }
                 dialog.show()
             }

@@ -41,35 +41,63 @@
             android:layout_weight="1"
             android:orientation="horizontal">
 
-            <TextView
+            <FrameLayout
                 android:id="@+id/widget_live_tile_1"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_widget_tile"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="2"
-                android:padding="6dp"
-                android:textColor="@color/cinema_text_soft"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:visibility="gone">
 
-            <TextView
+                <ImageView
+                    android:id="@+id/widget_live_poster_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop" />
+
+                <TextView
+                    android:id="@+id/widget_live_tile_label_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:background="#99000000"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:padding="6dp"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <FrameLayout
                 android:id="@+id/widget_live_tile_2"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginStart="4dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_widget_tile"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="2"
-                android:padding="6dp"
-                android:textColor="@color/cinema_text_soft"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/widget_live_poster_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop" />
+
+                <TextView
+                    android:id="@+id/widget_live_tile_label_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:background="#99000000"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:padding="6dp"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
         </LinearLayout>
 
         <LinearLayout
@@ -79,35 +107,63 @@
             android:layout_weight="1"
             android:orientation="horizontal">
 
-            <TextView
+            <FrameLayout
                 android:id="@+id/widget_live_tile_3"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_widget_tile"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="2"
-                android:padding="6dp"
-                android:textColor="@color/cinema_text_soft"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:visibility="gone">
 
-            <TextView
+                <ImageView
+                    android:id="@+id/widget_live_poster_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop" />
+
+                <TextView
+                    android:id="@+id/widget_live_tile_label_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:background="#99000000"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:padding="6dp"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <FrameLayout
                 android:id="@+id/widget_live_tile_4"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginStart="4dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_widget_tile"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="2"
-                android:padding="6dp"
-                android:textColor="@color/cinema_text_soft"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/widget_live_poster_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no"
+                    android:scaleType="centerCrop" />
+
+                <TextView
+                    android:id="@+id/widget_live_tile_label_4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:background="#99000000"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:padding="6dp"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

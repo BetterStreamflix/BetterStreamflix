@@ -107,7 +107,6 @@ class ProvidersTvFragment : Fragment() {
                             root.visibility = View.VISIBLE
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener {
                                 viewModel.getProviders()
                             }

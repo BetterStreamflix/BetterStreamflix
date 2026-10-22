@@ -68,7 +68,7 @@
                 android:gravity="start"
                 android:letterSpacing="-0.03"
                 android:text="@string/tg_gate_brand"
-                android:textAppearance="@style/TextAppearance.Lumina.Brand"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Brand"
                 android:textColor="@color/support_text_primary"
                 android:textSize="40sp"
                 android:textStyle="bold"
@@ -93,7 +93,7 @@
                 android:gravity="start"
                 android:letterSpacing="-0.02"
                 android:text="@string/tg_gate_headline"
-                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Title"
                 android:textColor="@color/support_text_primary"
                 android:textSize="26sp"
                 android:textStyle="bold"
@@ -109,7 +109,7 @@
                 android:gravity="start"
                 android:lineSpacingExtra="3dp"
                 android:text="@string/tg_gate_body"
-                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                 android:textColor="@color/support_text_secondary"
                 android:textSize="15sp"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -146,7 +146,7 @@
                         android:paddingHorizontal="12dp"
                         android:paddingVertical="8dp"
                         android:text="@string/tg_gate_benefit_updates_short"
-                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
 
@@ -161,7 +161,7 @@
                         android:paddingHorizontal="12dp"
                         android:paddingVertical="8dp"
                         android:text="@string/tg_gate_benefit_support_short"
-                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
 
@@ -175,7 +175,7 @@
                         android:paddingHorizontal="12dp"
                         android:paddingVertical="8dp"
                         android:text="@string/tg_gate_benefit_community_short"
-                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -238,7 +238,7 @@
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:text="@string/tg_gate_telegram_title"
-                            android:textAppearance="@style/TextAppearance.Lumina.Title"
+                            android:textAppearance="@style/TextAppearance.CinemaInk.Title"
                             android:textColor="@color/support_text_primary"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -251,7 +251,7 @@
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:text="@string/tg_gate_channel_chip"
-                            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                             android:textColor="@color/tg_gate_telegram_bright"
                             android:textSize="13sp"
                             tools:text="@BetterStreamflix" />
@@ -262,7 +262,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="@string/tg_gate_members_loading"
-                            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                             android:textColor="@color/support_text_tertiary"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -276,7 +276,7 @@
                     android:background="@drawable/bg_tg_gate_btn_telegram"
                     android:gravity="center"
                     android:text="@string/tg_gate_cta_join_telegram"
-                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                     android:textColor="@color/tg_gate_on_primary"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -339,7 +339,7 @@
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:text="@string/tg_gate_discord_title"
-                            android:textAppearance="@style/TextAppearance.Lumina.Title"
+                            android:textAppearance="@style/TextAppearance.CinemaInk.Title"
                             android:textColor="@color/support_text_primary"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -352,7 +352,7 @@
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:text="@string/tg_gate_discord_handle"
-                            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                             android:textColor="@color/tg_gate_discord_bright"
                             android:textSize="13sp" />
 
@@ -362,7 +362,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="@string/tg_gate_members_loading"
-                            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                             android:textColor="@color/support_text_tertiary"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -376,7 +376,7 @@
                     android:background="@drawable/bg_tg_gate_btn_discord"
                     android:gravity="center"
                     android:text="@string/tg_gate_cta_join_discord"
-                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                     android:textColor="@color/tg_gate_on_primary"
                     android:textSize="15sp"
                     android:textStyle="bold" />
@@ -389,7 +389,7 @@
                 android:layout_marginTop="18dp"
                 android:gravity="center"
                 android:text="@string/tg_gate_hint_optional"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/support_text_tertiary"
                 android:textSize="12sp"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -405,7 +405,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/tg_gate_cta_continue"
-                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Title"
                 android:textColor="@color/support_text_primary"
                 android:textSize="15sp"
                 android:textStyle="bold"

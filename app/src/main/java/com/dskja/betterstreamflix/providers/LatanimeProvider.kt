@@ -114,29 +114,39 @@ object LatanimeProvider : Provider, ProviderConfigUrl {
                 try {
                     val animes2026Document = animes2026Deferred.await()
                     categories.add(Category(name = "Animes del 2026", list = parseAnimesFromPage(animes2026Document).take(12)))
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                 }
 
                 try {
                     val animes2025Document = animes2025Deferred.await()
                     categories.add(Category(name = "Animes del 2025", list = parseAnimesFromPage(animes2025Document).take(12)))
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                 }
 
                 try {
                     val animes2024Document = animes2024Deferred.await()
                     categories.add(Category(name = "Animes del 2024", list = parseAnimesFromPage(animes2024Document).take(12)))
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                 }
 
                 try {
                     val animes2023Document = animes2023Deferred.await()
                     categories.add(Category(name = "Animes del 2023", list = parseAnimesFromPage(animes2023Document).take(12)))
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                 }
 
                 categories
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             emptyList()
         }

@@ -35,7 +35,6 @@ object TmdbSettingsController {
         val clearPref = findPreference("TMDB_CLEAR_CACHE")
         val clearLogoPref = findPreference("TMDB_CLEAR_LOGO_CACHE")
         val statusPref = findPreference("TMDB_STATUS")
-        val logosPref = findPreference("ENABLE_TMDB_LOGOS") as? SwitchPreferenceCompat
 
         fun refreshStatus() {
             statusPref?.summary = when {
@@ -49,14 +48,6 @@ object TmdbSettingsController {
         }
 
         refreshStatus()
-
-        logosPref?.apply {
-            isChecked = UserPreferences.enableTmdbLogos
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.enableTmdbLogos = newValue as Boolean
-                true
-            }
-        }
 
         testPref?.setOnPreferenceClickListener {
             if (!UserPreferences.enableTmdb) {

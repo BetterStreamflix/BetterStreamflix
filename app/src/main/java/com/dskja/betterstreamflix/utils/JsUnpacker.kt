@@ -14,7 +14,7 @@ class JsUnpacker(packedJS: String?) {
      * @return true if it's P.A.C.K.E.R. coded.
      */
     fun detect(): Boolean {
-        val js = packedJS!!.replace(" ", "")
+        val js = packedJS?.replace(" ", "") ?: return false
         val p = Pattern.compile("eval\\(function\\(p,a,c,k,e,[rd]")
         val m = p.matcher(js)
         return m.find()
@@ -26,7 +26,7 @@ class JsUnpacker(packedJS: String?) {
      * @return the javascript unpacked or null.
      */
     fun unpack(): String? {
-        val js = packedJS
+        val js = packedJS ?: return null
         try {
             var p =
                 Pattern.compile(
@@ -35,21 +35,10 @@ class JsUnpacker(packedJS: String?) {
                 )
             var m = p.matcher(js)
             if (m.find() && m.groupCount() == 4) {
-                val payload = m.group(1).replace("\\'", "'")
-                val radixStr = m.group(2)
-
-                val countStr = m.group(3)
-                val symtab = m.group(4).split("\\|".toRegex()).toTypedArray()
-                var radix = 36
-                var count = 0
-                try {
-                    radix = radixStr.toInt()
-                } catch (e: Exception) {
-                }
-                try {
-                    count = countStr.toInt()
-                } catch (e: Exception) {
-                }
+                val payload = m.group(1)?.replace("\\'", "'") ?: return null
+                val radix = m.group(2)?.toIntOrNull() ?: 36
+                val count = m.group(3)?.toIntOrNull() ?: 0
+                val symtab = m.group(4)?.split("\\|".toRegex())?.toTypedArray() ?: return null
                 if (symtab.size != count) {
                     throw Exception("Unknown p.a.c.k.e.r. encoding")
                 }
@@ -59,7 +48,7 @@ class JsUnpacker(packedJS: String?) {
                 val decoded = StringBuilder(payload)
                 var replaceOffset = 0
                 while (m.find()) {
-                    val word = m.group(0)
+                    val word = m.group(0) ?: break
                     val x = try {
                         unbase.unbase(word)
                     } catch (_: Exception) {

@@ -59,6 +59,11 @@ class HomeTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var homeBindSignature: String? = null
+
+    /** Vertical vgv_home scroll state, kept across view recreation (back-nav). */
+    private var homeListState: android.os.Parcelable? = null
+    /** Provider+profile owning [homeListState]; a swap discards the stale offset. */
+    private var homeListStateOwner: String? = null
     /** Cancels in-flight staggered home submitList posts when a newer catalog arrives. */
     private var homeSubmitToken: Any? = null
     private var cinemaRoomController: CinemaRoomController? = null
@@ -168,6 +173,15 @@ class HomeTvFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        savedInstanceState?.let {
+            homeListState = homeListState ?: androidx.core.os.BundleCompat.getParcelable(
+                it,
+                KEY_HOME_LIST_STATE,
+                android.os.Parcelable::class.java,
+            )
+            homeListStateOwner = homeListStateOwner ?: it.getString(KEY_HOME_LIST_OWNER)
+        }
+
         initializeHome()
         refreshProfileChip()
         cinemaRoomController = CinemaRoomController(
@@ -226,7 +240,6 @@ class HomeTvFragment : Fragment() {
                                 binding.isLoading.apply {
                                     com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                     gIsLoadingRetry.visibility = View.VISIBLE
-                                    com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                     btnIsLoadingRetry.setOnClickListener { viewModel.getHome() }
                                     btnIsLoadingClearCache.setOnClickListener {
                                         CacheUtils.clearAppCache(requireContext())
@@ -309,9 +322,41 @@ class HomeTvFragment : Fragment() {
         cinemaRoomController?.destroy()
         cinemaRoomController = null
         swiperHandler.removeCallbacksAndMessages(null)
-        _binding?.let { appAdapter.onSaveInstanceState(it.vgvHome) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.vgvHome)
+            homeListState = it.vgvHome.layoutManager?.onSaveInstanceState()
+            homeListStateOwner = homeDataOwner()
+        }
         _binding = null
         super.onDestroyView()
+    }
+
+    private fun homeDataOwner(): String =
+        (UserPreferences.currentProvider?.name ?: "") +
+            "|" + com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Keep the offset through process death — onSaveInstanceState precedes
+        // onDestroyView, so read the live LayoutManager state with the field fallback.
+        val state = homeListState ?: _binding?.vgvHome?.layoutManager?.onSaveInstanceState()
+        if (state != null) {
+            outState.putParcelable(KEY_HOME_LIST_STATE, state)
+            outState.putString(KEY_HOME_LIST_OWNER, homeListStateOwner ?: homeDataOwner())
+        }
+    }
+
+    /**
+     * Restores the pre-navigation scroll offset once, only while the same
+     * provider/profile owns the catalog — a dataset swap falls back to top.
+     */
+    private fun restoreHomeScrollIfPending() {
+        val state = homeListState ?: return
+        homeListState = null
+        if (homeListStateOwner != homeDataOwner()) return
+        binding.vgvHome.post {
+            _binding?.vgvHome?.layoutManager?.onRestoreInstanceState(state)
+        }
     }
 
     private fun showCatalogWarning(warning: String?) {
@@ -410,7 +455,6 @@ class HomeTvFragment : Fragment() {
     }
 
     private fun initializeHome() {
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         binding.vgvHome.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -675,7 +719,7 @@ class HomeTvFragment : Fragment() {
             appAdapter.submitList(without)
         }
         appAdapter.onProviderOutageBannerClickListener = {
-            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openProviderTrust()
+            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openContentScreen()
             runCatching { findNavController().navigate(R.id.settings) }
         }
         appAdapter.onProviderOutageBannerDismissListener = {
@@ -719,6 +763,10 @@ class HomeTvFragment : Fragment() {
                 }
             }
         cinemaRoomController?.onCategoriesBound(visibleCategories)
+        // Restore before the unchanged-check: the adapter keeps its items across
+        // view recreation, so the offset can be re-applied even when the dataset
+        // signature skips the rebind below.
+        restoreHomeScrollIfPending()
         if (homeUnchanged(visibleCategories, watchlistDigestEpisodes)) return
         val showDigest = com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
             watchlistDigestEpisodes,
@@ -876,6 +924,8 @@ class HomeTvFragment : Fragment() {
     companion object {
         /** First-pass Home rows (Featured + CW/banners + ~2 shelves) before full catalog. */
         private const val HOME_INITIAL_ROWS = 4
+        private const val KEY_HOME_LIST_STATE = "home_list_state"
+        private const val KEY_HOME_LIST_OWNER = "home_list_owner"
     }
 
     private fun featuredItemKey(item: AppAdapter.Item): String = when (item) {

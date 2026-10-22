@@ -4,9 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.EditTextPreference
@@ -50,11 +48,7 @@ object PlatformSettingsController {
     }
 
     private fun alertBuilder(context: android.content.Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        AlertDialog.Builder(context)
 
     fun bind(
         fragment: Fragment,
@@ -149,19 +143,9 @@ object PlatformSettingsController {
         }
 
         fun showTraktUnavailableDialog() {
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
-                    context,
-                    context.getString(R.string.platform_trakt_unavailable_dialog_message),
-                )
-            } else {
-                null
-            }
-            val builder = alertBuilder(context)
+            alertBuilder(context)
                 .setTitle(R.string.platform_trakt_unavailable_dialog_title)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.platform_trakt_unavailable_dialog_message)
-            builder
+                .setMessage(R.string.platform_trakt_unavailable_dialog_message)
                 .setPositiveButton(R.string.platform_trakt_unavailable_dialog_support) { _, _ ->
                     openSupportHub()
                 }
@@ -169,8 +153,7 @@ object PlatformSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishButtons(dialog)
                     }
                     dialog.show()
                 }
@@ -643,7 +626,6 @@ object PlatformSettingsController {
             true
         }
 
-        PluginSettingsController.bind(fragment, scope, findPreference)
         refreshIntegrationSummaries()
     }
 
@@ -691,7 +673,6 @@ object PlatformSettingsController {
         val simkl = IntegrationStatus.simkl()
         val os = IntegrationStatus.openSubtitles()
         val player = IntegrationStatus.player(context)
-        val plugins = IntegrationStatus.plugins()
 
         setStatus("platform_jellyfin_status", jellyfin)
         setStatus("platform_plex_status", plex)
@@ -707,8 +688,34 @@ object PlatformSettingsController {
         findPreference("screen_platform_simkl")?.summary = IntegrationStatus.label(context, simkl)
         findPreference("screen_platform_subtitles")?.summary = IntegrationStatus.label(context, os)
         findPreference("screen_platform_player")?.summary = IntegrationStatus.label(context, player)
-        findPreference("screen_platform_plugins")?.summary = IntegrationStatus.label(context, plugins)
         findPreference("screen_platform")?.summary = hubOverview(context)
+
+        val configuredNames = listOf(
+            "Trakt" to trakt,
+            "Jellyfin" to jellyfin,
+            "Plex" to plex,
+            "Debrid" to debrid,
+            "Simkl" to simkl,
+            "OpenSubtitles" to os,
+            "TMDb" to IntegrationStatus.tmdb(),
+        ).filter { it.second.level != IntegrationStatus.Level.NOT_CONFIGURED }
+            .map { it.first }
+        val lastReport = com.dskja.betterstreamflix.platform.ConnectionDiagnostics.lastReport()
+        findPreference("platform_test_all")?.summary = when {
+            configuredNames.isEmpty() ->
+                context.getString(R.string.platform_test_all_none_summary)
+            lastReport != null ->
+                context.getString(
+                    R.string.platform_test_all_configured_summary,
+                    configuredNames.size, 7,
+                    configuredNames.joinToString(", "),
+                ) + " · " + lastReport.title
+            else -> context.getString(
+                R.string.platform_test_all_configured_summary,
+                configuredNames.size, 7,
+                configuredNames.joinToString(", "),
+            )
+        }
 
         findPreference("platform_mpv_status")?.summary = when (PlayerBackendSelector.preferredKind()) {
             PlayerBackendKind.EXO -> context.getString(R.string.platform_mpv_status_summary)
@@ -748,8 +755,6 @@ object PlatformSettingsController {
     }
 
     private fun haptic(fragment: Fragment) {
-        if (ExperimentalMobileDesign.enabled()) {
-            runCatching { ExpMotion.hapticTap(fragment.requireView()) }
-        }
+        runCatching { ExpMotion.hapticTap(fragment.requireView()) }
     }
 }

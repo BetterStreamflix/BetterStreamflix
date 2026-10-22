@@ -11,8 +11,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -60,13 +58,7 @@ object YearReviewUi {
 
         var loadedStats: YearReviewStats? = null
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(themed)
-        } else {
-            AlertDialog.Builder(themed)
-        }
-
-        val dialog = builder
+        val dialog = AlertDialog.Builder(themed)
             .setTitle(context.getString(R.string.year_review_title, selectedYear))
             .setView(content)
             .setPositiveButton(R.string.year_review_share, null)

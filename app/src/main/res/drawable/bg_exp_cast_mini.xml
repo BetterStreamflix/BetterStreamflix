@@ -15,7 +15,7 @@
             <solid android:color="@android:color/transparent" />
         </shape>
     </item>
-    <!-- Crimson hairline along the top edge for Lumina cast presence -->
+    <!-- Crimson hairline along the top edge for cast presence -->
     <item
         android:bottom="40dp"
         android:left="18dp"

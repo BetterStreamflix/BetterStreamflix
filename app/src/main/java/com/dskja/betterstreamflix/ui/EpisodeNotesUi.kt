@@ -18,7 +18,6 @@ import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Mobile + TV editor for short spoiler-free episode notes (“where was I?”).
@@ -99,7 +98,7 @@ object EpisodeNotesUi {
             )
         }
 
-        val builder = MaterialAlertDialogBuilder(host)
+        val builder = androidx.appcompat.app.AlertDialog.Builder(host)
             .setTitle(R.string.episode_note_title)
             .setView(frame)
             .setPositiveButton(R.string.episode_note_save) { dialog, _ ->

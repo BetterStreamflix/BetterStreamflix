@@ -44,7 +44,8 @@ class BypassWebSocketServer(
     }
 
     override fun onMessage(conn: WebSocket, message: String) {
-        Log.d("BypassWS", "Message: $message")
+        // Never log the payload: `done:` frames carry Base64 session cookies.
+        Log.d("BypassWS", "Message: ${message.substringBefore(':')} (${message.length} chars)")
         val peer = peerKey(conn)
 
         when {

@@ -26,10 +26,8 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.format
@@ -53,6 +51,9 @@ class PeopleMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
 
+    /** Vertical scroll state kept across view recreation (detail → back). */
+    private var gridListState: android.os.Parcelable? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -70,18 +71,12 @@ class PeopleMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvPeople)
         binding.root.findViewById<View>(R.id.iv_detail_back)?.also { back ->
             androidx.appcompat.widget.TooltipCompat.setTooltipText(
                 back, back.context.getString(R.string.exp_back),
             )
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.popIn(back)
-            }
             back.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 findNavController().navigateUp()
@@ -108,20 +103,17 @@ class PeopleMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getPeople(args.id) }) {
                                 return@collect
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
                             Toast.makeText(
                                 requireContext(),
                                 state.error.message ?: "",
                                 Toast.LENGTH_SHORT
                             ).show()
-                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
-                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 val doRetry = { viewModel.getPeople(args.id) }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
@@ -141,6 +133,7 @@ class PeopleMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        gridListState = _binding?.rvPeople?.layoutManager?.onSaveInstanceState()
         super.onDestroyView()
         _binding = null
     }
@@ -216,29 +209,6 @@ class PeopleMobileFragment : Fragment() {
                     visibility = if (department == null) View.GONE else View.VISIBLE
                 }
 
-                if (ExperimentalMobileDesign.enabled() &&
-                    binding.root.getTag(R.id.exp_enter_animated_tag) != true
-                ) {
-                    binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.kenBurns(binding.ivPeopleImage)
-                    ExpMotion.revealHeader(
-                        binding.tvPeopleDepartment,
-                        binding.tvPeopleName,
-                        binding.root.findViewById(R.id.v_people_rule),
-                    )
-                    ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_people_rule))
-                    binding.root.findViewById<View>(R.id.tv_people_filmography_label)?.let { label ->
-                        label.visibility = View.VISIBLE
-                        ExpMotion.revealHeader(label)
-                    }
-                    ExpMotion.pulseAccentRule(
-                        binding.root.findViewById(R.id.v_people_filmography_rule),
-                    )
-                } else if (ExperimentalMobileDesign.enabled()) {
-                    binding.root.findViewById<View>(R.id.tv_people_filmography_label)?.visibility =
-                        View.VISIBLE
-                }
-
                 val born = people.birthday?.format("d MMM yyyy")
                 val place = people.placeOfBirth?.takeIf { it.isNotBlank() }
                 binding.tvPeopleBirthday.text = when {
@@ -266,10 +236,6 @@ class PeopleMobileFragment : Fragment() {
                 }
 
                 binding.tvPeopleBiographyReadMore.apply {
-                    if (ExperimentalMobileDesign.enabled()) {
-                        setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-                    }
                     var expanded = false
                     fun applyExpand(open: Boolean) {
                         expanded = open
@@ -296,24 +262,12 @@ class PeopleMobileFragment : Fragment() {
                             binding.tvPeopleBiography.maxLines = Int.MAX_VALUE
                             binding.tvPeopleBiography.ellipsize = null
                         }
-                        if (ExperimentalMobileDesign.enabled() && overflowing && !wasVisible) {
-                            ExpMotion.popIn(this)
-                        }
                     }
                 }
 
                 binding.gPeopleBiography.visibility = when {
                     binding.tvPeopleBiography.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
-                }
-                if (ExperimentalMobileDesign.enabled() && binding.gPeopleBiography.visibility == View.VISIBLE) {
-                    binding.tvPeopleBiography.setBackgroundResource(
-                        ExperimentalMobileDesign.glassCardBackground(),
-                    )
-                    ExpMotion.revealHeader(
-                        binding.tvPeopleBiographyLabel,
-                        binding.tvPeopleBiography,
-                    )
                 }
             }
         )
@@ -324,6 +278,12 @@ class PeopleMobileFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
             }
         })
+        gridListState?.let { state ->
+            binding.rvPeople.post {
+                _binding?.rvPeople?.layoutManager?.onRestoreInstanceState(state)
+            }
+            gridListState = null
+        }
 
         ExpEmptyChrome.bind(
             emptyView = binding.root.findViewById(R.id.tv_people_filmography_empty),

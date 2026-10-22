@@ -16,9 +16,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Drag (Mobile) + DPAD/buttons (TV) editor for Remix Home block order.
@@ -94,11 +92,7 @@ object HomeRemixUi {
         touchHelper.attachToRecyclerView(recycler)
         adapter.dragStarter = { holder -> touchHelper.startDrag(holder) }
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(themed)
-        } else {
-            AlertDialog.Builder(themed)
-        }
+        val builder = AlertDialog.Builder(themed)
         builder
             .setTitle(R.string.home_remix_title)
             .setView(content)
@@ -154,6 +148,7 @@ object HomeRemixUi {
             val ctx = holder.itemView.context
             holder.title.setText(titleRes(block))
             holder.summary.setText(summaryRes(block))
+            holder.pos.text = (position + 1).toString()
             holder.handle.setOnTouchListener { v, event ->
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                     ExpMotion.hapticTap(v)
@@ -194,6 +189,7 @@ object HomeRemixUi {
         }
 
         class Holder(view: View) : RecyclerView.ViewHolder(view) {
+            val pos: TextView = view.findViewById(R.id.tv_home_remix_pos)
             val handle: ImageView = view.findViewById(R.id.iv_home_remix_handle)
             val title: TextView = view.findViewById(R.id.tv_home_remix_title)
             val summary: TextView = view.findViewById(R.id.tv_home_remix_summary)

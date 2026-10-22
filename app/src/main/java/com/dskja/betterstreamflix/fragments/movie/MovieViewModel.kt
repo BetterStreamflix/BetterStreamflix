@@ -95,18 +95,23 @@ class MovieViewModel(
                 val tvShowsById = tvShowsDb.associateBy { it.id }
                 State.SuccessLoading(
                     movie = state.movie.copy(
-                        recommendations = state.movie.recommendations.map { show ->
-                            when (show) {
-                                is Movie -> moviesById[show.id]
-                                    ?.takeIf { !show.isSame(it) }
-                                    ?.let { show.copy().merge(it) }
-                                    ?: show
-                                is TvShow -> tvShowsById[show.id]
-                                    ?.takeIf { !show.isSame(it) }
-                                    ?.let { show.copy().merge(it) }
-                                    ?: show
-                            }
-                        },
+                        recommendations = com.dskja.betterstreamflix.home.SeriesFastForward
+                            .filterTasteHidden(
+                                com.dskja.betterstreamflix.BetterStreamflixApp.instance
+                                    .applicationContext,
+                                state.movie.recommendations.map { show ->
+                                    when (show) {
+                                        is Movie -> moviesById[show.id]
+                                            ?.takeIf { !show.isSame(it) }
+                                            ?.let { show.copy().merge(it) }
+                                            ?: show
+                                        is TvShow -> tvShowsById[show.id]
+                                            ?.takeIf { !show.isSame(it) }
+                                            ?.let { show.copy().merge(it) }
+                                            ?: show
+                                    }
+                                },
+                            ),
                     ).also { movie ->
                         movieDb?.let { movie.merge(it) }
                     }
@@ -159,6 +164,8 @@ class MovieViewModel(
             db?.movieDao()?.insert(enriched)
 
             _state.emit(State.SuccessLoading(enriched))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("MovieViewModel", "getMovie: ", e)
             val fallback = metadataOnlyFallback(id)

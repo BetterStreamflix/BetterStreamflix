@@ -13,11 +13,13 @@ object TasteFeedback {
     fun notInterested(context: Context, item: AppAdapter.Item) {
         if (item !is Movie && item !is TvShow) return
         TasteGraph.recordNegative(context, item, TasteSignalKind.NOT_INTERESTED)
+        com.dskja.betterstreamflix.ui.UserDataNotifier.notifyChanged()
     }
 
     fun hide(context: Context, item: AppAdapter.Item) {
         if (item !is Movie && item !is TvShow) return
         TasteGraph.recordNegative(context, item, TasteSignalKind.HIDDEN)
+        com.dskja.betterstreamflix.ui.UserDataNotifier.notifyChanged()
     }
 
     fun moreLike(context: Context, item: AppAdapter.Item) {

@@ -7,7 +7,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.palette.graphics.Palette
 
 /**
- * Lumina "ambient light": extracts a vibrant swatch from hero artwork and
+ * Cinema Room ambient light: extracts a vibrant swatch from hero artwork and
  * paints it as a soft radial glow behind a target view.
  */
 object ExpAmbientGlow {

@@ -75,27 +75,6 @@ internal object SettingsHubCategories {
             iconRes = R.drawable.ic_provider_default_logo,
             target = SettingsHubTarget.PreferenceScreen("screen_provider"),
         ),
-        SettingsHubCard(
-            id = "provider_trust",
-            titleRes = R.string.settings_provider_trust_title,
-            summaryRes = R.string.settings_provider_trust_summary,
-            iconRes = R.drawable.ic_providers_language,
-            target = SettingsHubTarget.PreferenceScreen("screen_provider_trust"),
-        ),
-        SettingsHubCard(
-            id = "provider_health",
-            titleRes = R.string.settings_provider_health_title,
-            summaryRes = R.string.settings_provider_health_summary,
-            iconRes = R.drawable.ic_providers_language,
-            target = SettingsHubTarget.PreferenceScreen("screen_provider_health"),
-        ),
-        SettingsHubCard(
-            id = "provider_passport",
-            titleRes = R.string.settings_provider_passport_title,
-            summaryRes = R.string.settings_provider_passport_summary,
-            iconRes = R.drawable.ic_providers_language,
-            target = SettingsHubTarget.PreferenceScreen("screen_provider_passport"),
-        ),
     )
 
     fun accountCards(): List<SettingsHubCard> {

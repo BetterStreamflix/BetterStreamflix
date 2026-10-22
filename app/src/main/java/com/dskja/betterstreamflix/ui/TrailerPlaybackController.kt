@@ -32,8 +32,6 @@ import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Unified trailer playback for Movie/TV detail pages.
@@ -44,11 +42,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
  */
 object TrailerPlaybackController {
     private fun alertBuilder(context: Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     private const val TAG = "TrailerPlayback"
     const val KEY_PREFERRED_PLAYER = "preferred_player"
@@ -542,7 +536,6 @@ object TrailerPlaybackController {
     private fun polishListChooser(dialog: AlertDialog) {
         dialog.setOnShowListener {
             ExpDialogChrome.polishShown(dialog)
-            if (!ExperimentalMobileDesign.enabled()) return@setOnShowListener
             val list = dialog.listView ?: return@setOnShowListener
             list.divider = null
             list.dividerHeight = 0
@@ -713,7 +706,7 @@ object TrailerPlaybackController {
             }
             streamNowBtn?.visibility = View.GONE
 
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 root.findViewById<View>(R.id.v_trailer_accent_rule)?.visibility = View.VISIBLE
                 with(ExpPressEffects) {
                     root.findViewById<TextView>(R.id.btn_trailer_open_external)?.applyExpPress()
@@ -736,18 +729,16 @@ object TrailerPlaybackController {
                             setBackgroundDrawableResource(android.R.color.transparent)
                             setDimAmount(0.88f)
                         }
-                        if (ExperimentalMobileDesign.enabled()) {
-                            ExpMotion.enterScreen(root)
-                            ExpMotion.revealHeader(
-                                root.findViewById(R.id.tv_trailer_title),
-                                root.findViewById(R.id.v_trailer_accent_rule),
-                            )
-                            ExpMotion.pulseAccentRule(
-                                root.findViewById(R.id.v_trailer_accent_rule),
-                            )
-                            ExpMotion.popIn(root.findViewById(R.id.btn_trailer_close))
-                            ExpMotion.popIn(root.findViewById(R.id.btn_trailer_open_external))
-                        }
+                        ExpMotion.enterScreen(root)
+                        ExpMotion.revealHeader(
+                            root.findViewById(R.id.tv_trailer_title),
+                            root.findViewById(R.id.v_trailer_accent_rule),
+                        )
+                        ExpMotion.pulseAccentRule(
+                            root.findViewById(R.id.v_trailer_accent_rule),
+                        )
+                        ExpMotion.popIn(root.findViewById(R.id.btn_trailer_close))
+                        ExpMotion.popIn(root.findViewById(R.id.btn_trailer_open_external))
                     }
                 }
         }
@@ -773,7 +764,7 @@ object TrailerPlaybackController {
             }
             val wasGone = btn.visibility != View.VISIBLE
             btn.visibility = View.VISIBLE
-            if (wasGone && ExperimentalMobileDesign.enabled()) {
+            if (wasGone) {
                 ExpMotion.popIn(btn)
             }
         }
@@ -818,7 +809,7 @@ object TrailerPlaybackController {
             web.visibility = View.INVISIBLE
             val wasVisible = errorPanel.visibility == View.VISIBLE
             errorPanel.visibility = View.VISIBLE
-            if (ExperimentalMobileDesign.enabled() && !wasVisible) {
+            if (!wasVisible) {
                 ExpMotion.popIn(errorPanel)
             }
         }

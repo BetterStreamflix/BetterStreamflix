@@ -4,14 +4,12 @@ import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
+import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreference
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadController
@@ -183,12 +181,7 @@ object DownloadsSettingsController {
             }.toTypedArray()
             val packages = players.map { it.activityInfo.packageName }
             val checked = packages.indexOf(current).coerceAtLeast(-1)
-            val builder = if (ExperimentalMobileDesign.enabled()) {
-                MaterialAlertDialogBuilder(context)
-            } else {
-                AlertDialog.Builder(context)
-            }
-            builder
+            AlertDialog.Builder(context)
                 .setTitle(R.string.settings_external_player_title)
                 .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalStreamHandoff.rememberChosenPackage(packages.getOrNull(which))
@@ -220,14 +213,9 @@ object DownloadsSettingsController {
             }
             val current = UserPreferences.externalDownloaderPackage
             val checked = installed.indexOf(current).coerceAtLeast(-1)
-            val builder = if (ExperimentalMobileDesign.enabled()) {
-                MaterialAlertDialogBuilder(context)
-            } else {
-                AlertDialog.Builder(context)
-            }
             val labels = installed.map { ExternalDownloadHandoff.packageLabel(context, it) }
                 .toTypedArray()
-            builder
+            AlertDialog.Builder(context)
                 .setTitle(R.string.settings_external_downloader_title)
                 .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalDownloadHandoff.rememberChosenPackage(installed.getOrNull(which))
@@ -317,20 +305,21 @@ object DownloadsSettingsController {
         }
 
         findPreference("DOWNLOAD_SOFT_LIMIT_GB")?.let { pref ->
-            val edit = pref as? EditTextPreference ?: return@let
-            edit.text = UserPreferences.downloadSoftLimitGb.toString()
-            edit.setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { p ->
-                val gb = DownloadStats.clampSoftLimitGb(p.text)
+            val seek = pref as? SeekBarPreference ?: return@let
+            fun summaryFor(gb: Int): String =
                 if (gb <= 0) {
                     context.getString(R.string.settings_download_soft_limit_unlimited)
                 } else {
                     context.getString(R.string.settings_download_soft_limit_value, gb)
                 }
+            seek.value = UserPreferences.downloadSoftLimitGb.coerceIn(0, 100)
+            seek.setSummaryProviderOnce(Preference.SummaryProvider<SeekBarPreference> { p ->
+                summaryFor(p.value)
             })
-            edit.setOnPreferenceChangeListener { _, newValue ->
-                val clamped = DownloadStats.clampSoftLimitGb(newValue as? String)
+            seek.setOnPreferenceChangeListener { _, newValue ->
+                val clamped = (newValue as? Int)?.coerceIn(0, 500)
+                    ?: UserPreferences.downloadSoftLimitGb
                 UserPreferences.downloadSoftLimitGb = clamped
-                edit.text = clamped.toString()
                 refreshSummaries(findPreference, context, scope)
                 true
             }
@@ -512,30 +501,16 @@ object DownloadsSettingsController {
         onCancel: (() -> Unit)? = null,
         onConfirm: () -> Unit,
     ) {
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            // Match Exp-on Material path so destructive confirms stay consistent
-            // when Experimental UI is off (DL-P3-C).
-            MaterialAlertDialogBuilder(context)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, context.getString(messageRes))
-        } else {
-            null
-        }
-        builder.setTitle(titleRes)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(messageRes)
-        builder
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(titleRes)
+            .setMessage(messageRes)
             .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }
             .setNegativeButton(android.R.string.cancel) { _, _ -> onCancel?.invoke() }
             .setOnCancelListener { onCancel?.invoke() }
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    else ExpDialogChrome.polishButtons(dialog)
+                    ExpDialogChrome.polishButtons(dialog)
                 }
                 dialog.show()
             }
@@ -564,8 +539,8 @@ object DownloadsSettingsController {
             UserPreferences.downloadQualityPreset.name
         (findPreference("DOWNLOAD_MAX_CONCURRENT") as? ListPreference)?.value =
             UserPreferences.downloadMaxConcurrent.toString()
-        (findPreference("DOWNLOAD_SOFT_LIMIT_GB") as? EditTextPreference)?.text =
-            UserPreferences.downloadSoftLimitGb.toString()
+        (findPreference("DOWNLOAD_SOFT_LIMIT_GB") as? SeekBarPreference)?.value =
+            UserPreferences.downloadSoftLimitGb.coerceIn(0, 100)
         (findPreference("DOWNLOAD_STORAGE_LOCATION") as? ListPreference)?.value =
             UserPreferences.downloadStorageLocation.name
 

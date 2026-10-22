@@ -21,7 +21,6 @@ import com.dskja.betterstreamflix.providers.ProviderPassport
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemProviderMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemProviderTvBinding
 import com.dskja.betterstreamflix.models.Provider
@@ -40,9 +39,7 @@ class ProviderViewHolder(
 
     private val context = itemView.context
     init {
-        if (ExperimentalMobileDesign.enabled()) {
-            itemView.applyExpPress()
-        }
+        itemView.applyExpPress()
     }
 
     private lateinit var provider: Provider
@@ -68,7 +65,7 @@ class ProviderViewHolder(
                 val fav = binding.ivProviderFavorite
                 val wasVisible = fav.visibility == View.VISIBLE
                 fav.visibility = if (provider.isFavorite) View.VISIBLE else View.GONE
-                if (ExperimentalMobileDesign.enabled() && provider.isFavorite && !wasVisible) {
+                if (provider.isFavorite && !wasVisible) {
                     ExpMotion.popIn(fav)
                 }
                 true
@@ -78,23 +75,21 @@ class ProviderViewHolder(
         val favWasVisible = binding.ivProviderFavorite.visibility == View.VISIBLE
         binding.ivProviderFavorite.visibility =
             if (provider.isFavorite) View.VISIBLE else View.GONE
-        if (ExperimentalMobileDesign.enabled()) {
-            if (provider.isFavorite) {
-                binding.ivProviderFavorite.setBackgroundResource(
-                    ExperimentalMobileDesign.iconChipBackground(),
-                )
-                if (!favWasVisible) ExpMotion.popIn(binding.ivProviderFavorite)
-            } else {
-                binding.ivProviderFavorite.background = null
-            }
+        if (provider.isFavorite) {
+            binding.ivProviderFavorite.setBackgroundResource(
+                R.drawable.bg_detail_icon_chip,
+            )
+            if (!favWasVisible) ExpMotion.popIn(binding.ivProviderFavorite)
+        } else {
+            binding.ivProviderFavorite.background = null
         }
 
         binding.root.findViewById<ImageView>(R.id.iv_provider_selected)?.let { selected ->
             val isCurrent = UserPreferences.currentProvider?.name == provider.name
             val wasVisible = selected.visibility == View.VISIBLE
             selected.visibility = if (isCurrent) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && isCurrent) {
-                selected.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            if (isCurrent) {
+                selected.setBackgroundResource(R.drawable.bg_detail_icon_chip)
                 if (!wasVisible) ExpMotion.popIn(selected)
             } else if (!isCurrent) {
                 selected.background = null
@@ -110,27 +105,22 @@ class ProviderViewHolder(
         val lang = Locale.forLanguageTag(provider.language)
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
-        if (ExperimentalMobileDesign.enabled()) {
-            // OEM LayerDrawable/GradientDrawable draw crashes (BETTERSTREAMFLIX-3J).
-            setBackgroundResourceSafe(
-                binding.root,
-                ExperimentalMobileDesign.glassCardBackground(),
-            )
-            setBackgroundResourceSafe(
-                binding.tvProviderLanguage,
-                ExperimentalMobileDesign.metaPillBackground(),
-            )
-            binding.tvProviderLanguage.text = lang
-            bindProviderHealthPill(binding.root, lang)
-            bindProviderPassportPill(binding.root)
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.popIn(binding.root)
-                ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
-            }
-        } else {
-            binding.tvProviderLanguage.text = providerMetaLabel(lang, provider.name)
-            bindProviderPassportPill(binding.root)
+        // OEM LayerDrawable/GradientDrawable draw crashes (BETTERSTREAMFLIX-3J).
+        setBackgroundResourceSafe(
+            binding.root,
+            R.drawable.bg_cinema_glass_card,
+        )
+        setBackgroundResourceSafe(
+            binding.tvProviderLanguage,
+            R.drawable.bg_meta_pill,
+        )
+        binding.tvProviderLanguage.text = lang
+        bindProviderHealthPill(binding.root, lang)
+        bindProviderPassportPill(binding.root)
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.popIn(binding.root)
+            ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
         }
     }
 
@@ -166,9 +156,7 @@ class ProviderViewHolder(
                 0xFFE8E8E8.toInt(),
             ),
         )
-        if (ExperimentalMobileDesign.enabled()) {
-            pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-        }
+        pill.setBackgroundResource(R.drawable.bg_meta_pill)
         pill.visibility = View.VISIBLE
         if (!wasVisible) ExpMotion.popIn(pill)
     }
@@ -318,9 +306,7 @@ class ProviderViewHolder(
                 0xFFE8E8E8.toInt(),
             ),
         )
-        if (ExperimentalMobileDesign.enabled()) {
-            pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-        }
+        pill.setBackgroundResource(R.drawable.bg_meta_pill)
         pill.visibility = View.VISIBLE
         if (!wasVisible) ExpMotion.popIn(pill)
     }
@@ -346,19 +332,10 @@ class ProviderViewHolder(
             else ->
                 context.getString(R.string.provider_confirm_unstable, name)
         }
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(context, message)
-        } else {
-            null
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context)
+        val glass = com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(context, message)
         builder.setTitle(R.string.provider_confirm_title)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(message)
+        builder.setView(glass.root)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 ExpMotion.hapticTap(itemView)
@@ -375,11 +352,8 @@ class ProviderViewHolder(
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                    }
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+
                 }
                 dialog.show()
             }
@@ -447,11 +421,9 @@ class ProviderViewHolder(
         }
         gear.isFocusable = true
         gear.isClickable = true
-        if (ExperimentalMobileDesign.enabled()) {
-            gear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            if (!wasVisible) ExpMotion.popIn(gear)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { gear.applyExpPress() }
-        }
+        gear.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        if (!wasVisible) ExpMotion.popIn(gear)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { gear.applyExpPress() }
         gear.setOnClickListener { view ->
             ExpMotion.hapticTap(view)
             openProviderLoginSettings()
@@ -462,17 +434,17 @@ class ProviderViewHolder(
         when (provider.provider) {
             is SerienStreamProvider -> SettingsDeepLink.openSerienStreamAuth()
             is AniWorldProvider -> SettingsDeepLink.openAniWorldAuth()
-            is GuardaFlixProvider -> SettingsDeepLink.openProviderPassport()
+            is GuardaFlixProvider -> SettingsDeepLink.openGuardaFlixAuth()
             else -> return
         }
         runCatching {
             itemView.findNavController().navigate(R.id.settings)
         }.onFailure {
             if (provider.provider is GuardaFlixProvider) {
-                SettingsDeepLink.openProviderPassport()
+                SettingsDeepLink.openGuardaFlixAuth()
                 android.widget.Toast.makeText(
                     context,
-                    R.string.settings_provider_passport_title,
+                    R.string.settings_category_guardaflix,
                     android.widget.Toast.LENGTH_SHORT,
                 ).show()
                 return@onFailure

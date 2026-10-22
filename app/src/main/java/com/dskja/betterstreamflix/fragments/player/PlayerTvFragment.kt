@@ -100,7 +100,6 @@ import com.dskja.betterstreamflix.ui.PlayerTvView
 import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.EpisodeManager
@@ -320,6 +319,52 @@ class PlayerTvFragment : Fragment(),
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
+
+    /** Unified cast sheet — hands the live stream to DLNA/Tizen and Smart-TV bridges. */
+    private val castSheetCallbacks = object : com.dskja.betterstreamflix.ui.CastSheet.Callbacks {
+        override fun currentStream(): com.dskja.betterstreamflix.ui.CastSheet.CurrentStream? {
+            if (isOfflinePlayback()) return null
+            val video = currentVideo ?: return null
+            val raw = player.currentMediaItem?.localConfiguration?.uri?.toString()
+                ?: video.source
+            val resolved = if (raw.startsWith("data:", ignoreCase = true)) {
+                decodeBase64Uri(raw)?.let { extractUrlFromPlaylist(it) }
+            } else {
+                raw
+            } ?: video.source.takeUnless { it.startsWith("data:", ignoreCase = true) }
+            val url = resolved?.takeUnless { it.startsWith("data:", ignoreCase = true) }
+                ?: return null
+            return com.dskja.betterstreamflix.ui.CastSheet.CurrentStream(
+                url = url,
+                title = resolvePlayerTitle(),
+                mimeType = video.type,
+                headers = lastCastHeaders,
+                positionMs = player.currentPosition,
+            )
+        }
+
+        override fun onDlnaStarted(renderer: com.dskja.betterstreamflix.cast.DlnaRenderer) {
+            if (::player.isInitialized && !playerReleased) {
+                runCatching { player.pause() }
+            }
+        }
+
+        override fun onDlnaStopped(positionMs: Long) {
+            if (::player.isInitialized && !playerReleased && positionMs > 0) {
+                runCatching {
+                    player.seekTo(positionMs)
+                    player.play()
+                }
+            }
+        }
+
+        override fun onSmartTvOpenUrl(deviceName: String) {
+            if (::player.isInitialized && !playerReleased) {
+                runCatching { player.pause() }
+            }
+        }
+    }
+
     private val stuckDetector = StuckBufferDetector()
     private var stuckHandler: android.os.Handler? = null
     private var stuckRunnable: Runnable? = null
@@ -461,6 +506,11 @@ class PlayerTvFragment : Fragment(),
             },
         )
         runCatching { TrailerPlaybackController.silenceAllActive() }
+        com.dskja.betterstreamflix.player.SleepTimer.attach(viewLifecycleOwner.lifecycleScope) {
+            runCatching {
+                if (::player.isInitialized && !playerReleased) player.pause()
+            }
+        }
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
@@ -1056,6 +1106,7 @@ class PlayerTvFragment : Fragment(),
         endCardCountdownJob?.cancel()
         endCardCountdownJob = null
         endCardCountdownCancelled = true
+        com.dskja.betterstreamflix.player.SleepTimer.detach()
         hideEndCardChooser()
         stopProgressHandler()
         stopLiveEdgeWatcher()
@@ -1314,6 +1365,12 @@ class PlayerTvFragment : Fragment(),
             if (isTearingDown || !isAdded) return@launch
             if (KidsBedtime.shouldBlockAutoplay()) {
                 finishForKidsBedtime()
+                return@launch
+            }
+            if (com.dskja.betterstreamflix.player.SleepTimer.shouldBlockAutoplay()) {
+                // One-shot "end of video" sleep timer: hold at the end card,
+                // then disarm so manual navigation stays unaffected.
+                com.dskja.betterstreamflix.player.SleepTimer.onAutoplayBlocked()
                 return@launch
             }
             if (autoplay && viewModel.isVideoResolveInFlight()) {
@@ -2627,9 +2684,8 @@ class PlayerTvFragment : Fragment(),
                 override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                     super.onTracksChanged(tracks)
                     val marks = SkipIntroChapters.fromTracks(tracks)
-                    if (marks.isNotEmpty()) {
-                        skipIntroChapters = marks
-                    }
+                    skipIntroChapters = marks
+                    updateSeekbarChapterMarkers(marks)
                     val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
                     val videoTracks = videoGroups.sumOf { it.length }
                     val selectedHeights = buildList {
@@ -4170,10 +4226,25 @@ class PlayerTvFragment : Fragment(),
             skipIntroContentId = id
             skipIntroConsumed = false
             skipIntroChapters = emptyList()
+            updateSeekbarChapterMarkers(emptyList())
             activeSkipOpportunity = null
             skipIntroProbe?.release()
             skipIntroProbe = null
             showSkipIntroButton(false)
+        }
+
+        /** Renders embedded chapter marks as dots on the player seek bar. */
+        private fun updateSeekbarChapterMarkers(marks: List<SmartSkipIntro.ChapterMark>) {
+            val bar = _binding?.pvPlayer
+                ?.findViewById<androidx.media3.ui.DefaultTimeBar>(R.id.exo_progress)
+                ?: return
+            val accent = androidx.core.content.ContextCompat.getColor(
+                requireContext(), R.color.profile_accent,
+            )
+            bar.setAdMarkerColor(accent)
+            bar.setPlayedAdMarkerColor(accent)
+            val times = LongArray(marks.size) { i -> marks[i].startMs }
+            bar.setAdGroupTimesMs(times, BooleanArray(marks.size), marks.size)
         }
 
         private fun ensureSkipIntroProbe() {
@@ -4447,6 +4518,10 @@ class PlayerTvFragment : Fragment(),
                 CastPlaybackHub.ensureCastContext(requireContext())
                 CastButtonFactory.setUpMediaRouteButton(castContext, routeButton)
                 routeButton.isVisible = true
+                // Unified cast sheet — DLNA/Tizen renderers, Smart-TV remote, mirroring.
+                routeButton.setOnClickListener {
+                    com.dskja.betterstreamflix.ui.CastSheet.show(castContext, castSheetCallbacks)
+                }
 
                 castPlayer = CastPlaybackHub.obtainPlayer(requireContext())
                 CastPlaybackHub.setSessionAvailabilityListener(object : SessionAvailabilityListener {
@@ -4610,7 +4685,7 @@ class PlayerTvFragment : Fragment(),
                 requireContext(),
                 message,
                 titleRes,
-            ) { ctx -> MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx)) }
+            ) { ctx -> androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(ctx)) }
         }
 
         private fun notifyPlayer(messageRes: Int, titleRes: Int = R.string.player_settings_title) {

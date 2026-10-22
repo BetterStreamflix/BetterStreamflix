@@ -81,6 +81,12 @@ object HomeShelfPinUi {
 
         AlertDialog.Builder(context)
             .setTitle(R.string.settings_home_shelf_pins_title)
+            .setMessage(
+                context.getString(
+                    R.string.settings_home_shelf_pins_message,
+                    HomeShelfLayout.MAX_PINS,
+                ),
+            )
             .setMultiChoiceItems(labels, checked) { dialog, which, isChecked ->
                 val id = options[which]
                 if (isChecked) {

@@ -44,7 +44,10 @@ object TitleLogoSurface {
             hideUntilReady = hideUntilReady,
             stillCurrent = currentCheck,
             onLoadFailed = {
-                if (allowAlternateOnFail && TmdbLogoPicker.isTrustedTmdbLogo(current)) {
+                if (allowAlternateOnFail &&
+                    !UserPreferences.dataSaverMode &&
+                    TmdbLogoPicker.isTrustedTmdbLogo(current)
+                ) {
                     resolveMovie(
                         anchor, movie, imageView, titleView,
                         hideUntilReady, persist, currentCheck, onResolved,
@@ -55,7 +58,9 @@ object TitleLogoSurface {
             onLogoReady = onLogoReady,
             onLogoFailed = onLogoFailed,
         )
-        if (TmdbLogoPicker.shouldUpgradeLogo(current, movie.logoLanguage, wantedLang)) {
+        if (!UserPreferences.dataSaverMode &&
+            TmdbLogoPicker.shouldUpgradeLogo(current, movie.logoLanguage, wantedLang)
+        ) {
             resolveMovie(
                 anchor, movie, imageView, titleView,
                 hideUntilReady, persist, currentCheck, onResolved,
@@ -90,7 +95,10 @@ object TitleLogoSurface {
             hideUntilReady = hideUntilReady,
             stillCurrent = currentCheck,
             onLoadFailed = {
-                if (allowAlternateOnFail && TmdbLogoPicker.isTrustedTmdbLogo(current)) {
+                if (allowAlternateOnFail &&
+                    !UserPreferences.dataSaverMode &&
+                    TmdbLogoPicker.isTrustedTmdbLogo(current)
+                ) {
                     resolveTv(
                         anchor, tvShow, imageView, titleView,
                         hideUntilReady, persist, currentCheck, onResolved,
@@ -101,7 +109,9 @@ object TitleLogoSurface {
             onLogoReady = onLogoReady,
             onLogoFailed = onLogoFailed,
         )
-        if (TmdbLogoPicker.shouldUpgradeLogo(current, tvShow.logoLanguage, wantedLang)) {
+        if (!UserPreferences.dataSaverMode &&
+            TmdbLogoPicker.shouldUpgradeLogo(current, tvShow.logoLanguage, wantedLang)
+        ) {
             resolveTv(
                 anchor, tvShow, imageView, titleView,
                 hideUntilReady, persist, currentCheck, onResolved,
@@ -159,6 +169,7 @@ object TitleLogoSurface {
             hideUntilReady = hideUntilReady,
             stillCurrent = stillCurrent,
         )
+        if (UserPreferences.dataSaverMode) return
         if (!TmdbLogoPicker.shouldUpgradeLogo(existingLogo, existingLogoLanguage, wantedLang)) return
         TmdbLogoBinder.resolve(
             anchor = anchor,

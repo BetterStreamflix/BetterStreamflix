@@ -42,10 +42,8 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ActivityQrScannerBinding
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
@@ -68,6 +66,11 @@ class QrScannerActivity : AppCompatActivity() {
     private var selectedCameraId: String? = null
     private var previewSize: Size = Size(1280, 720)
     private var isOpeningCamera = false
+    private var previewSurface: Surface? = null
+    private var analysisSurface: Surface? = null
+    private var torchOn = false
+    private var torchAvailable = false
+    private var scanLineAnimator: android.animation.ValueAnimator? = null
 
     private val textureListener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
@@ -123,17 +126,9 @@ class QrScannerActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.themeRes()
-            } else {
-                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
-            }
-        )
+        setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        if (ExperimentalMobileDesign.enabled()) {
-            DynamicColors.applyToActivityIfAvailable(this)
-        }
+        DynamicColors.applyToActivityIfAvailable(this)
 
         super.onCreate(savedInstanceState)
 
@@ -149,34 +144,38 @@ class QrScannerActivity : AppCompatActivity() {
 
         cameraManager = getSystemService(CameraManager::class.java)
 
-        if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.qrScannerClose.applyExpPress()
-            }
-            binding.qrScannerClose.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_qr_scanner_title),
-                binding.root.findViewById(R.id.ll_qr_scanner_header),
-            )
-            binding.root.findViewById<View>(R.id.fl_qr_scanner_frame)?.let {
-                com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
-            }
-            binding.root.findViewById<View>(R.id.ll_qr_scanner_header)?.setBackgroundResource(
-                ExperimentalMobileDesign.navPillBackground(),
-            )
-            binding.root.findViewById<View>(R.id.tv_qr_scanner_hint)?.let {
-                it.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
-            }
+        com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            binding.qrScannerClose.applyExpPress()
+        }
+        binding.qrScannerClose.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+            binding.root.findViewById(R.id.tv_qr_scanner_title),
+            binding.root.findViewById(R.id.ll_qr_scanner_header),
+        )
+        binding.root.findViewById<View>(R.id.fl_qr_scanner_frame)?.let {
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
+        }
+        binding.root.findViewById<View>(R.id.ll_qr_scanner_header)?.setBackgroundResource(
+            R.drawable.bg_meta_pill,
+        )
+        binding.root.findViewById<View>(R.id.tv_qr_scanner_hint)?.let {
+            it.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
         }
 
         binding.qrScannerClose.setOnClickListener {
             com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             finish()
         }
+        binding.btnQrTorch.setOnClickListener {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+            torchOn = !torchOn
+            updateTorchUi()
+            applyRepeatingRequest()
+        }
         binding.qrScannerPreview.surfaceTextureListener = textureListener
+        startScanLineAnimation()
 
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
             notifyUser(
@@ -226,6 +225,8 @@ class QrScannerActivity : AppCompatActivity() {
         selectedCameraId = cameraId
 
         val characteristics = manager.getCameraCharacteristics(cameraId)
+        torchAvailable = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        updateTorchUi()
         val configMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         previewSize = choosePreviewSize(configMap)
         val analysisSize = chooseAnalysisSize(configMap)
@@ -255,20 +256,15 @@ class QrScannerActivity : AppCompatActivity() {
         val analysisReader = imageReader ?: return
 
         texture.setDefaultBufferSize(previewSize.width, previewSize.height)
-        val previewSurface = Surface(texture)
-        val analysisSurface = analysisReader.surface
-
-        val requestBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
-            addTarget(previewSurface)
-            addTarget(analysisSurface)
-            set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
-            set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-        }
+        val preview = Surface(texture)
+        val analysis = analysisReader.surface
+        previewSurface = preview
+        analysisSurface = analysis
 
         val stateCallback = object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(session: CameraCaptureSession) {
                 captureSession = session
-                session.setRepeatingRequest(requestBuilder.build(), null, backgroundHandler)
+                applyRepeatingRequest()
             }
 
             override fun onConfigureFailed(session: CameraCaptureSession) {
@@ -282,17 +278,67 @@ class QrScannerActivity : AppCompatActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             createCaptureSessionApi28(
                 device = device,
-                previewSurface = previewSurface,
-                analysisSurface = analysisSurface,
+                previewSurface = preview,
+                analysisSurface = analysis,
                 stateCallback = stateCallback,
             )
         } else {
             @Suppress("DEPRECATION")
             device.createCaptureSession(
-                listOf(previewSurface, analysisSurface),
+                listOf(preview, analysis),
                 stateCallback,
                 backgroundHandler
             )
+        }
+    }
+
+    /** Rebuild + resubmit the preview request — honours the torch flag. */
+    private fun applyRepeatingRequest() {
+        val session = captureSession ?: return
+        val device = cameraDevice ?: return
+        val preview = previewSurface ?: return
+        val analysis = analysisSurface ?: return
+        val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+            addTarget(preview)
+            addTarget(analysis)
+            set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+            set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+            set(
+                CaptureRequest.FLASH_MODE,
+                if (torchOn) CameraMetadata.FLASH_MODE_TORCH else CameraMetadata.FLASH_MODE_OFF,
+            )
+        }
+        runCatching {
+            session.setRepeatingRequest(builder.build(), null, backgroundHandler)
+        }
+    }
+
+    private fun updateTorchUi() {
+        binding.btnQrTorch.isEnabled = torchAvailable
+        binding.btnQrTorch.alpha = if (!torchAvailable) 0.35f else 1f
+        binding.btnQrTorch.setColorFilter(
+            if (torchOn) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt(),
+        )
+    }
+
+    private fun startScanLineAnimation() {
+        val line = binding.vQrScanLine
+        val frame = binding.flQrScannerFrame
+        frame.post {
+            val marginPx = (14 * resources.displayMetrics.density).toInt()
+            val travel = (frame.height - marginPx * 2 - line.height).coerceAtLeast(0)
+            if (travel <= 0) return@post
+            scanLineAnimator?.cancel()
+            scanLineAnimator = android.animation.ValueAnimator.ofFloat(0f, travel.toFloat()).apply {
+                duration = 2200L
+                repeatMode = android.animation.ValueAnimator.REVERSE
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                addUpdateListener { anim ->
+                    line.translationY = anim.animatedValue as Float
+                }
+                start()
+            }
         }
     }
 
@@ -324,7 +370,16 @@ class QrScannerActivity : AppCompatActivity() {
         cameraDevice = null
         imageReader?.close()
         imageReader = null
+        previewSurface?.release()
+        previewSurface = null
+        analysisSurface = null
         isOpeningCamera = false
+    }
+
+    override fun onDestroy() {
+        scanLineAnimator?.cancel()
+        scanLineAnimator = null
+        super.onDestroy()
     }
 
     private fun startBackgroundThread() {
@@ -372,24 +427,22 @@ class QrScannerActivity : AppCompatActivity() {
     private fun deliverResult(result: String) {
         if (!resultDelivered.compareAndSet(false, true)) return
 
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(findViewById(android.R.id.content))
-            findViewById<View>(R.id.fl_qr_scanner_frame)?.let { frame ->
-                frame.animate()
-                    .scaleX(1.06f)
-                    .scaleY(1.06f)
-                    .setDuration(90L)
-                    .withEndAction {
-                        frame.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
-                        setResult(
-                            Activity.RESULT_OK,
-                            Intent().putExtra(EXTRA_QR_VALUE, result)
-                        )
-                        finish()
-                    }
-                    .start()
-                return
-            }
+        com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(findViewById(android.R.id.content))
+        findViewById<View>(R.id.fl_qr_scanner_frame)?.let { frame ->
+            frame.animate()
+                .scaleX(1.06f)
+                .scaleY(1.06f)
+                .setDuration(90L)
+                .withEndAction {
+                    frame.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
+                    setResult(
+                        Activity.RESULT_OK,
+                        Intent().putExtra(EXTRA_QR_VALUE, result)
+                    )
+                    finish()
+                }
+                .start()
+            return
         }
 
         setResult(
@@ -405,14 +458,9 @@ class QrScannerActivity : AppCompatActivity() {
         finishAfter: Boolean = false,
     ) {
         val message = getString(messageRes)
-        if (!ExperimentalMobileDesign.enabled()) {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-            if (finishAfter) finish()
-            return
-        }
         if (finishAfter) {
             val glass = ExpDialogChrome.buildGlassMessage(this, message)
-            MaterialAlertDialogBuilder(this)
+            androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(titleRes)
                 .setView(glass.root)
                 .setPositiveButton(android.R.string.ok, null)
@@ -426,7 +474,7 @@ class QrScannerActivity : AppCompatActivity() {
             return
         }
         ExpDialogChrome.notify(this, message, titleRes) { ctx ->
-            MaterialAlertDialogBuilder(ctx)
+            androidx.appcompat.app.AlertDialog.Builder(ctx)
         }
     }
 
@@ -436,15 +484,11 @@ class QrScannerActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     private fun applySystemBarColors() {
-        val systemBar = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.color.MaterialColors.getColor(
+        val systemBar = com.google.android.material.color.MaterialColors.getColor(
                 this,
                 com.google.android.material.R.attr.colorSurface,
                 0xFF0B0B0F.toInt(),
             )
-        } else {
-            ThemeManager.palette(UserPreferences.selectedTheme).systemBar
-        }
         window.statusBarColor = systemBar
         window.navigationBarColor = systemBar
     }

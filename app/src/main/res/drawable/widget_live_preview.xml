@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static preview rendered in the system widget picker (Live favorites). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="#FF14141C" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+    <item android:left="14dp" android:top="12dp" android:right="14dp" android:bottom="96dp">
+        <shape>
+            <solid android:color="#E6FFFFFF" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <item android:left="14dp" android:top="44dp" android:right="118dp" android:bottom="60dp">
+        <shape>
+            <solid android:color="#FF2A2A38" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <item android:left="122dp" android:top="44dp" android:right="14dp" android:bottom="60dp">
+        <shape>
+            <solid android:color="#FF2A2A38" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <item android:left="14dp" android:top="72dp" android:right="118dp" android:bottom="14dp">
+        <shape>
+            <solid android:color="#FF2A2A38" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+    <item android:left="122dp" android:top="72dp" android:right="14dp" android:bottom="14dp">
+        <shape>
+            <solid android:color="#FF2A2A38" />
+            <corners android:radius="8dp" />
+        </shape>
+    </item>
+</layer-list>

@@ -11,7 +11,6 @@ import androidx.preference.PreferenceFragmentCompat
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.FragmentSettingsHubMobileBinding
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
  * Support-style cinematic hub overlay for Settings root and Integrations
@@ -30,11 +29,11 @@ internal class SettingsHubController(
 
     private enum class HubMode { ROOT, PLATFORM }
 
+    @Suppress("UNREACHABLE_CODE")
     fun attach(root: View) {
-        if (!ExperimentalMobileDesign.enabled()) {
-            detach()
-            return
-        }
+        // Hub surface is retired (Lumina removal) — keep detach semantics only.
+        detach()
+        return
         val parent = root as? ViewGroup ?: return
         if (hubBinding == null) {
             hubBinding = FragmentSettingsHubMobileBinding.inflate(
@@ -47,13 +46,11 @@ internal class SettingsHubController(
         updateVisibility()
     }
 
+    @Suppress("UNREACHABLE_CODE")
     fun updateVisibility() {
-        val binding = hubBinding
-        if (!ExperimentalMobileDesign.enabled()) {
-            detach()
-            return
-        }
-        if (binding == null) return
+        detach()
+        return
+        val binding = hubBinding ?: return
 
         val key = currentRootKey()
         val mode = when (key) {
@@ -83,7 +80,6 @@ internal class SettingsHubController(
             }
             if (!enterAnimated) {
                 binding.root.setBackgroundResource(R.drawable.bg_exp_canvas_atmosphere)
-                ExperimentalMobileDesign.applyReducedGlass(binding.root)
                 ExpMotion.enterScreen(binding.root)
                 ExpMotion.startAnimation(binding.svSettingsHub, R.anim.support_fade_slide_up)
                 ExpMotion.revealHeader(
@@ -141,14 +137,11 @@ internal class SettingsHubController(
                         fragment.getString(R.string.platform_settings_title),
                     )
                 }
-                if (ExperimentalMobileDesign.enabled()) {
-                    binding.cardSettingsFeatured.setBackgroundResource(
-                        ExperimentalMobileDesign.glassCardBackground(),
-                    )
-                    ExperimentalMobileDesign.applyReducedGlass(binding.root)
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                        binding.cardSettingsFeatured.applyExpPress()
-                    }
+                binding.cardSettingsFeatured.setBackgroundResource(
+                    R.drawable.bg_cinema_glass_card,
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    binding.cardSettingsFeatured.applyExpPress()
                 }
                 setSectionLabel(binding, R.id.ll_settings_hub_app, R.string.settings_hub_section_app, true)
                 setSectionLabel(binding, R.id.ll_settings_hub_account, R.string.settings_hub_section_account, true)
@@ -185,7 +178,7 @@ internal class SettingsHubController(
         list.visibility = if (visible) View.VISIBLE else View.GONE
         if (visible && titleRes != 0) {
             label?.setText(titleRes)
-            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() && label != null) {
+            if (label != null) {
                 val key = "$sectionListId|$titleRes"
                 if (label.getTag(com.dskja.betterstreamflix.R.id.exp_enter_animated_tag) != key) {
                     label.setTag(com.dskja.betterstreamflix.R.id.exp_enter_animated_tag, key)
@@ -285,24 +278,20 @@ internal class SettingsHubController(
             ExpMotion.hapticTap(it)
             onClick()
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
-            row.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
-            (row.findViewById<ImageView>(R.id.iv_settings_hub_card_icon).parent as? View)
-                ?.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            (row as? ViewGroup)?.let { group ->
-                val chevron = group.getChildAt(group.childCount - 1) as? ImageView
-                chevron?.imageTintList = android.content.res.ColorStateList.valueOf(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        row, androidx.appcompat.R.attr.colorPrimary,
-                    ),
-                )
-            }
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
+        row.setBackgroundResource(R.drawable.bg_outlined_chip)
+        (row.findViewById<ImageView>(R.id.iv_settings_hub_card_icon).parent as? View)
+            ?.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        (row as? ViewGroup)?.let { group ->
+            val chevron = group.getChildAt(group.childCount - 1) as? ImageView
+            chevron?.imageTintList = android.content.res.ColorStateList.valueOf(
+                com.google.android.material.color.MaterialColors.getColor(
+                    row, androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
         }
         container.addView(row)
-        if (ExperimentalMobileDesign.enabled()) {
-            row.alpha = 0f
-            row.postDelayed({ ExpMotion.popIn(row) }, 32L * index)
-        }
+        row.alpha = 0f
+        row.postDelayed({ ExpMotion.popIn(row) }, 32L * index)
     }
 }

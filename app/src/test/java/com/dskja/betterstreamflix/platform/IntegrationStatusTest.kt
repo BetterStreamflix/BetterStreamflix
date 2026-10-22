@@ -34,7 +34,6 @@ class IntegrationStatusTest {
             "screen_platform_simkl",
             "screen_platform_subtitles",
             "screen_platform_player",
-            "screen_platform_plugins",
         )
         val actual = com.dskja.betterstreamflix.fragments.settings.PlatformHubCategories
             .cards()

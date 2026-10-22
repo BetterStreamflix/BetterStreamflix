@@ -22,9 +22,7 @@ import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
@@ -47,6 +45,13 @@ class TvShowMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (people/genre → back). */
+    private var detailListState: android.os.Parcelable? = null
+
+    private companion object {
+        const val KEY_DETAIL_LIST_STATE = "detail_list_state"
+    }
     private var currentTvShow: TvShow? = null
     // Must not touch navArgs during field init — Fragment ctor runs before
     // arguments are attached (BETTERSTREAMFLIX-46 InstantiationException).
@@ -68,16 +73,15 @@ class TvShowMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        detailListState = detailListState ?: savedInstanceState?.let {
+            androidx.core.os.BundleCompat.getParcelable(
+                it, KEY_DETAIL_LIST_STATE, android.os.Parcelable::class.java,
+            )
+        }
         if (args.openTab.equals("similar", ignoreCase = true)) {
             selectedTab = DetailTab.SIMILAR
         }
-        ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.staggerFirstFill(binding.rvTvShow)
-        }
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)
         appAdapter.onDetailTabSelectedListener = { tab ->
@@ -111,7 +115,7 @@ class TvShowMobileFragment : Fragment() {
                             root = binding.isLoading.root,
                             context = requireContext(),
                             error = state.error,
-                            showToast = !ExperimentalMobileDesign.enabled(),
+                            showToast = true,
                             onRetry = { viewModel.getTvShow(args.id) },
                         )
                     }
@@ -154,9 +158,18 @@ class TvShowMobileFragment : Fragment() {
         com.dskja.betterstreamflix.ui.TrailerPlayPipeline.endSession()
         com.dskja.betterstreamflix.ui.TrailerStreamCrossfade.clear()
         com.dskja.betterstreamflix.player.PlayerCleanExit.clearHomeRestore()
-        _binding?.let { appAdapter.onSaveInstanceState(it.rvTvShow) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.rvTvShow)
+            detailListState = it.rvTvShow.layoutManager?.onSaveInstanceState()
+        }
         _binding = null
         super.onDestroyView()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = detailListState ?: _binding?.rvTvShow?.layoutManager?.onSaveInstanceState()
+        if (state != null) outState.putParcelable(KEY_DETAIL_LIST_STATE, state)
     }
 
 
@@ -193,6 +206,7 @@ class TvShowMobileFragment : Fragment() {
         currentTvShow = tvShow
         prefetchLogo(tvShow.logo)
         DetailHeaderController.wireCast(this, binding.root)
+        restoreDetailScrollIfPending()
 
         val signature = contentSignature(tvShow)
         if (lastContentSignature == signature) {
@@ -271,6 +285,19 @@ class TvShowMobileFragment : Fragment() {
         )
         if (scrollTabsToTop) {
             binding.rvTvShow.post { binding.rvTvShow.smoothScrollToPosition(1) }
+        }
+    }
+
+    /**
+     * Restores the pre-navigation scroll offset once. Runs before the content
+     * signature check — the adapter survives view recreation with its items, so
+     * the offset applies even when displayTvShow skips the rebind.
+     */
+    private fun restoreDetailScrollIfPending() {
+        val state = detailListState ?: return
+        detailListState = null
+        binding.rvTvShow.post {
+            _binding?.rvTvShow?.layoutManager?.onRestoreInstanceState(state)
         }
     }
 

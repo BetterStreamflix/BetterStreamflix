@@ -191,6 +191,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         KEEP_SCREEN_ON,
         NIGHT_AUDIO,
         MANUAL_ZOOM,
+        SLEEP_TIMER,
     }
 
     protected var onQualitySelected: ((Settings.Quality) -> Unit) =
@@ -648,6 +649,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 SoftwareDecoder,
                 Gestures,
                 KeepScreenOn,
+                SleepTimer,
                 ManualZoom,
             )
             // Leanback: omit DownloadWith — ADM/1DM handoff is a dead-end on TV remotes
@@ -663,6 +665,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 Download,
                 ExtraBuffering,
                 SoftwareDecoder,
+                SleepTimer,
                 ManualZoom,
             )
         }
@@ -709,6 +712,78 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             data object Off : NightAudio() {
                 override val isSelected: Boolean get() = !UserPreferences.nightAudioMode
                 override val stringId: Int get() = R.string.player_settings_night_audio_off
+            }
+        }
+
+        /** Pause playback after N minutes or hold at the end card. */
+        sealed class SleepTimer : Item {
+            companion object : Settings() {
+                val list = listOf(Off, Minutes15, Minutes30, Minutes45, Minutes60, Minutes90, EndOfVideo)
+                val selected: SleepTimer
+                    get() = when (val mode = com.dskja.betterstreamflix.player.SleepTimer.mode) {
+                        is com.dskja.betterstreamflix.player.SleepTimer.Mode.In ->
+                            list.filterIsInstance<In>().firstOrNull { it.minutes == mode.minutes } ?: Off
+                        is com.dskja.betterstreamflix.player.SleepTimer.Mode.EndOfVideo -> EndOfVideo
+                        else -> Off
+                    }
+
+                /** Compact label for the main-row subtitle. */
+                fun subtitle(context: Context): String {
+                    return when (val mode = com.dskja.betterstreamflix.player.SleepTimer.mode) {
+                        is com.dskja.betterstreamflix.player.SleepTimer.Mode.In -> {
+                            val leftMin = ((mode.fireAtMs - android.os.SystemClock.elapsedRealtime()) / 60_000L)
+                                .coerceAtLeast(1L)
+                            context.getString(R.string.player_settings_sleep_timer_remaining_minutes, leftMin)
+                        }
+                        is com.dskja.betterstreamflix.player.SleepTimer.Mode.EndOfVideo ->
+                            context.getString(R.string.player_settings_sleep_timer_end_of_video)
+                        else -> context.getString(R.string.player_settings_sleep_timer_off)
+                    }
+                }
+            }
+            abstract val isSelected: Boolean
+            abstract val stringId: Int
+
+            sealed class In : SleepTimer() {
+                abstract val minutes: Int
+            }
+
+            data object Off : SleepTimer() {
+                override val isSelected: Boolean
+                    get() = com.dskja.betterstreamflix.player.SleepTimer.mode ==
+                        com.dskja.betterstreamflix.player.SleepTimer.Mode.Off
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_off
+            }
+            data object Minutes15 : In() {
+                override val minutes = 15
+                override val isSelected: Boolean get() = selected is Minutes15
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_minutes_15
+            }
+            data object Minutes30 : In() {
+                override val minutes = 30
+                override val isSelected: Boolean get() = selected is Minutes30
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_minutes_30
+            }
+            data object Minutes45 : In() {
+                override val minutes = 45
+                override val isSelected: Boolean get() = selected is Minutes45
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_minutes_45
+            }
+            data object Minutes60 : In() {
+                override val minutes = 60
+                override val isSelected: Boolean get() = selected is Minutes60
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_minutes_60
+            }
+            data object Minutes90 : In() {
+                override val minutes = 90
+                override val isSelected: Boolean get() = selected is Minutes90
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_minutes_90
+            }
+            data object EndOfVideo : SleepTimer() {
+                override val isSelected: Boolean
+                    get() = com.dskja.betterstreamflix.player.SleepTimer.mode is
+                        com.dskja.betterstreamflix.player.SleepTimer.Mode.EndOfVideo
+                override val stringId: Int get() = R.string.player_settings_sleep_timer_end_of_video
             }
         }
 

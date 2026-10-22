@@ -3,101 +3,84 @@ package com.dskja.betterstreamflix.utils
 import com.dskja.betterstreamflix.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ThemeManagerTest {
 
     @Test
-    fun lockedLooks_areExactlyThree() {
-        assertEquals(3, ThemeManager.LOCKED_LOOKS.size)
+    fun lockedLooks_isSingleDarkLook() {
+        assertEquals(1, ThemeManager.LOCKED_LOOKS.size)
         assertTrue(ThemeManager.LOCKED_LOOKS.contains(ThemeManager.CINEMA_INK))
-        assertTrue(ThemeManager.LOCKED_LOOKS.contains(ThemeManager.CINEMA_INK_LIGHT))
-        assertTrue(ThemeManager.LOCKED_LOOKS.contains(ThemeManager.KIDS_BRIGHT))
     }
 
     @Test
-    fun resolveLook_mapsLegacyAndOledToDark() {
+    fun resolveLook_collapsesEverythingToDark() {
         assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.DEFAULT))
+        assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.CINEMA_INK))
+        assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.CINEMA_INK_LIGHT))
+        assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.KIDS_BRIGHT))
         assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.NERO_AMOLED_OLED))
         assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.SUNSET_CINEMA))
-        assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.MIDNIGHT_VIOLET))
         assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(null))
         assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook("unknown_palette"))
     }
 
     @Test
-    fun resolveLook_preservesLockedLooks() {
-        assertEquals(ThemeManager.CINEMA_INK, ThemeManager.resolveLook(ThemeManager.CINEMA_INK))
-        assertEquals(
-            ThemeManager.CINEMA_INK_LIGHT,
-            ThemeManager.resolveLook(ThemeManager.CINEMA_INK_LIGHT),
-        )
-        assertEquals(ThemeManager.KIDS_BRIGHT, ThemeManager.resolveLook(ThemeManager.KIDS_BRIGHT))
-    }
-
-    @Test
-    fun defaultThemeForKids_picksBrightOrCinemaInk() {
-        assertEquals(ThemeManager.KIDS_BRIGHT, ThemeManager.defaultThemeForKids(true))
+    fun defaultThemeForKids_isAlwaysDark() {
+        assertEquals(ThemeManager.CINEMA_INK, ThemeManager.defaultThemeForKids(true))
         assertEquals(ThemeManager.CINEMA_INK, ThemeManager.defaultThemeForKids(false))
     }
 
     @Test
-    fun mobileThemeRes_mapsLockedLooksWithoutHalfMix() {
+    fun clampLookForKids_isAlwaysDark() {
         assertEquals(
-            R.style.AppTheme_Mobile_CinemaInk,
-            ThemeManager.mobileThemeRes(ThemeManager.CINEMA_INK),
+            ThemeManager.CINEMA_INK,
+            ThemeManager.clampLookForKids(ThemeManager.KIDS_BRIGHT, isKids = true),
         )
         assertEquals(
-            R.style.AppTheme_Mobile_CinemaInkLight,
-            ThemeManager.mobileThemeRes(ThemeManager.CINEMA_INK_LIGHT),
-        )
-        assertEquals(
-            R.style.AppTheme_Mobile_KidsBright,
-            ThemeManager.mobileThemeRes(ThemeManager.KIDS_BRIGHT),
-        )
-        // Legacy → Dark shell (not OLED overlay).
-        assertEquals(
-            R.style.AppTheme_Mobile_CinemaInk,
-            ThemeManager.mobileThemeRes(ThemeManager.NERO_AMOLED_OLED),
-        )
-        assertEquals(
-            R.style.AppTheme_Mobile_CinemaInk,
-            ThemeManager.mobileThemeRes(ThemeManager.SUNSET_CINEMA),
-        )
-        assertNotEquals(
-            ThemeManager.mobileThemeRes(ThemeManager.CINEMA_INK),
-            ThemeManager.mobileThemeRes(ThemeManager.CINEMA_INK_LIGHT),
+            ThemeManager.CINEMA_INK,
+            ThemeManager.clampLookForKids(ThemeManager.CINEMA_INK_LIGHT, isKids = false),
         )
     }
 
     @Test
-    fun tvThemeRes_mapsLockedLooks() {
+    fun mobileThemeRes_isAlwaysDarkShell() {
+        assertEquals(
+            R.style.AppTheme_Mobile_CinemaInk,
+            ThemeManager.mobileThemeRes(ThemeManager.CINEMA_INK),
+        )
+        assertEquals(
+            R.style.AppTheme_Mobile_CinemaInk,
+            ThemeManager.mobileThemeRes(ThemeManager.CINEMA_INK_LIGHT),
+        )
+        assertEquals(
+            R.style.AppTheme_Mobile_CinemaInk,
+            ThemeManager.mobileThemeRes(ThemeManager.KIDS_BRIGHT),
+        )
+        assertEquals(
+            R.style.AppTheme_Mobile_CinemaInk,
+            ThemeManager.mobileThemeRes(ThemeManager.NERO_AMOLED_OLED),
+        )
+    }
+
+    @Test
+    fun tvThemeRes_isAlwaysDarkShell() {
         assertEquals(
             R.style.AppTheme_CinemaInk,
             ThemeManager.tvThemeRes(ThemeManager.CINEMA_INK),
         )
         assertEquals(
-            R.style.AppTheme_CinemaInkLight,
-            ThemeManager.tvThemeRes(ThemeManager.CINEMA_INK_LIGHT),
-        )
-        assertEquals(
-            R.style.AppTheme_KidsBright,
+            R.style.AppTheme_CinemaInk,
             ThemeManager.tvThemeRes(ThemeManager.KIDS_BRIGHT),
         )
     }
 
     @Test
-    fun titleRes_coversLockedLooks() {
-        assertEquals(R.string.theme_cinema_ink, ThemeManager.titleRes(ThemeManager.CINEMA_INK))
-        assertEquals(
-            R.string.theme_cinema_ink_light,
-            ThemeManager.titleRes(ThemeManager.CINEMA_INK_LIGHT),
-        )
-        assertEquals(R.string.theme_kids_bright, ThemeManager.titleRes(ThemeManager.KIDS_BRIGHT))
-        // Legacy titles collapse to Dark.
-        assertEquals(R.string.theme_cinema_ink, ThemeManager.titleRes(ThemeManager.DEFAULT))
+    fun titleRes_isAlwaysDarkLabel() {
+        assertEquals(R.string.theme_dark, ThemeManager.titleRes(ThemeManager.CINEMA_INK))
+        assertEquals(R.string.theme_dark, ThemeManager.titleRes(ThemeManager.DEFAULT))
+        assertEquals(R.string.theme_dark, ThemeManager.titleRes(ThemeManager.KIDS_BRIGHT))
     }
 
     @Test
@@ -106,15 +89,13 @@ class ThemeManagerTest {
         assertFalse(ThemeManager.isOledActive(ThemeManager.CINEMA_INK))
         @Suppress("DEPRECATION")
         assertFalse(ThemeManager.isOledActive(ThemeManager.NERO_AMOLED_OLED))
-        @Suppress("DEPRECATION")
-        assertFalse(ThemeManager.isOledActive(ThemeManager.SUNSET_CINEMA))
     }
 
     @Test
-    fun isLockedLook_onlyThree() {
+    fun isLockedLook_onlyDark() {
         assertTrue(ThemeManager.isLockedLook(ThemeManager.CINEMA_INK))
-        assertTrue(ThemeManager.isLockedLook(ThemeManager.CINEMA_INK_LIGHT))
-        assertTrue(ThemeManager.isLockedLook(ThemeManager.KIDS_BRIGHT))
+        assertFalse(ThemeManager.isLockedLook(ThemeManager.CINEMA_INK_LIGHT))
+        assertFalse(ThemeManager.isLockedLook(ThemeManager.KIDS_BRIGHT))
         assertFalse(ThemeManager.isLockedLook(ThemeManager.SUNSET_CINEMA))
         assertFalse(ThemeManager.isLockedLook(ThemeManager.DEFAULT))
     }

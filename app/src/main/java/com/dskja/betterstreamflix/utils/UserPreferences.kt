@@ -467,6 +467,27 @@ object UserPreferences {
             Key.KEEP_SCREEN_ON_WHEN_PAUSED.setBoolean(value)
         }
 
+    var playerGestureBrightness: Boolean
+        get() = Key.PLAYER_GESTURE_BRIGHTNESS.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_BRIGHTNESS.setBoolean(value)
+
+    var playerGestureVolume: Boolean
+        get() = Key.PLAYER_GESTURE_VOLUME.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_VOLUME.setBoolean(value)
+
+    var playerGestureZoom: Boolean
+        get() = Key.PLAYER_GESTURE_ZOOM.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_ZOOM.setBoolean(value)
+
+    var playerGestureDoubleTap: Boolean
+        get() = Key.PLAYER_GESTURE_DOUBLE_TAP.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_DOUBLE_TAP.setBoolean(value)
+
+    /** Hold anywhere on the video to play at 2x speed until released. */
+    var playerGestureSpeedBoost: Boolean
+        get() = Key.PLAYER_GESTURE_SPEED_BOOST.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_SPEED_BOOST.setBoolean(value)
+
     var playerGestures: Boolean
         get() = Key.PLAYER_GESTURES.getBoolean() ?: true
         set(value) {
@@ -895,43 +916,17 @@ object UserPreferences {
         get() = Key.CODEC_SOFTWARE_FORCED_OFF.getBoolean() ?: false
         set(value) = Key.CODEC_SOFTWARE_FORCED_OFF.setBoolean(value)
 
-    /** Off-by-default complete mobile shell redesign. Requires activity restart. */
+    /** Retired Lumina shell flag — always off; key kept so stale prefs stay inert. */
     var experimentalNewAppDesign: Boolean
-        get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_NEW_APP_DESIGN.setBoolean(value)
+        get() = false
+        set(@Suppress("UNUSED_PARAMETER") value) = Unit
 
     /**
-     * Opt-in React/Vite home shell (DEBUG + Lumina only). Default off so the native
-     * Featured ViewPager carousel stays active.
+     * Opt-in React/Vite home shell — retired with the Lumina shell. Always off.
      */
     var experimentalReactHome: Boolean
-        get() = Key.EXPERIMENTAL_REACT_HOME.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_REACT_HOME.setBoolean(value)
-
-    /** Lumina accent palette: crimson | ember | aurora | slate */
-    var experimentalLuminaAccent: String
-        get() = Key.EXPERIMENTAL_LUMINA_ACCENT.getString() ?: "crimson"
-        set(value) = Key.EXPERIMENTAL_LUMINA_ACCENT.setString(value)
-
-    var experimentalLuminaPureBlack: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_PURE_BLACK.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_LUMINA_PURE_BLACK.setBoolean(value)
-
-    var experimentalLuminaDynamicColors: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_DYNAMIC_COLORS.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_LUMINA_DYNAMIC_COLORS.setBoolean(value)
-
-    var experimentalLuminaNavAutoHide: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE.getBoolean() ?: true
-        set(value) = Key.EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE.setBoolean(value)
-
-    var experimentalLuminaHeroParallax: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_HERO_PARALLAX.getBoolean() ?: true
-        set(value) = Key.EXPERIMENTAL_LUMINA_HERO_PARALLAX.setBoolean(value)
-
-    var experimentalLuminaReducedGlass: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_REDUCED_GLASS.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_LUMINA_REDUCED_GLASS.setBoolean(value)
+        get() = false
+        set(@Suppress("UNUSED_PARAMETER") value) = Unit
 
     /**
      * When true, the startup support presentation is never shown.
@@ -1159,13 +1154,6 @@ object UserPreferences {
             }
         }
 
-    /** Master toggle for TMDb title logos (still requires [enableTmdb]). */
-    var enableTmdbLogos: Boolean
-        get() = Key.ENABLE_TMDB_LOGOS.getBoolean() ?: true
-        set(value) {
-            Key.ENABLE_TMDB_LOGOS.setBoolean(value)
-        }
-
     /** `original_first` (default) or `w1280_first`. */
     var tmdbLogoQuality: String
         get() = Key.TMDB_LOGO_QUALITY.getString() ?: "original_first"
@@ -1231,6 +1219,16 @@ object UserPreferences {
         get() = profileScopedBoolean(Key.TV_AMBIENT_MODE) ?: true
         set(value) {
             setProfileScopedBoolean(Key.TV_AMBIENT_MODE, value)
+        }
+
+    /**
+     * How long TV Home must sit idle before the Ambient canvas enters.
+     * Profile-scoped; default 90s. Values: 30s / 60s / 90s / 2min / 5min.
+     */
+    var cinemaAmbientIdleMs: Long
+        get() = profileScopedLong(Key.CINEMA_AMBIENT_IDLE_MS) ?: 90_000L
+        set(value) {
+            setProfileScopedLong(Key.CINEMA_AMBIENT_IDLE_MS, value.coerceIn(15_000L, 900_000L))
         }
 
     /**
@@ -1739,7 +1737,7 @@ object UserPreferences {
             profileScopedInt(Key.CAPTION_STYLE_EDGE_COLOR)
                 ?: Key.CAPTION_STYLE_EDGE_COLOR.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.edgeColor,
-            PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.typeface
+            captionTypefaceOrDefault()
         )
         set(value) {
             setProfileScopedInt(Key.CAPTION_STYLE_FONT_COLOR, value.foregroundColor)
@@ -1756,6 +1754,26 @@ object UserPreferences {
         set(value) {
             setProfileScopedInt(Key.CAPTION_STYLE_MARGIN, value)
         }
+
+    /**
+     * Caption font family (Subtitle Studio). Persisted per profile as an index:
+     * 0 default, 1 sans-serif, 2 serif, 3 monospace, 4 cursive.
+     */
+    var captionTypefaceIndex: Int
+        get() = profileScopedInt(Key.CAPTION_STYLE_TYPEFACE)
+            ?: Key.CAPTION_STYLE_TYPEFACE.getInt()
+            ?: 0
+        set(value) {
+            setProfileScopedInt(Key.CAPTION_STYLE_TYPEFACE, value.coerceIn(0, 4))
+        }
+
+    fun captionTypefaceOrDefault(): android.graphics.Typeface? = when (captionTypefaceIndex) {
+        1 -> android.graphics.Typeface.SANS_SERIF
+        2 -> android.graphics.Typeface.SERIF
+        3 -> android.graphics.Typeface.MONOSPACE
+        4 -> android.graphics.Typeface.create("cursive", android.graphics.Typeface.NORMAL)
+        else -> PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.typeface
+    }
 
     var qualityHeight: Int?
         get() = Key.QUALITY_HEIGHT.getInt()
@@ -2214,6 +2232,7 @@ object UserPreferences {
         CAPTION_STYLE_EDGE_TYPE,
         CAPTION_STYLE_EDGE_COLOR,
         CAPTION_STYLE_MARGIN,
+        CAPTION_STYLE_TYPEFACE,
         SCREEN_PADDING_X,
         SCREEN_PADDING_Y,
         QUALITY_HEIGHT,
@@ -2228,6 +2247,11 @@ object UserPreferences {
         PROVIDER_CACHE,
         KEEP_SCREEN_ON_WHEN_PAUSED,
         PLAYER_GESTURES,
+        PLAYER_GESTURE_BRIGHTNESS,
+        PLAYER_GESTURE_VOLUME,
+        PLAYER_GESTURE_ZOOM,
+        PLAYER_GESTURE_DOUBLE_TAP,
+        PLAYER_GESTURE_SPEED_BOOST,
         NIGHT_AUDIO_MODE,
         ALLOW_PHONE_PORTRAIT_PLAYBACK,
         DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN,
@@ -2247,6 +2271,7 @@ object UserPreferences {
         SHOW_CONTINUE_WATCHING,
         CINEMA_ROOM,
         CINEMA_AMBIENT_LIGHT,
+        CINEMA_AMBIENT_IDLE_MS,
         TV_AMBIENT_MODE,
         LIVE_COMMAND_MODE,
         SHOW_RECENTLY_WATCHED,
@@ -2430,32 +2455,45 @@ object UserPreferences {
 
         fun getBoolean(): Boolean? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getBoolean(name, false)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Boolean -> raw
+                is String -> raw.equals("true", ignoreCase = true)
                 else -> null
             }
         }
 
         fun getFloat(): Float? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getFloat(name, 0F)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Float -> raw
+                is Double -> raw.toFloat()
+                is Int -> raw.toFloat()
+                is Long -> raw.toFloat()
+                is String -> raw.toFloatOrNull()
                 else -> null
             }
         }
 
         fun getInt(): Int? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getInt(name, 0)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Int -> raw
+                is Long -> raw.toInt()
+                is String -> raw.toIntOrNull()
                 else -> null
             }
         }
 
         fun getLong(): Long? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getLong(name, 0)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Long -> raw
+                is Int -> raw.toLong()
+                is String -> raw.toLongOrNull()
                 else -> null
             }
         }

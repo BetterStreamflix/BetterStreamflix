@@ -10,7 +10,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Shared 3-step wizard chrome for Mobile + TV dialogs (same view ids).
@@ -88,7 +87,7 @@ class OnboardingWizardBinder(
 
     private fun confirmSkip() {
         val ctx = ExpDialogChrome.themedContext(root.context)
-        MaterialAlertDialogBuilder(ctx)
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
             .setTitle(R.string.onboarding_skip_confirm_title)
             .setMessage(R.string.onboarding_skip_confirm_body)
             .setNegativeButton(R.string.option_cancel, null)
@@ -103,6 +102,10 @@ class OnboardingWizardBinder(
         panelLanguage.visibility = if (step == 0) View.VISIBLE else View.GONE
         panelProviders.visibility = if (step == 1) View.VISIBLE else View.GONE
         panelKids.visibility = if (step == 2) View.VISIBLE else View.GONE
+
+        root.findViewById<View>(R.id.v_onboarding_dot_1)?.isSelected = step >= 0
+        root.findViewById<View>(R.id.v_onboarding_dot_2)?.isSelected = step >= 1
+        root.findViewById<View>(R.id.v_onboarding_dot_3)?.isSelected = step >= 2
 
         when (step) {
             0 -> {
@@ -192,11 +195,16 @@ class OnboardingWizardBinder(
         providerList.removeAllViews()
         val providers = OnboardingCatalog.providersForLanguage(draft.languageTag)
         providers.forEach { provider ->
-            val row = inflateChoiceRow(providerList)
-            row.text = provider.name
+            val row = inflateProviderRow(providerList)
+            val nameView = row.findViewById<TextView>(R.id.tv_choice_name)
+            val logoView = row.findViewById<android.widget.ImageView>(R.id.iv_choice_logo)
+            val checkView = row.findViewById<android.widget.ImageView>(R.id.iv_choice_check)
+            nameView.text = provider.name
+            row.contentDescription = provider.name
+            loadProviderLogo(logoView, provider.logo)
             val selected = draft.favoriteNames.contains(provider.name)
             row.isSelected = selected
-            applyChoiceStyle(row, selected)
+            applyProviderRowStyle(row, nameView, checkView, selected)
             row.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 if (draft.favoriteNames.contains(provider.name)) {
@@ -205,11 +213,16 @@ class OnboardingWizardBinder(
                     draft.favoriteNames.add(provider.name)
                 }
                 for (i in 0 until providerList.childCount) {
-                    val child = providerList.getChildAt(i) as TextView
+                    val child = providerList.getChildAt(i)
                     val name = child.getTag(R.id.onboarding_choice_tag) as? String
                     val isSel = name != null && draft.favoriteNames.contains(name)
                     child.isSelected = isSel
-                    applyChoiceStyle(child, isSel)
+                    applyProviderRowStyle(
+                        child,
+                        child.findViewById(R.id.tv_choice_name),
+                        child.findViewById(R.id.iv_choice_check),
+                        isSel,
+                    )
                 }
                 updateProviderCount()
                 updatePrimaryEnabled()
@@ -225,6 +238,68 @@ class OnboardingWizardBinder(
         applyChoiceStyle(btnKidsNo, !draft.kidsEnabled)
         btnKidsYes.isSelected = draft.kidsEnabled
         btnKidsNo.isSelected = !draft.kidsEnabled
+    }
+
+    private fun inflateProviderRow(parent: ViewGroup): View {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_onboarding_provider, parent, false)
+        val lp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        lp.topMargin = parent.resources.getDimensionPixelSize(R.dimen.onboarding_choice_gap)
+        view.layoutParams = lp
+        view.isFocusable = true
+        view.isClickable = true
+        return view
+    }
+
+    /** Same SVG-aware logo path as ProviderViewHolder (remote URL or default). */
+    private fun loadProviderLogo(imageView: android.widget.ImageView, logo: String?) {
+        val url = logo?.takeIf { it.isNotEmpty() }
+        val isSvg = url?.substringBefore("?")?.endsWith(".svg", ignoreCase = true) == true
+        val context = imageView.context
+        if (isSvg) {
+            imageView.setLayerType(
+                if (isTv) View.LAYER_TYPE_NONE else View.LAYER_TYPE_SOFTWARE,
+                null,
+            )
+            com.bumptech.glide.Glide.with(context)
+                .`as`(android.graphics.drawable.PictureDrawable::class.java)
+                .load(url)
+                .error(R.drawable.ic_provider_default_logo)
+                .into(imageView)
+        } else {
+            imageView.setLayerType(View.LAYER_TYPE_NONE, null)
+            com.bumptech.glide.Glide.with(context)
+                .load(url ?: R.drawable.ic_provider_default_logo)
+                .error(R.drawable.ic_provider_default_logo)
+                .fitCenter()
+                .transition(
+                    com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+                        .withCrossFade(),
+                )
+                .into(imageView)
+        }
+    }
+
+    private fun applyProviderRowStyle(
+        row: View,
+        nameView: TextView,
+        checkView: android.widget.ImageView,
+        selected: Boolean,
+    ) {
+        row.setBackgroundResource(
+            if (selected) R.drawable.bg_onboarding_choice_selected
+            else R.drawable.bg_onboarding_choice,
+        )
+        val content = ContextCompat.getColor(
+            row.context,
+            if (selected) R.color.cinema_cta_ink else R.color.cinema_text,
+        )
+        nameView.setTextColor(content)
+        checkView.visibility = if (selected) View.VISIBLE else View.GONE
+        checkView.imageTintList = android.content.res.ColorStateList.valueOf(content)
     }
 
     private fun inflateChoiceRow(parent: ViewGroup): TextView {
@@ -246,11 +321,21 @@ class OnboardingWizardBinder(
             if (selected) R.drawable.bg_onboarding_choice_selected
             else R.drawable.bg_onboarding_choice,
         )
-        view.setTextColor(
-            ContextCompat.getColor(
-                view.context,
-                if (selected) R.color.cinema_cta_ink else R.color.cinema_text,
-            ),
+        val content = ContextCompat.getColor(
+            view.context,
+            if (selected) R.color.cinema_cta_ink else R.color.cinema_text,
         )
+        view.setTextColor(content)
+        // Check mark at the row's trailing edge when selected.
+        val check = if (selected) {
+            ContextCompat.getDrawable(view.context, R.drawable.ic_featured_check)?.apply {
+                setTint(content)
+            }
+        } else {
+            null
+        }
+        view.setCompoundDrawablesWithIntrinsicBounds(null, null, check, null)
+        view.compoundDrawablePadding =
+            (12 * view.resources.displayMetrics.density).toInt()
     }
 }

@@ -91,7 +91,7 @@ class BypassHttpLandingServer(
     }
 
     private fun idleHtml(): String {
-        val accent = ExperimentalMobileDesign.accentCssHex()
+        val accent = "#5B8CFF"
         return """
             <!DOCTYPE html>
             <html lang="de">
@@ -121,7 +121,7 @@ class BypassHttpLandingServer(
     private fun landingHtml(deepLink: String): String {
         val safeDeepLink = escapeHtmlAttr(deepLink)
         val jsDeepLink = escapeJsString(deepLink)
-        val accent = ExperimentalMobileDesign.accentCssHex()
+        val accent = "#5B8CFF"
         return """
             <!DOCTYPE html>
             <html lang="de">

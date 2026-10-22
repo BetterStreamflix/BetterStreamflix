@@ -31,7 +31,7 @@
             android:id="@+id/tv_support_supporter_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.CinemaInk.Body"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_card_title"
             android:textStyle="bold"
@@ -42,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
             android:textColor="@color/support_text_secondary"
             android:textSize="@dimen/support_text_secondary"
             tools:text="First Buy Me a Coffee supporter" />

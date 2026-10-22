@@ -18,8 +18,6 @@ import com.dskja.betterstreamflix.profiles.ProfileAvatarView
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
  * The profile switcher chip that floats in the top-right corner of browse tabs.
@@ -70,11 +68,6 @@ object HomeProfileChip {
         }
 
         val chipKey = "${profile?.id.orEmpty()}|$name|${profile?.avatarKey.orEmpty()}|$showName"
-        if (ExperimentalMobileDesign.enabled()) {
-            chip.applyExpPress()
-            chip.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            if (chip.getTag(R.id.profile_chip_key_tag) != chipKey) ExpMotion.popIn(chip)
-        }
         chip.setTag(R.id.profile_chip_key_tag, chipKey)
 
         chip.setOnClickListener {

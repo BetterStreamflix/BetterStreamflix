@@ -54,11 +54,14 @@ object SentryBootstrap {
             options.isEnableAutoSessionTracking = true
             options.isAnrEnabled = true
             options.isCollectAdditionalContext = true
-            // Production: balanced capture. Debug: full capture for local diagnosis.
+            // Production: balanced capture. Debug: errors still 100% (always sent),
+            // but traces/profiles/replay are throttled — full-rate debug telemetry
+            // exhausts the project quota, after which Sentry drops everything
+            // (including real crash reports) and floods logcat.
             if (BuildConfig.DEBUG) {
-                options.tracesSampleRate = 1.0
-                options.profileSessionSampleRate = 1.0
-                options.sessionReplay.sessionSampleRate = 1.0
+                options.tracesSampleRate = 0.2
+                options.profileSessionSampleRate = 0.1
+                options.sessionReplay.sessionSampleRate = 0.0
                 options.sessionReplay.onErrorSampleRate = 1.0
             } else {
                 options.tracesSampleRate = 0.2

@@ -77,6 +77,96 @@ object SuperStreamProvider : Provider {
     private const val APP_VERSION_CODE = "160"
 
 
+    private fun SuperStreamApiService.Show.toItem(): AppAdapter.Item? {
+        return when (boxType) {
+            1 -> Movie(
+                id = id.toString(),
+                title = title ?: "",
+                quality = qualityTag,
+                rating = imdbRating?.toDoubleOrNull(),
+                poster = poster,
+                banner = bannerMini,
+            )
+
+            2 -> TvShow(
+                id = id.toString(),
+                title = title ?: "",
+                rating = imdbRating?.toDoubleOrNull(),
+                poster = poster,
+                banner = bannerMini,
+
+                seasons = seasonEpisode
+                    ?.takeIf { it.matches("S\\d+\\s* E\\d+".toRegex()) }
+                    ?.let {
+                        val result = Regex("S(\\d+)\\s* E(\\d+)").find(it)?.groupValues
+                        object {
+                            val season = result?.getOrNull(1)?.toIntOrNull() ?: 0
+
+                            val episode = result?.getOrNull(2)?.toIntOrNull() ?: 0
+                        }
+                    }
+                    ?.let { lastEpisode ->
+                        listOf(
+                            Season(
+                                id = "",
+                                number = lastEpisode.season,
+
+                                episodes = listOf(
+                                    Episode(
+                                        id = "",
+                                        number = lastEpisode.episode,
+                                    )
+                                )
+                            )
+                        )
+                    }
+                    ?: listOf()
+            )
+
+            else -> null
+        }
+    }
+
+    /**
+     * Paged fetch of the same Home_list_type_v2 catalog the home screen uses.
+     * The API accepts a `type` filter ("movie"/"series"/"all"); deployments that
+     * ignore it still return mixed shelves, so callers always filter client-side.
+     */
+    private suspend fun fetchHomeModules(
+        type: String,
+        page: Int,
+    ): List<SuperStreamApiService.HomeResponse> {
+        return service.getHome(
+            queryApi(
+                mapOf(
+                    "childmode" to "1",
+                    "app_version" to APP_VERSION,
+                    "appid" to appIdSecond,
+                    "module" to "Home_list_type_v2",
+                    "channel" to "Website",
+                    "page" to page.coerceAtLeast(0).toString(),
+                    "lang" to "en",
+                    "type" to type,
+                    "pagelimit" to "10",
+                    "expired_date" to "${getExpiryDate()}",
+                    "platform" to "android"
+                )
+            )
+        ).data
+    }
+
+    private suspend fun browseItems(type: String, page: Int): List<AppAdapter.Item> {
+        val zeroBasedPage = (page - 1).coerceAtLeast(0)
+        val typed = runCatching { fetchHomeModules(type, zeroBasedPage) }
+            .getOrDefault(emptyList())
+        val items = typed.flatMap { it.list }.mapNotNull { it.toItem() }
+        if (items.isNotEmpty()) return items
+        return runCatching { fetchHomeModules("all", zeroBasedPage) }
+            .getOrDefault(emptyList())
+            .flatMap { it.list }
+            .mapNotNull { it.toItem() }
+    }
+
     override suspend fun getHome(): List<Category> {
         val response = service.getHome(
             queryApi(
@@ -99,55 +189,7 @@ object SuperStreamProvider : Provider {
         return response.data.map { home ->
             Category(
                 name = home.name?.takeIf { it.isNotEmpty() } ?: Category.FEATURED,
-                list = home.list.mapNotNull { data ->
-                    when (data.boxType) {
-                        1 -> Movie(
-                            id = data.id.toString(),
-                            title = data.title ?: "",
-                            quality = data.qualityTag,
-                            rating = data.imdbRating?.toDoubleOrNull(),
-                            poster = data.poster,
-                            banner = data.bannerMini,
-                        )
-
-                        2 -> TvShow(
-                            id = data.id.toString(),
-                            title = data.title ?: "",
-                            rating = data.imdbRating?.toDoubleOrNull(),
-                            poster = data.poster,
-                            banner = data.bannerMini,
-
-                            seasons = data.seasonEpisode
-                                ?.takeIf { it.matches("S\\d+\\s* E\\d+".toRegex()) }
-                                ?.let {
-                                    val result = Regex("S(\\d+)\\s* E(\\d+)").find(it)?.groupValues
-                                    object {
-                                        val season = result?.getOrNull(1)?.toIntOrNull() ?: 0
-
-                                        val episode = result?.getOrNull(2)?.toIntOrNull() ?: 0
-                                    }
-                                }
-                                ?.let { lastEpisode ->
-                                    listOf(
-                                        Season(
-                                            id = "",
-                                            number = lastEpisode.season,
-
-                                            episodes = listOf(
-                                                Episode(
-                                                    id = "",
-                                                    number = lastEpisode.episode,
-                                                )
-                                            )
-                                        )
-                                    )
-                                }
-                                ?: listOf()
-                        )
-
-                        else -> null
-                    }
-                }
+                list = home.list.mapNotNull { it.toItem() }
             )
         }
     }
@@ -208,15 +250,11 @@ object SuperStreamProvider : Provider {
         }
     }
 
-    override suspend fun getMovies(page: Int): List<Movie> {
-        // TODO
-        throw Exception("Not yet implemented")
-    }
+    override suspend fun getMovies(page: Int): List<Movie> =
+        browseItems("movie", page).filterIsInstance<Movie>()
 
-    override suspend fun getTvShows(page: Int): List<TvShow> {
-        // TODO
-        throw Exception("Not yet implemented")
-    }
+    override suspend fun getTvShows(page: Int): List<TvShow> =
+        browseItems("series", page).filterIsInstance<TvShow>()
 
     override suspend fun getMovie(id: String): Movie {
         val data = service.getMovieById(
@@ -381,13 +419,38 @@ object SuperStreamProvider : Provider {
     }
 
     override suspend fun getGenre(id: String, page: Int): Genre {
-        // TODO
-        throw Exception("Not yet implemented")
+        // Detail pages hand us the genre *name* as id — the catalog has no
+        // dedicated genre endpoint, so we match it against the `cats` field
+        // of the browsable home modules instead.
+        val genreName = id.trim()
+        val shows = runCatching { fetchHomeModules("all", (page - 1).coerceAtLeast(0)) }
+            .getOrDefault(emptyList())
+            .flatMap { it.list }
+            .filter { show ->
+                show.cats.orEmpty()
+                    .split(",")
+                    .any { it.trim().equals(genreName, ignoreCase = true) }
+            }
+            .mapNotNull { it.toItem() }
+            .filterIsInstance<com.dskja.betterstreamflix.models.Show>()
+
+        return Genre(
+            id = id,
+            name = genreName,
+            shows = shows,
+        )
     }
 
     override suspend fun getPeople(id: String, page: Int): People {
-        // TODO
-        throw Exception("Not yet implemented")
+        // Cast entries carry the person name as id; MovieBox exposes no person
+        // endpoint, so we surface the name with an empty filmography rather
+        // than erroring out the whole page.
+        if (page > 1) return People(id, "")
+        return People(
+            id = id,
+            name = id.trim(),
+            filmography = listOf(),
+        )
     }
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {

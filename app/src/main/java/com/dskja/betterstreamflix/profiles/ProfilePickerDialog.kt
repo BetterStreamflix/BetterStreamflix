@@ -28,9 +28,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** Centered profile switcher popup with avatar orbs and optional PIN gate. */
 class ProfilePickerDialog : DialogFragment() {
@@ -105,21 +103,18 @@ class ProfilePickerDialog : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         if (startInManageMode) manageMode = true
         ExpMotion.enterScreen(view)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExperimentalMobileDesign.applyReducedGlass(view)
-            view.findViewById<TextView>(R.id.btn_profile_picker_create)
-                ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            view.findViewById<TextView>(R.id.btn_profile_picker_manage)
-                ?.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            val primary = com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                androidx.appcompat.R.attr.colorPrimary,
-                requireContext().getColor(R.color.m3_primary),
-            )
-            view.findViewById<TextView>(R.id.tv_profile_picker_brand)?.setTextColor(primary)
-            ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_create))
-            ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_manage))
-        }
+        view.findViewById<TextView>(R.id.btn_profile_picker_create)
+            ?.setBackgroundResource(R.drawable.bg_button_mobile)
+        view.findViewById<TextView>(R.id.btn_profile_picker_manage)
+            ?.setBackgroundResource(R.drawable.bg_outlined_chip)
+        val primary = com.google.android.material.color.MaterialColors.getColor(
+            requireContext(),
+            androidx.appcompat.R.attr.colorPrimary,
+            requireContext().getColor(R.color.m3_primary),
+        )
+        view.findViewById<TextView>(R.id.tv_profile_picker_brand)?.setTextColor(primary)
+        ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_create))
+        ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_manage))
         applyManageChrome(view)
         bindProfiles(view)
         view.findViewById<View>(R.id.btn_profile_picker_close)?.setOnClickListener {
@@ -330,7 +325,7 @@ class ProfilePickerDialog : DialogFragment() {
         item.findViewById<View>(R.id.v_profile_active_ring).apply {
             val wasVisible = visibility == View.VISIBLE
             visibility = if (!manageMode && profile.id == activeId) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+            if (visibility == View.VISIBLE) {
                 val primary = com.google.android.material.color.MaterialColors.getColor(
                     this,
                     androidx.appcompat.R.attr.colorPrimary,
@@ -605,6 +600,8 @@ class ProfilePickerDialog : DialogFragment() {
                 isChecked = profile.isKids
             }
         }
+        form.findViewById<TextView>(R.id.tv_profile_kids_helper)?.visibility =
+            if (profile.isGuest) View.GONE else View.VISIBLE
         val pinInput = form.findViewById<EditText>(R.id.et_profile_create_pin)
         val clearPin = form.findViewById<CheckBox>(R.id.cb_profile_clear_pin)
         if (profile.isGuest) {
@@ -717,11 +714,7 @@ class ProfilePickerDialog : DialogFragment() {
 
     private fun confirmEndGuest(profile: UserProfile) {
         val context = requireContext()
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context)
         builder
             .setMessage(getString(R.string.profile_guest_end_confirm))
             .setPositiveButton(R.string.profile_guest_end) { _, _ ->
@@ -748,11 +741,7 @@ class ProfilePickerDialog : DialogFragment() {
 
     private fun confirmDeleteProfile(profile: UserProfile) {
         val context = requireContext()
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context)
         builder
             .setMessage(getString(R.string.profile_delete_confirm, profile.displayName))
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -785,7 +774,6 @@ class ProfilePickerDialog : DialogFragment() {
         pinInput: EditText?,
         kidsCheck: CheckBox?,
     ) {
-        if (!ExperimentalMobileDesign.enabled()) return
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
             cancel.applyExpPress()
             ok.applyExpPress()
@@ -793,12 +781,11 @@ class ProfilePickerDialog : DialogFragment() {
             pinInput?.applyExpPress()
             kidsCheck?.applyExpPress()
         }
-        cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-        ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-        ExperimentalMobileDesign.applyReducedGlass(form)
-        form.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-        nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-        pinInput?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+        cancel.setBackgroundResource(R.drawable.bg_outlined_chip)
+        ok.setBackgroundResource(R.drawable.bg_button_mobile)
+        form.setBackgroundResource(R.drawable.bg_profile_dialog)
+        nameInput.setBackgroundResource(R.drawable.bg_search_edittext)
+        pinInput?.setBackgroundResource(R.drawable.bg_search_edittext)
         ExpMotion.revealHeader(
             form.findViewById(R.id.tv_profile_create_title),
             form.findViewById(R.id.v_profile_create_rule),
@@ -869,11 +856,17 @@ class ProfilePickerDialog : DialogFragment() {
         val input = view.findViewById<EditText>(R.id.et_profile_pin)
 
         val dialog = (
-            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-            else AlertDialog.Builder(context)
+            androidx.appcompat.app.AlertDialog.Builder(context)
         ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
+        view.findViewById<TextView>(R.id.btn_profile_pin_forgot)?.apply {
+            visibility = android.view.View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showPinRecoveryDialog(profile, dialog, onVerified)
+            }
+        }
         view.findViewById<TextView>(R.id.btn_profile_pin_cancel).setOnClickListener {
             ExpMotion.hapticTap(it)
             dialog.dismiss()
@@ -895,22 +888,102 @@ class ProfilePickerDialog : DialogFragment() {
             }
         }
         dialog.setOnShowListener {
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.applyReducedGlass(view)
-                view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                ExpMotion.enterScreen(view)
-                ExpDialogChrome.polishShown(dialog)
-                input.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                view.findViewById<TextView>(R.id.btn_profile_pin_cancel)
-                    ?.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                view.findViewById<TextView>(R.id.btn_profile_pin_ok)
-                    ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                ExpMotion.revealHeader(
-                    view.findViewById(R.id.pav_profile_pin_avatar),
-                    view.findViewById(R.id.tv_profile_pin_title),
-                    view.findViewById(R.id.v_profile_pin_rule),
+            view.setBackgroundResource(R.drawable.bg_profile_dialog)
+            ExpMotion.enterScreen(view)
+            ExpDialogChrome.polishShown(dialog)
+            input.setBackgroundResource(R.drawable.bg_search_edittext)
+            view.findViewById<TextView>(R.id.btn_profile_pin_cancel)
+                ?.setBackgroundResource(R.drawable.bg_outlined_chip)
+            view.findViewById<TextView>(R.id.btn_profile_pin_ok)
+                ?.setBackgroundResource(R.drawable.bg_button_mobile)
+            ExpMotion.revealHeader(
+                view.findViewById(R.id.pav_profile_pin_avatar),
+                view.findViewById(R.id.tv_profile_pin_title),
+                view.findViewById(R.id.v_profile_pin_rule),
+            )
+            ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_pin_rule))
+        }
+        dialog.show()
+        input.requestFocus()
+    }
+
+    /**
+     * Forgot-PIN path: the household parental PIN or the admin recovery PIN
+     * removes a forgotten profile PIN and unlocks the profile.
+     */
+    private fun showPinRecoveryDialog(
+        profile: UserProfile,
+        pinDialog: androidx.appcompat.app.AlertDialog,
+        onVerified: () -> Unit,
+    ) {
+        val context = requireContext()
+        val hasRecovery = UserPreferences.parentalControlPin.isNotBlank() ||
+            UserPreferences.parentalControlAdminPin.isNotBlank()
+        if (!hasRecovery) {
+            ExpDialogChrome.notify(
+                context,
+                getString(R.string.profile_pin_recovery_unavailable),
+                R.string.profile_pin_forgot,
+            )
+            return
+        }
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_profile_pin, null, false)
+        view.findViewById<ProfileAvatarView>(R.id.pav_profile_pin_avatar)
+            .bind(profile, textSizeSp = 22f)
+        val title = view.findViewById<TextView>(R.id.tv_profile_pin_title)
+        title.text = getString(R.string.profile_pin_recovery_title)
+        // Explanatory line under the title — the shared PIN layout has no
+        // dedicated message slot.
+        val explanation = TextView(context).apply {
+            text = getString(R.string.profile_pin_recovery_message, profile.displayName)
+            gravity = android.view.Gravity.CENTER
+            setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.profile_text_secondary))
+            textSize = 13f
+        }
+        (title.parent as? android.widget.LinearLayout)?.let { parent ->
+            val idx = parent.indexOfChild(title) + 1
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            lp.topMargin = (8 * resources.displayMetrics.density).toInt()
+            parent.addView(explanation, idx, lp)
+        }
+        val input = view.findViewById<EditText>(R.id.et_profile_pin)
+        input.hint = getString(R.string.settings_parental_pin_hint)
+
+        val dialog = (
+            androidx.appcompat.app.AlertDialog.Builder(context)
+        ).setView(view).create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        view.findViewById<TextView>(R.id.btn_profile_pin_cancel).setOnClickListener {
+            ExpMotion.hapticTap(it)
+            dialog.dismiss()
+        }
+        view.findViewById<TextView>(R.id.btn_profile_pin_ok).setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val pin = input.text?.toString()?.trim().orEmpty()
+            val ok = UserPreferences.verifyParentalControlPin(pin) ||
+                UserPreferences.verifyParentalControlAdminPin(pin)
+            if (ok) {
+                UserPreferences.registerParentalPinSuccess()
+                ProfileManager.clearPin(profile.id)
+                dialog.dismiss()
+                pinDialog.dismiss()
+                ExpDialogChrome.notify(
+                    context,
+                    getString(R.string.profile_pin_recovery_success, profile.displayName),
+                    R.string.profile_pin_recovery_title,
                 )
-                ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_pin_rule))
+                onVerified()
+            } else {
+                UserPreferences.registerParentalPinFailure()
+                ExpDialogChrome.notify(
+                    context,
+                    R.string.profile_pin_recovery_invalid,
+                    R.string.profile_pin_recovery_title,
+                )
             }
         }
         dialog.show()
@@ -1044,23 +1117,20 @@ class ProfilePickerDialog : DialogFragment() {
             })
 
             val dialog = (
-                if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-                else AlertDialog.Builder(context)
+                androidx.appcompat.app.AlertDialog.Builder(context)
             ).setView(view).create()
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             val cancel = view.findViewById<TextView>(R.id.btn_profile_create_cancel)
             val ok = view.findViewById<TextView>(R.id.btn_profile_create_ok)
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    cancel.applyExpPress()
-                    ok.applyExpPress()
-                    kidsCheck.applyExpPress()
-                    nameInput.applyExpPress()
-                    pinInput?.applyExpPress()
-                }
-                cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                cancel.applyExpPress()
+                ok.applyExpPress()
+                kidsCheck.applyExpPress()
+                nameInput.applyExpPress()
+                pinInput?.applyExpPress()
             }
+            cancel.setBackgroundResource(R.drawable.bg_outlined_chip)
+            ok.setBackgroundResource(R.drawable.bg_button_mobile)
             cancel.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 dialog.dismiss()
@@ -1109,19 +1179,16 @@ class ProfilePickerDialog : DialogFragment() {
                 onCreated?.invoke(created)
             }
             dialog.setOnShowListener {
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExperimentalMobileDesign.applyReducedGlass(view)
-                    view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                    ExpDialogChrome.polishShown(dialog)
-                    nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    pinInput?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    ExpMotion.revealHeader(
-                        view.findViewById(R.id.tv_profile_create_title),
-                        view.findViewById(R.id.v_profile_create_rule),
-                        avatarLabel,
-                    )
-                    ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_create_rule))
-                }
+                view.setBackgroundResource(R.drawable.bg_profile_dialog)
+                ExpDialogChrome.polishShown(dialog)
+                nameInput.setBackgroundResource(R.drawable.bg_search_edittext)
+                pinInput?.setBackgroundResource(R.drawable.bg_search_edittext)
+                ExpMotion.revealHeader(
+                    view.findViewById(R.id.tv_profile_create_title),
+                    view.findViewById(R.id.v_profile_create_rule),
+                    avatarLabel,
+                )
+                ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_create_rule))
             }
             dialog.show()
             nameInput.requestFocus()
@@ -1262,9 +1329,7 @@ class ProfilePickerDialog : DialogFragment() {
                     isClickable = true
                     contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-                    }
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
                     setOnClickListener {
                         ExpMotion.hapticTap(it)
                         onSelect(palette.key)
@@ -1272,7 +1337,7 @@ class ProfilePickerDialog : DialogFragment() {
                 }
                 row.addView(orb)
             }
-            label.setText(ProfileAvatarStyle.paletteFor(selectedKey).titleRes)
+            label.setText(ProfileAvatarStyle.avatarFor(selectedKey).titleRes)
         }
     }
 }

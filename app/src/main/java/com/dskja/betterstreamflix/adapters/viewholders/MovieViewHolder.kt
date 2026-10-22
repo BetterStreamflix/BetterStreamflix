@@ -6,8 +6,6 @@ import com.dskja.betterstreamflix.adapters.viewholders.detail.bindMovieTvDetail
 
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -94,6 +92,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
+import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
@@ -148,8 +147,7 @@ class MovieViewHolder(
         get() = AppDatabase.getInstanceOrNull(context)
 
     init {
-        if (ExperimentalMobileDesign.enabled() &&
-            (_binding is ItemMovieMobileBinding ||
+        if ((_binding is ItemMovieMobileBinding ||
                 _binding is ItemMovieGridMobileBinding ||
                 _binding is ItemCategorySwiperMobileBinding ||
                 _binding is ItemMovieTvBinding ||
@@ -214,9 +212,6 @@ class MovieViewHolder(
             is ContentDetailTabsMobileBinding -> displayTabsMobile(_binding)
             is ContentDetailTrailerMobileBinding -> displayTrailerMobile(_binding)
             is ContentDetailTrailerTvBinding -> displayTrailerTv(_binding)
-            is ContentDetailAboutMobileBinding -> displayAboutMobile(_binding)
-            is ContentDetailTabsMobileBinding -> displayTabsMobile(_binding)
-            is ContentDetailTrailerMobileBinding -> displayTrailerMobile(_binding)
             is ContentDetailAboutMobileBinding -> displayAboutMobile(_binding)
         }
     }
@@ -388,8 +383,8 @@ class MovieViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            if (show) {
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
@@ -397,8 +392,8 @@ class MovieViewHolder(
         binding.tvMovieReleasedYear.apply {
             val year = movie.released?.format("yyyy")
             text = year ?: context.getString(R.string.movie_item_type)
-            if (ExperimentalMobileDesign.enabled() && !year.isNullOrBlank()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            if (!year.isNullOrBlank()) {
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 val wasVisible = visibility == View.VISIBLE
                 visibility = View.VISIBLE
                 if (!wasVisible) ExpMotion.popIn(this)
@@ -407,26 +402,24 @@ class MovieViewHolder(
 
         bindMovieProgress(binding.pbMovieProgress)
         bindMovieRemainingPill(binding.root, continueWatching = movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM)
-        if (ExperimentalMobileDesign.enabled() &&
-            movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM
+        if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM
         ) {
             ExpMotion.kenBurns(binding.ivMoviePoster)
         }
 
         binding.tvMovieTitle.text = movie.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
             imageView = binding.ivMovieLogo,
             titleView = null,
-            logoUrl = movie.logo,
-            title = movie.title,
+            movie = movie,
             hideUntilReady = true,
         )
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM) {
-                binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                binding.root.setBackgroundResource(R.drawable.bg_cinema_glass_card)
             }
             ExpMotion.kenBurns(binding.ivMoviePoster)
             ExpMotion.revealHeader(binding.tvMovieTitle)
@@ -582,8 +575,8 @@ class MovieViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            if (show) {
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
@@ -591,8 +584,8 @@ class MovieViewHolder(
         binding.tvMovieReleasedYear.apply {
             val year = movie.released?.format("yyyy")
             text = year
-            if (ExperimentalMobileDesign.enabled() && !year.isNullOrBlank()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            if (!year.isNullOrBlank()) {
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 setPadding(
                     (6 * context.resources.displayMetrics.density).toInt(),
                     (2 * context.resources.displayMetrics.density).toInt(),
@@ -610,15 +603,14 @@ class MovieViewHolder(
         bindMovieProgress(binding.pbMovieProgress)
 
         binding.tvMovieTitle.text = movie.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
             imageView = binding.ivMovieLogo,
             titleView = null,
-            logoUrl = movie.logo,
-            title = movie.title,
+            movie = movie,
             hideUntilReady = true,
         )
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.kenBurns(binding.ivMoviePoster)
@@ -715,24 +707,17 @@ class MovieViewHolder(
         }
         if (itemSelected) {
             val width = (3 * context.resources.displayMetrics.density).toInt()
-            val stroke = if (ExperimentalMobileDesign.enabled()) {
-                com.google.android.material.color.MaterialColors.getColor(
+            val stroke = com.google.android.material.color.MaterialColors.getColor(
                     view,
                     androidx.appcompat.R.attr.colorPrimary,
                 )
-            } else {
-                ContextCompat.getColor(context, R.color.favorite_selected)
-            }
             view.background = GradientDrawable().apply {
                 setColor(Color.TRANSPARENT)
                 setStroke(width, stroke)
-                if (ExperimentalMobileDesign.enabled()) {
-                    cornerRadius = 10f * context.resources.displayMetrics.density
-                }
+                cornerRadius = 10f * context.resources.displayMetrics.density
             }
             view.setPadding(width, width, width, width)
-            if (ExperimentalMobileDesign.enabled() &&
-                view.getTag(R.id.exp_enter_animated_tag) != "selected"
+            if (view.getTag(R.id.exp_enter_animated_tag) != "selected"
             ) {
                 view.setTag(R.id.exp_enter_animated_tag, "selected")
                 ExpMotion.popIn(view)
@@ -772,8 +757,8 @@ class MovieViewHolder(
     private fun setRibbonVisible(view: View, visible: Boolean) {
         val wasVisible = view.visibility == View.VISIBLE
         view.visibility = if (visible) View.VISIBLE else View.GONE
-        if (visible && ExperimentalMobileDesign.enabled()) {
-            view.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+        if (visible) {
+            view.setBackgroundResource(R.drawable.bg_detail_icon_chip)
             val pad = (4 * context.resources.displayMetrics.density).toInt()
             view.setPadding(pad, pad, pad, pad)
             if (!wasVisible || view.getTag(R.id.exp_enter_animated_tag) != true) {
@@ -963,7 +948,7 @@ class MovieViewHolder(
             )
         }
 
-        FeaturedSwiperChrome.bindListButton(
+        FeaturedSwiperChrome.bindMobileListButton(
             binding.btnSwiperAddToList,
             movie.isFavorite,
             title = movie.title,
@@ -988,12 +973,20 @@ class MovieViewHolder(
         ) { favorite ->
             if (movie.id != boundMovieId) return@observeListState
             movie.isFavorite = favorite
-            FeaturedSwiperChrome.bindListButton(
+            FeaturedSwiperChrome.bindMobileListButton(
                 binding.btnSwiperAddToList,
                 favorite,
                 title = movie.title,
             )
         }
+
+        // Featured cover upgrade — providers that only ship a portrait poster
+        // (e.g. Anikoto) get a real TMDb backdrop instead of a blurry crop.
+        FeaturedLogoEnrich.enrichBackdropIfNeeded(
+            anchor = itemView,
+            imageView = binding.ivSwiperBackground,
+            movie = movie,
+        )
 
         // Nested clickables confuse TalkBack — keep chrome buttons primary.
         binding.root.isClickable = false
@@ -1017,8 +1010,7 @@ class MovieViewHolder(
         bindMovieTvDetail(binding)
 
     private fun displayCastMobile(binding: ContentMovieCastMobileBinding) {
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.revealHeader(
@@ -1039,23 +1031,21 @@ class MovieViewHolder(
     }
 
     private fun displayCastTv(binding: ContentMovieCastTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.tvMovieCastLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvMovieCastLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvMovieCastLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieCastLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_movie_cast_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieCastLabel,
+                binding.root.findViewById(R.id.v_movie_cast_rule),
             )
-            binding.root.findViewById<View>(R.id.v_movie_cast_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvMovieCastLabel,
-                    binding.root.findViewById(R.id.v_movie_cast_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_cast_rule))
-                ExpMotion.staggerFirstFill(binding.hgvMovieCast)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_cast_rule))
+            ExpMotion.staggerFirstFill(binding.hgvMovieCast)
         }
         binding.hgvMovieCast.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1069,8 +1059,7 @@ class MovieViewHolder(
     }
 
     private fun displayDirectorsMobile(binding: ContentMovieDirectorsMobileBinding) {
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.revealHeader(
@@ -1089,23 +1078,21 @@ class MovieViewHolder(
         }
     }
     private fun displayDirectorsTv(binding: ContentMovieDirectorsTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.tvMovieDirectorsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvMovieDirectorsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvMovieDirectorsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieDirectorsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_movie_directors_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieDirectorsLabel,
+                binding.root.findViewById(R.id.v_movie_directors_rule),
             )
-            binding.root.findViewById<View>(R.id.v_movie_directors_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvMovieDirectorsLabel,
-                    binding.root.findViewById(R.id.v_movie_directors_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
-                ExpMotion.staggerFirstFill(binding.hgvMovieDirectors)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
+            ExpMotion.staggerFirstFill(binding.hgvMovieDirectors)
         }
         binding.hgvMovieDirectors.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1120,8 +1107,7 @@ class MovieViewHolder(
 
     private fun displayRecommendationsMobile(binding: ContentMovieRecommendationsMobileBinding) {
         binding.root.tag = DETAIL_SECTION_RECOMMENDATIONS
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.revealHeader(
@@ -1156,25 +1142,23 @@ class MovieViewHolder(
     }
 
     private fun displayRecommendationsTv(binding: ContentMovieRecommendationsTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.tvMovieRecommendationsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvMovieRecommendationsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvMovieRecommendationsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieRecommendationsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_movie_recommendations_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieRecommendationsLabel,
+                binding.root.findViewById(R.id.v_movie_recommendations_rule),
             )
-            binding.root.findViewById<View>(R.id.v_movie_recommendations_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvMovieRecommendationsLabel,
-                    binding.root.findViewById(R.id.v_movie_recommendations_rule),
-                )
-                ExpMotion.pulseAccentRule(
-                    binding.root.findViewById(R.id.v_movie_recommendations_rule),
-                )
-                ExpMotion.staggerFirstFill(binding.hgvMovieRecommendations)
-            }
+            ExpMotion.pulseAccentRule(
+                binding.root.findViewById(R.id.v_movie_recommendations_rule),
+            )
+            ExpMotion.staggerFirstFill(binding.hgvMovieRecommendations)
         }
         binding.hgvMovieRecommendations.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1200,7 +1184,7 @@ class MovieViewHolder(
         val show = watchHistory != null && watchHistory.durationMillis > 0
         val wasVisible = bar.visibility == View.VISIBLE
         bar.visibility = if (show) View.VISIBLE else View.GONE
-        if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || bar.progress != target)) {
+        if (show && (!wasVisible || bar.progress != target)) {
             android.animation.ObjectAnimator.ofInt(bar, "progress", 0, target)
                 .setDuration(420L)
                 .start()
@@ -1216,12 +1200,10 @@ class MovieViewHolder(
             remaining.text = com.dskja.betterstreamflix.ui.DetailWatchLabels
                 .remainingMinutesLabel(context, watchHistory)
                 ?: context.getString(R.string.continue_watching_percent, 0)
-            if (ExperimentalMobileDesign.enabled()) {
-                remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            }
+            remaining.setBackgroundResource(R.drawable.bg_meta_pill)
             val wasVisible = remaining.visibility == View.VISIBLE
             remaining.visibility = View.VISIBLE
-            if (ExperimentalMobileDesign.enabled() && !wasVisible) ExpMotion.popIn(remaining)
+            if (!wasVisible) ExpMotion.popIn(remaining)
         } else {
             remaining.visibility = View.GONE
         }

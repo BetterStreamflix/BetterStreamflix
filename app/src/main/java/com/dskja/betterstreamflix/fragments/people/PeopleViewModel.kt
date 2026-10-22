@@ -131,11 +131,15 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                 page = 1
                 _state.emit(
                     State.SuccessLoading(
-                        people = enriched,
+                        people = enriched.copy(
+                            filmography = filterHidden(enriched.filmography),
+                        ),
                         hasMore = providerHadCredits,
                     ),
                 )
                 return@launch
+            } catch (e: CancellationException) {
+                throw e
             } catch (primary: Exception) {
                 // TMDb numeric person ids (from enrichment) 404 on HTML providers.
                 val tmdbId = id.toIntOrNull()
@@ -154,10 +158,14 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
 
             _state.emit(
                 State.SuccessLoading(
-                    people = people,
+                    people = people.copy(
+                        filmography = filterHidden(people.filmography),
+                    ),
                     hasMore = false,
                 ),
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("PeopleViewModel", "getPeople: ", e)
             _state.emit(State.FailedLoading(e))
@@ -185,11 +193,14 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                 _state.emit(
                     State.SuccessLoading(
                         people = currentState.people.copy(
-                            filmography = currentState.people.filmography + people.filmography
+                            filmography = currentState.people.filmography +
+                            filterHidden(people.filmography)
                         ),
                         hasMore = people.filmography.isNotEmpty(),
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("PeopleViewModel", "loadMorePeopleFilmography: ", e)
                 // Keep the already-loaded person page; just stop pagination.
@@ -225,6 +236,14 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
             filmography = mergeFilmography(people.filmography, tmdb.filmography),
         )
     }
+
+    private fun filterHidden(
+        shows: List<com.dskja.betterstreamflix.models.Show>,
+    ): List<com.dskja.betterstreamflix.models.Show> =
+        com.dskja.betterstreamflix.home.SeriesFastForward.filterTasteHidden(
+            com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext,
+            shows,
+        )
 
     private fun mergeFilmography(
         primary: List<com.dskja.betterstreamflix.models.Show>,

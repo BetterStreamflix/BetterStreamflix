@@ -63,42 +63,40 @@ class ShowOptionsMobileDialog(
         findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
             ?.setBackgroundColor(Color.TRANSPARENT)
 
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            ExpMotion.enterScreen(binding.root)
-            with(ExpPressEffects) {
-                listOf(
-                    R.id.btn_option_episode_open_tv_show,
-                    R.id.btn_option_show_favorite,
-                    R.id.btn_option_show_watched,
-                    R.id.btn_option_show_download,
-                    R.id.btn_option_episode_note,
-                    R.id.btn_option_episode_mark_all_previous_watched,
-                    R.id.btn_option_program_clear,
-                    R.id.btn_option_recently_watched_clear,
-                    R.id.btn_option_cancel,
-                ).forEach { id ->
-                    binding.root.findViewById<View>(id)?.let { btn ->
-                        btn.setBackgroundResource(
-                            if (id == R.id.btn_option_cancel) {
-                                ExperimentalMobileDesign.chipBackground()
-                            } else {
-                                ExperimentalMobileDesign.optionItemBackground()
-                            },
-                        )
-                        btn.applyExpPress()
-                    }
+        binding.root.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.enterScreen(binding.root)
+        with(ExpPressEffects) {
+            listOf(
+                R.id.btn_option_episode_open_tv_show,
+                R.id.btn_option_show_favorite,
+                R.id.btn_option_show_watched,
+                R.id.btn_option_show_download,
+                R.id.btn_option_show_taste,
+                R.id.btn_option_episode_note,
+                R.id.btn_option_episode_mark_all_previous_watched,
+                R.id.btn_option_program_clear,
+                R.id.btn_option_recently_watched_clear,
+                R.id.btn_option_cancel,
+            ).forEach { id ->
+                binding.root.findViewById<View>(id)?.let { btn ->
+                    btn.setBackgroundResource(
+                        if (id == R.id.btn_option_cancel) {
+                            R.drawable.bg_outlined_chip
+                        } else {
+                            R.drawable.bg_outlined_chip
+                        },
+                    )
+                    btn.applyExpPress()
                 }
             }
-            ExpMotion.revealHeader(
-                binding.ivOptionsShowPoster,
-                binding.tvOptionsShowTitle,
-                binding.tvShowSubtitle,
-                binding.root.findViewById(R.id.v_show_options_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_show_options_rule))
         }
+        ExpMotion.revealHeader(
+            binding.ivOptionsShowPoster,
+            binding.tvOptionsShowTitle,
+            binding.tvShowSubtitle,
+            binding.root.findViewById(R.id.v_show_options_rule),
+        )
+        ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_show_options_rule))
 
         when (show) {
             is Episode -> displayEpisode(show)
@@ -106,21 +104,20 @@ class ShowOptionsMobileDialog(
             is TvShow -> displayTvShow(show)
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
-            listOf(
-                R.id.btn_option_episode_open_tv_show,
-                R.id.btn_option_show_favorite,
-                R.id.btn_option_show_watched,
-                R.id.btn_option_show_download,
-                R.id.btn_option_episode_note,
-                R.id.btn_option_episode_mark_all_previous_watched,
-                R.id.btn_option_program_clear,
-                R.id.btn_option_recently_watched_clear,
-                R.id.btn_option_cancel,
-            ).forEachIndexed { index, id ->
-                binding.root.findViewById<View>(id)?.takeIf { it.visibility == View.VISIBLE }?.let { row ->
-                    row.postDelayed({ ExpMotion.popIn(row) }, 36L * index)
-                }
+        listOf(
+            R.id.btn_option_episode_open_tv_show,
+            R.id.btn_option_show_favorite,
+            R.id.btn_option_show_watched,
+            R.id.btn_option_show_download,
+            R.id.btn_option_show_taste,
+            R.id.btn_option_episode_note,
+            R.id.btn_option_episode_mark_all_previous_watched,
+            R.id.btn_option_program_clear,
+            R.id.btn_option_recently_watched_clear,
+            R.id.btn_option_cancel,
+        ).forEachIndexed { index, id ->
+            binding.root.findViewById<View>(id)?.takeIf { it.visibility == View.VISIBLE }?.let { row ->
+                row.postDelayed({ ExpMotion.popIn(row) }, 36L * index)
             }
         }
 
@@ -252,6 +249,8 @@ class ShowOptionsMobileDialog(
             }
         }
 
+        binding.btnOptionShowTaste.visibility = View.GONE
+
         binding.btnOptionEpisodeNote.apply {
             text = EpisodeNotesUi.optionLabel(context, episode.id)
             visibility = View.VISIBLE
@@ -370,8 +369,8 @@ class ShowOptionsMobileDialog(
         binding.tvOptionsShowTitle.text = movie.title
 
         binding.tvShowSubtitle.text = movie.released?.format("yyyy")
-        if (ExperimentalMobileDesign.enabled() && !binding.tvShowSubtitle.text.isNullOrBlank()) {
-            binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+        if (!binding.tvShowSubtitle.text.isNullOrBlank()) {
+            binding.tvShowSubtitle.setBackgroundResource(R.drawable.bg_meta_pill)
             val density = context.resources.displayMetrics.density
             binding.tvShowSubtitle.setPadding(
                 (10 * density).toInt(),
@@ -413,18 +412,16 @@ class ShowOptionsMobileDialog(
                 freshMovie.isFavorite -> context.getString(R.string.option_show_unfavorite)
                 else -> context.getString(R.string.option_show_favorite)
             }
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(
-                    if (freshMovie.isFavorite) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.optionItemBackground(),
+            setBackgroundResource(
+                if (freshMovie.isFavorite) R.drawable.bg_button_mobile
+                else R.drawable.bg_outlined_chip,
+            )
+            if (freshMovie.isFavorite) {
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
                 )
-                if (freshMovie.isFavorite) {
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
-                        ),
-                    )
-                }
             }
             visibility = View.VISIBLE
         }
@@ -459,18 +456,16 @@ class ShowOptionsMobileDialog(
                 freshMovie.isWatched -> context.getString(R.string.option_show_unwatched)
                 else -> context.getString(R.string.option_show_watched)
             }
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(
-                    if (freshMovie.isWatched) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.optionItemBackground(),
+            setBackgroundResource(
+                if (freshMovie.isWatched) R.drawable.bg_button_mobile
+                else R.drawable.bg_outlined_chip,
+            )
+            if (freshMovie.isWatched) {
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
                 )
-                if (freshMovie.isWatched) {
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
-                        ),
-                    )
-                }
             }
             visibility = View.VISIBLE
         }
@@ -496,6 +491,8 @@ class ShowOptionsMobileDialog(
 
         binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
+
+        bindTasteOption(freshMovie)
 
         binding.btnOptionProgramClear.apply {
             setOnClickListener {
@@ -543,8 +540,8 @@ class ShowOptionsMobileDialog(
         binding.tvOptionsShowTitle.text = tvShow.title
 
         binding.tvShowSubtitle.text = tvShow.released?.format("yyyy")
-        if (ExperimentalMobileDesign.enabled() && !binding.tvShowSubtitle.text.isNullOrBlank()) {
-            binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+        if (!binding.tvShowSubtitle.text.isNullOrBlank()) {
+            binding.tvShowSubtitle.setBackgroundResource(R.drawable.bg_meta_pill)
             val density = context.resources.displayMetrics.density
             binding.tvShowSubtitle.setPadding(
                 (10 * density).toInt(),
@@ -586,18 +583,16 @@ class ShowOptionsMobileDialog(
             } else {
                 context.getString(R.string.option_show_favorite)
             }
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(
-                    if (freshTvShow.isFavorite) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.optionItemBackground(),
+            setBackgroundResource(
+                if (freshTvShow.isFavorite) R.drawable.bg_button_mobile
+                else R.drawable.bg_outlined_chip,
+            )
+            if (freshTvShow.isFavorite) {
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
                 )
-                if (freshTvShow.isFavorite) {
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
-                        ),
-                    )
-                }
             }
             visibility = View.VISIBLE
         }
@@ -609,6 +604,8 @@ class ShowOptionsMobileDialog(
         binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
         binding.btnOptionProgramClear.visibility = View.GONE
+
+        bindTasteOption(freshTvShow)
 
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
@@ -624,6 +621,30 @@ class ShowOptionsMobileDialog(
                 dismiss()
             }
             visibility = if (recentlyWatchedAt != null) View.VISIBLE else View.GONE
+        }
+    }
+
+    /**
+     * Long-press parity with TV: opens the shared taste overflow
+     * (More like this / Not interested / Hide) for this title.
+     */
+    private fun bindTasteOption(item: AppAdapter.Item) {
+        binding.btnOptionShowTaste.apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val fragment = context.toActivity()?.getCurrentFragment()
+                if (fragment != null) {
+                    com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                        fragment = fragment,
+                        item = item,
+                        onChanged = { dismiss() },
+                        onMoreLike = { dismiss() },
+                    )
+                } else {
+                    dismiss()
+                }
+            }
         }
     }
 

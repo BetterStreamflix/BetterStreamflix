@@ -2,6 +2,12 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <Preference
+        android:key="SETTINGS_SEARCH"
+        android:title="@string/settings_search_entry_title"
+        android:summary="@string/settings_search_entry_summary"
+        android:icon="@drawable/ic_search" />
+
     <PreferenceScreen
         android:key="screen_content"
         android:title="@string/settings_section_content_title"
@@ -23,24 +29,6 @@
                 android:title="@string/settings_show_quarantined_providers_title"
                 android:summary="@string/settings_show_quarantined_providers_summary"
                 android:defaultValue="false" />
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN"
-                android:title="@string/settings_provider_trust_title"
-                android:summary="@string/settings_provider_trust_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <Preference
-                android:key="PROVIDER_HEALTH_OPEN"
-                android:title="@string/settings_provider_health_title"
-                android:summary="@string/settings_provider_health_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <Preference
-                android:key="PROVIDER_PASSPORT_OPEN"
-                android:title="@string/settings_provider_passport_title"
-                android:summary="@string/settings_provider_passport_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
 
             <SwitchPreferenceCompat
                 android:key="SHOW_VAVOO_VOD_PROVIDERS"
@@ -69,12 +57,6 @@
                 android:key="TMDB_CLEAR_CACHE"
                 android:title="@string/settings_tmdb_clear_cache_title"
                 android:summary="@string/settings_tmdb_clear_cache_summary" />
-
-            <SwitchPreferenceCompat
-                android:key="ENABLE_TMDB_LOGOS"
-                android:title="@string/settings_enable_tmdb_logos_title"
-                android:summary="@string/settings_enable_tmdb_logos_summary"
-                android:defaultValue="true" />
 
             <Preference
                 android:key="TMDB_CLEAR_LOGO_CACHE"
@@ -284,6 +266,17 @@
         </PreferenceCategory>
 
         <PreferenceCategory
+            android:key="pc_profile_integrations"
+            android:title="@string/profile_section_integrations">
+
+            <Preference
+                android:key="PROFILE_INTEGRATIONS"
+                android:title="@string/profile_integrations_title"
+                android:summary="@string/profile_integrations_summary_all" />
+
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_profile_parental"
             android:title="@string/profile_section_parental">
 
@@ -329,52 +322,6 @@
                 android:summary="@string/settings_parental_unlock_summary" />
         </PreferenceCategory>
 
-        <PreferenceCategory
-            android:key="pc_profile_integrations"
-            android:title="@string/profile_section_integrations">
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_TRAKT"
-                android:title="@string/profile_integration_trakt"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_JELLYFIN"
-                android:title="@string/profile_integration_jellyfin"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_PLEX"
-                android:title="@string/profile_integration_plex"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_DEBRID"
-                android:title="@string/profile_integration_debrid"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_SIMKL"
-                android:title="@string/profile_integration_simkl"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_OPENSUBTITLES"
-                android:title="@string/profile_integration_opensubtitles"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_TMDB"
-                android:title="@string/profile_integration_tmdb"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-        </PreferenceCategory>
     </PreferenceScreen>
 
     <!-- Kids Fortress — Parent Dashboard (adult sessions; Mobile + TV parity KF-010 / SS-B10-11). -->
@@ -448,6 +395,16 @@
                 android:summary="@string/platform_mpv_status_summary"
                 app:iconSpaceReserved="false"
                 app:selectable="false" />
+            <Preference
+                android:key="EXTERNAL_PLAYER_DEFAULT"
+                android:title="@string/settings_external_player_title"
+                android:summary="@string/settings_external_player_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="EXTERNAL_PLAYER_CLEAR"
+                android:title="@string/external_player_clear_default"
+                android:summary="@string/external_player_clear_default_summary"
+                app:iconSpaceReserved="false" />
             <SwitchPreferenceCompat
                 android:key="CAST_QUEUE_NEXT_EPISODE"
                 android:title="@string/platform_cast_queue_title"
@@ -760,57 +717,6 @@
                 android:summary="@string/platform_test_debrid_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceScreen>
-
-        <PreferenceScreen
-            android:key="screen_platform_plugins"
-            android:title="@string/platform_plugins_category"
-            android:summary="@string/platform_plugin_catalog_summary"
-            android:widgetLayout="@layout/preference_widget_chevron"
-            app:iconSpaceReserved="false">
-            <SwitchPreferenceCompat
-                android:key="plugin_disable_jellyfin"
-                android:title="@string/platform_plugin_hide_jellyfin_title"
-                android:summary="@string/platform_plugin_hide_jellyfin_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-            <SwitchPreferenceCompat
-                android:key="plugin_disable_plex"
-                android:title="@string/platform_plugin_hide_plex_title"
-                android:summary="@string/platform_plugin_hide_plex_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-            <SwitchPreferenceCompat
-                android:key="plugin_disable_demo"
-                android:title="@string/platform_plugin_hide_demo_title"
-                android:summary="@string/platform_plugin_hide_demo_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_catalog"
-                android:title="@string/platform_plugin_catalog_title"
-                android:summary="@string/platform_plugin_catalog_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_manage"
-                android:title="@string/platform_plugin_manage_title"
-                android:summary="@string/platform_plugin_manage_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_extensions"
-                android:title="@string/platform_plugin_extensions_title"
-                android:summary="@string/platform_plugin_extensions_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_install_local"
-                android:title="@string/platform_plugin_install_local_title"
-                android:summary="@string/platform_plugin_install_local_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_reload"
-                android:title="@string/platform_plugin_reload_title"
-                android:summary="@string/platform_plugin_reload_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceScreen>
     </PreferenceScreen>
 
     <PreferenceScreen
@@ -828,12 +734,16 @@
                 android:summaryOn="@string/settings_autoplay_on"
                 android:summaryOff="@string/settings_autoplay_off" />
 
-            <EditTextPreference
-                android:key="p_settings_autoplay_buffer"
+            <SeekBarPreference
+                android:key="AUTOPLAY_BUFFER"
                 android:title="@string/settings_autoplay_buffer_title"
-                android:dialogMessage="@string/settings_autoplay_buffer_dialog_message"
+                android:summary="@string/settings_autoplay_buffer_summary"
                 android:defaultValue="3"
-                android:inputType="number" />
+                android:max="30"
+                app:min="0"
+                app:seekBarIncrement="1"
+                app:showSeekBarValue="true"
+                app:updatesContinuously="true" />
         </PreferenceCategory>
 
         <PreferenceCategory
@@ -919,7 +829,7 @@
         android:summary="@string/settings_screen_downloads_summary"
         android:widgetLayout="@layout/preference_widget_chevron">
 
-        <PreferenceCategory android:title="@string/settings_screen_downloads">
+        <PreferenceCategory android:title="@string/settings_downloads_cat_storage">
 
             <ListPreference
                 android:key="DOWNLOAD_STORAGE_LOCATION"
@@ -937,7 +847,8 @@
 
             <Preference
                 android:key="DOWNLOAD_STORAGE_CLEAR_FOLDER"
-                android:title="@string/settings_download_storage_clear_folder" />
+                android:title="@string/settings_download_storage_clear_folder"
+                android:summary="@string/settings_download_storage_clear_folder_summary" />
 
             <Preference
                 android:key="DOWNLOAD_STORAGE_PATH"
@@ -945,24 +856,23 @@
                 android:selectable="false" />
 
             <Preference
-                android:key="EXTERNAL_PLAYER_DEFAULT"
-                android:title="@string/settings_external_player_title"
-                android:summary="@string/settings_external_player_summary" />
+                android:key="DOWNLOAD_STORAGE_USED"
+                android:title="@string/settings_download_storage_used"
+                android:selectable="false" />
 
-            <Preference
-                android:key="EXTERNAL_PLAYER_CLEAR"
-                android:title="@string/external_player_clear_default"
-                android:summary="@string/external_player_clear_default_summary" />
+            <SeekBarPreference
+                android:key="DOWNLOAD_SOFT_LIMIT_GB"
+                android:title="@string/settings_download_soft_limit"
+                android:summary="@string/settings_download_soft_limit_summary"
+                android:defaultValue="20"
+                android:max="100"
+                app:min="0"
+                app:seekBarIncrement="5"
+                app:showSeekBarValue="true"
+                app:updatesContinuously="true" />
+        </PreferenceCategory>
 
-            <Preference
-                android:key="EXTERNAL_DOWNLOADER_DEFAULT"
-                android:title="@string/settings_external_downloader_title"
-                android:summary="@string/settings_external_downloader_summary" />
-
-            <Preference
-                android:key="EXTERNAL_DOWNLOADER_CLEAR"
-                android:title="@string/settings_external_downloader_clear"
-                android:summary="@string/settings_external_downloader_none" />
+        <PreferenceCategory android:title="@string/settings_downloads_cat_behavior">
 
             <SwitchPreference
                 android:key="DOWNLOAD_WIFI_ONLY"
@@ -974,6 +884,7 @@
             <ListPreference
                 android:key="DOWNLOAD_QUALITY_PRESET"
                 android:title="@string/settings_download_quality_preset"
+                android:summary="@string/settings_download_quality_preset_summary"
                 android:entries="@array/download_quality_preset_entries"
                 android:entryValues="@array/download_quality_preset_values"
                 android:defaultValue="ASK" />
@@ -981,13 +892,21 @@
             <ListPreference
                 android:key="DOWNLOAD_MAX_CONCURRENT"
                 android:title="@string/settings_download_max_concurrent"
+                android:summary="@string/settings_download_max_concurrent_summary"
                 android:entries="@array/download_max_concurrent_entries"
                 android:entryValues="@array/download_max_concurrent_values"
                 android:defaultValue="2" />
 
             <SwitchPreference
+                android:key="DOWNLOAD_FILTER_CURRENT_PROVIDER"
+                android:title="@string/settings_download_filter_provider"
+                android:summary="@string/settings_download_filter_provider_summary"
+                android:defaultValue="false" />
+
+            <SwitchPreference
                 android:key="DOWNLOAD_NOTIFY_COMPLETE"
                 android:title="@string/settings_download_notify_complete"
+                android:summary="@string/settings_download_notify_complete_summary"
                 android:defaultValue="true" />
 
             <Preference
@@ -996,16 +915,13 @@
                 android:summary="@string/settings_screen_notifications_summary"
                 android:widgetLayout="@layout/preference_widget_chevron" />
 
-            <SwitchPreference
-                android:key="DOWNLOAD_FILTER_CURRENT_PROVIDER"
-                android:title="@string/settings_download_filter_provider"
-                android:defaultValue="false" />
+            <Preference
+                android:key="DOWNLOAD_QUEUE_STATUS"
+                android:title="@string/settings_download_queue_status"
+                android:selectable="false" />
+        </PreferenceCategory>
 
-            <EditTextPreference
-                android:key="DOWNLOAD_SOFT_LIMIT_GB"
-                android:title="@string/settings_download_soft_limit"
-                android:defaultValue="20"
-                android:inputType="number" />
+        <PreferenceCategory android:title="@string/settings_downloads_cat_smart">
 
             <SwitchPreference
                 android:key="DOWNLOAD_SMART_ENABLED"
@@ -1016,6 +932,7 @@
             <ListPreference
                 android:key="DOWNLOAD_SMART_LOOKAHEAD"
                 android:title="@string/settings_download_smart_lookahead"
+                android:summary="@string/settings_download_smart_lookahead_summary"
                 android:entries="@array/download_smart_lookahead_entries"
                 android:entryValues="@array/download_smart_lookahead_values"
                 android:defaultValue="3" />
@@ -1023,6 +940,7 @@
             <ListPreference
                 android:key="DOWNLOAD_SMART_SERIES_QUOTA"
                 android:title="@string/settings_download_smart_series_quota"
+                android:summary="@string/settings_download_smart_series_quota_summary"
                 android:entries="@array/download_smart_series_quota_entries"
                 android:entryValues="@array/download_smart_series_quota_values"
                 android:defaultValue="3" />
@@ -1032,16 +950,22 @@
                 android:title="@string/settings_download_auto_delete_watched"
                 android:summary="@string/settings_download_auto_delete_watched_summary"
                 android:defaultValue="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_downloads_cat_downloader">
 
             <Preference
-                android:key="DOWNLOAD_STORAGE_USED"
-                android:title="@string/settings_download_storage_used"
-                android:selectable="false" />
+                android:key="EXTERNAL_DOWNLOADER_DEFAULT"
+                android:title="@string/settings_external_downloader_title"
+                android:summary="@string/settings_external_downloader_summary" />
 
             <Preference
-                android:key="DOWNLOAD_QUEUE_STATUS"
-                android:title="@string/settings_download_queue_status"
-                android:selectable="false" />
+                android:key="EXTERNAL_DOWNLOADER_CLEAR"
+                android:title="@string/settings_external_downloader_clear"
+                android:summary="@string/settings_external_downloader_none" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_downloads_cat_maintenance">
 
             <Preference
                 android:key="DOWNLOAD_RETRY_FAILED"
@@ -1050,15 +974,18 @@
 
             <Preference
                 android:key="DOWNLOAD_CLEAR_COMPLETED"
-                android:title="@string/settings_download_clear_completed" />
+                android:title="@string/settings_download_clear_completed"
+                android:summary="@string/settings_download_clear_completed_summary" />
 
             <Preference
                 android:key="DOWNLOAD_CLEAR_FAILED"
-                android:title="@string/settings_download_clear_failed" />
+                android:title="@string/settings_download_clear_failed"
+                android:summary="@string/settings_download_clear_failed_summary" />
 
             <Preference
                 android:key="DOWNLOAD_CLEAR_ALL"
-                android:title="@string/settings_download_clear_all" />
+                android:title="@string/settings_download_clear_all"
+                android:summary="@string/settings_download_clear_all_summary" />
         </PreferenceCategory>
     </PreferenceScreen>
 
@@ -1068,7 +995,20 @@
         android:summary="@string/settings_screen_notifications_summary"
         android:widgetLayout="@layout/preference_widget_chevron">
 
-        <PreferenceCategory android:title="@string/settings_screen_notifications">
+        <PreferenceCategory android:title="@string/settings_notify_cat_delivery">
+
+            <Preference
+                android:key="NOTIFICATIONS_SYSTEM_SETTINGS"
+                android:title="@string/settings_notifications_system_title"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
+            <Preference
+                android:key="NOTIFICATIONS_SEND_TEST"
+                android:title="@string/settings_notifications_test_title"
+                android:summary="@string/settings_notifications_test_summary" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_notify_cat_alerts">
 
             <SwitchPreference
                 android:key="NOTIFY_WATCHLIST_NEW_EPISODE"
@@ -1104,14 +1044,6 @@
                 android:title="@string/settings_app_language_title"
                 android:summary="@string/settings_app_language_summary"
                 android:defaultValue="system" />
-
-            <ListPreference
-                android:key="SELECTED_THEME"
-                android:title="@string/settings_theme_title"
-                android:summary="@string/settings_looks_locked_summary"
-                android:entries="@array/theme_names"
-                android:entryValues="@array/theme_values"
-                android:defaultValue="cinema_ink" />
 
             <ListPreference
                 android:key="LEANBACK_DENSITY"
@@ -1166,6 +1098,15 @@
                         android:summary="@string/settings_cinema_ambient_light_summary"
                         android:defaultValue="true"
                         android:dependency="CINEMA_ROOM" />
+
+                    <ListPreference
+                        android:key="CINEMA_AMBIENT_IDLE_MS"
+                        android:title="@string/settings_cinema_room_idle_title"
+                        android:summary="@string/settings_cinema_room_idle_summary"
+                        android:entries="@array/cinema_room_idle_names"
+                        android:entryValues="@array/cinema_room_idle_values"
+                        android:defaultValue="90000"
+                        android:dependency="TV_AMBIENT_MODE" />
 
                     <Preference
                         android:key="cinema_room_looks_info"
@@ -1239,6 +1180,47 @@
                     android:entries="@array/subtitle_studio_background_entries"
                     android:entryValues="@array/subtitle_studio_background_values"
                     android:defaultValue="128"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_TEXT_OPACITY"
+                    android:title="@string/subtitle_studio_text_opacity_title"
+                    android:entries="@array/subtitle_studio_opacity_entries"
+                    android:entryValues="@array/subtitle_studio_opacity_values"
+                    android:defaultValue="255"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_EDGE"
+                    android:title="@string/subtitle_studio_edge_title"
+                    android:entries="@array/subtitle_studio_edge_entries"
+                    android:entryValues="@array/subtitle_studio_edge_values"
+                    android:defaultValue="0"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_FONT"
+                    android:title="@string/subtitle_studio_font_title"
+                    android:entries="@array/subtitle_studio_font_entries"
+                    android:entryValues="@array/subtitle_studio_font_values"
+                    android:defaultValue="0"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_WINDOW"
+                    android:title="@string/subtitle_studio_window_title"
+                    android:summary="@string/subtitle_studio_window_summary"
+                    android:entries="@array/subtitle_studio_background_entries"
+                    android:entryValues="@array/subtitle_studio_background_values"
+                    android:defaultValue="0"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_MARGIN"
+                    android:title="@string/subtitle_studio_margin_title"
+                    android:entries="@array/subtitle_studio_margin_entries"
+                    android:entryValues="@array/subtitle_studio_margin_values"
+                    android:defaultValue="24"
                     app:useSimpleSummaryProvider="true" />
             </PreferenceScreen>
         </PreferenceCategory>
@@ -1519,123 +1501,6 @@
                 android:title="@string/connection_test_subdl_title"
                 android:summary="@string/connection_test_subdl_summary" />
         </PreferenceCategory>
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_trust"
-        android:title="@string/settings_provider_trust_title"
-        android:summary="@string/settings_provider_trust_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_summary"
-            android:title="@string/settings_provider_trust_title">
-
-            <Preference
-                android:key="PROVIDER_TRUST_SUMMARY"
-                android:title="@string/settings_provider_trust_title"
-                android:summary="@string/settings_provider_trust_summary"
-                android:selectable="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_TRUST_REFRESH"
-                android:title="@string/settings_provider_trust_refresh"
-                android:summary="@string/settings_provider_trust_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_outage"
-            android:title="@string/settings_provider_trust_outage_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_learned"
-            android:title="@string/settings_provider_trust_learned_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_pins"
-            android:title="@string/settings_provider_trust_pins_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_stack"
-            android:title="@string/settings_provider_trust_stack_title">
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN_HEALTH"
-                android:title="@string/settings_provider_trust_open_health"
-                android:summary="@string/settings_provider_health_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN_PASSPORT"
-                android:title="@string/settings_provider_trust_open_passport"
-                android:summary="@string/settings_provider_passport_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-        </PreferenceCategory>
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_health"
-        android:title="@string/settings_provider_health_title"
-        android:summary="@string/settings_provider_health_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_provider_health_summary"
-            android:title="@string/settings_provider_health_title">
-
-            <Preference
-                android:key="PROVIDER_HEALTH_SUMMARY"
-                android:title="@string/settings_provider_health_title"
-                android:summary="@string/settings_provider_health_summary"
-                android:selectable="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_HEALTH_REFRESH"
-                android:title="@string/settings_provider_health_refresh"
-                android:summary="@string/settings_provider_health_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_health_issues"
-            android:title="@string/settings_provider_health_issues_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_health_ok"
-            android:title="@string/settings_provider_health_ok_title" />
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_passport"
-        android:title="@string/settings_provider_passport_title"
-        android:summary="@string/settings_provider_passport_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_summary"
-            android:title="@string/settings_provider_passport_title">
-
-            <Preference
-                android:key="PROVIDER_PASSPORT_SUMMARY"
-                android:title="@string/settings_provider_passport_title"
-                android:summary="@string/settings_provider_passport_summary"
-                android:selectable="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_PASSPORT_REFRESH"
-                android:title="@string/settings_provider_passport_refresh"
-                android:summary="@string/settings_provider_passport_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_attention"
-            android:title="@string/settings_provider_passport_attention_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_fresh"
-            android:title="@string/settings_provider_passport_fresh_title" />
     </PreferenceScreen>
 
     <PreferenceScreen

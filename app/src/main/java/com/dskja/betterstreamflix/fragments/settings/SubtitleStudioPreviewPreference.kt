@@ -28,7 +28,10 @@ class SubtitleStudioPreviewPreference @JvmOverloads constructor(
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
-        paint(holder.findViewById(R.id.tv_subtitle_studio_preview) as? TextView)
+        val window = holder.findViewById(R.id.ll_subtitle_studio_window)
+        val tv = holder.findViewById(R.id.tv_subtitle_studio_preview) as? TextView
+        paint(tv)
+        paintWindow(window)
     }
 
     fun refresh() {
@@ -43,6 +46,8 @@ class SubtitleStudioPreviewPreference @JvmOverloads constructor(
             tv.text = SubtitleStudio.previewSampleText(tv.context)
             tv.setTextColor(style.foregroundColor)
             tv.textSize = sizeSp
+            tv.typeface = UserPreferences.captionTypefaceOrDefault()
+                ?: android.graphics.Typeface.DEFAULT
             // ST-015: dark text on fully transparent bg is unreadable — floor alpha.
             var bgColor = style.backgroundColor
             if (bgColor.getAlpha() == 0 && isDarkForeground(style.foregroundColor)) {
@@ -50,19 +55,42 @@ class SubtitleStudioPreviewPreference @JvmOverloads constructor(
             }
             val bg = GradientDrawable().apply {
                 setColor(bgColor)
-                cornerRadius = 10.dp(tv.context).toFloat()
+                cornerRadius = 6.dp(tv.context).toFloat()
                 // ST-006: hint EDGE_TYPE_OUTLINE (HIGH_CONTRAST) with a stroke.
                 if (style.edgeType == CaptionStyleCompat.EDGE_TYPE_OUTLINE) {
                     setStroke(2.dp(tv.context), style.edgeColor)
                 }
             }
             tv.background = bg
+            // Drop-shadow edges preview best via a real shadow layer.
+            if (style.edgeType == CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW) {
+                tv.setShadowLayer(6f, 1.5f, 1.5f, style.edgeColor)
+            } else {
+                tv.setShadowLayer(0f, 0f, 0f, Color.TRANSPARENT)
+            }
             tv.setPadding(
-                16.dp(tv.context),
-                18.dp(tv.context),
-                16.dp(tv.context),
-                18.dp(tv.context),
+                10.dp(tv.context),
+                4.dp(tv.context),
+                10.dp(tv.context),
+                4.dp(tv.context),
             )
+        }
+
+        /** Window color = the full-line box the player draws behind cue text. */
+        fun paintWindow(window: android.view.View?) {
+            window ?: return
+            val style = UserPreferences.captionStyle
+            val stage = GradientDrawable().apply {
+                setColor(
+                    if (style.windowColor.getAlpha() > 0) {
+                        style.windowColor
+                    } else {
+                        window.context.getColor(R.color.cinema_ink)
+                    },
+                )
+                cornerRadius = 10.dp(window.context).toFloat()
+            }
+            window.background = stage
         }
 
         private fun isDarkForeground(argb: Int): Boolean {

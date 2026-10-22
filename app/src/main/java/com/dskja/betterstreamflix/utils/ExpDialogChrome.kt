@@ -10,19 +10,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.ContextThemeWrapper
 import com.dskja.betterstreamflix.R
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
- * Shared Lumina polish for Material / AppCompat alert buttons and dialog shells.
+ * Shared dialog polish for Material / AppCompat alert buttons and dialog shells.
  * Always themed via [themedContext] so Player / non-Material surfaces cannot crash.
  */
 object ExpDialogChrome {
 
     fun themedContext(context: Context): Context {
-        val baseTheme = when {
-            ExperimentalMobileDesign.enabled() -> ExperimentalMobileDesign.themeRes()
-            else -> R.style.AppTheme_Mobile
-        }
+        val baseTheme = ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
         return ContextThemeWrapper(context, baseTheme)
     }
 
@@ -53,18 +49,13 @@ object ExpDialogChrome {
      * otherwise call [polishShown] from inside that listener.
      */
     fun polishButtons(dialog: Dialog) {
-        if (!ExperimentalMobileDesign.enabled()) return
         dialog.setOnShowListener { polishShown(dialog) }
     }
 
-    /** Apply ExpPress / popIn to dialog buttons while the dialog is showing. */
+    /** Apply Cinema button chrome / popIn to dialog buttons while the dialog is showing. */
     fun polishShown(dialog: Dialog) {
-        if (!ExperimentalMobileDesign.enabled()) return
-        dialog.window?.setBackgroundDrawableResource(
-            ExperimentalMobileDesign.dialogBackground(),
-        )
+        dialog.window?.setBackgroundDrawableResource(R.drawable.bg_profile_dialog)
         dialog.window?.decorView?.let { decor ->
-            ExperimentalMobileDesign.applyReducedGlass(decor)
             if (decor.getTag(R.id.exp_enter_animated_tag) != true) {
                 decor.setTag(R.id.exp_enter_animated_tag, true)
                 ExpMotion.enterScreen(decor)
@@ -78,8 +69,8 @@ object ExpDialogChrome {
             val btn = (dialog as? AlertDialog)?.getButton(which) ?: return@forEachIndexed
             btn.setBackgroundResource(
                 when (which) {
-                    AlertDialog.BUTTON_POSITIVE -> ExperimentalMobileDesign.primaryButtonBackground()
-                    else -> ExperimentalMobileDesign.chipBackground()
+                    AlertDialog.BUTTON_POSITIVE -> R.drawable.bg_button_mobile
+                    else -> R.drawable.bg_outlined_chip
                 },
             )
             if (which == AlertDialog.BUTTON_POSITIVE) {
@@ -135,14 +126,14 @@ object ExpDialogChrome {
         val body = TextView(themed).apply {
             text = message
             setTextIsSelectable(true)
-            setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             setPadding(
                 (16 * density).toInt(),
                 (14 * density).toInt(),
                 (16 * density).toInt(),
                 (14 * density).toInt(),
             )
-            setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            setBackgroundResource(R.drawable.bg_cinema_glass_card)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -155,7 +146,6 @@ object ExpDialogChrome {
 
     fun polishGlassMessageShown(dialog: Dialog, glass: GlassMessage) {
         polishShown(dialog)
-        ExperimentalMobileDesign.applyReducedGlass(glass.root)
         ExpMotion.pulseAccentRule(glass.rule)
         ExpMotion.revealHeader(glass.rule, glass.body)
     }
@@ -177,18 +167,6 @@ object ExpDialogChrome {
     ) {
         runCatching {
             val themed = themedContext(context)
-            if (!ExperimentalMobileDesign.enabled()) {
-                alertBuilder(themed)
-                    .setTitle(title)
-                    .setMessage(message)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .create()
-                    .also { dialog ->
-                        polishButtons(dialog)
-                        dialog.show()
-                    }
-                return
-            }
             val glass = buildGlassMessage(themed, message)
             alertBuilder(themed)
                 .setTitle(title)
@@ -205,23 +183,16 @@ object ExpDialogChrome {
     }
 
     /**
-     * Lumina glass info when Experimental UI is on; short Toast otherwise.
-     * Default builder is MaterialAlertDialogBuilder on a themed context.
+     * Transient confirmation toast. Kept lightweight on purpose — callers use
+     * [showInfo] when the message deserves a modal.
      */
     fun notify(
         context: Context,
         message: CharSequence,
-        titleRes: Int = R.string.loading_error_title,
-        alertBuilder: ((Context) -> AlertDialog.Builder)? = null,
+        @Suppress("UNUSED_PARAMETER") titleRes: Int = R.string.loading_error_title,
+        @Suppress("UNUSED_PARAMETER") alertBuilder: ((Context) -> AlertDialog.Builder)? = null,
     ) {
-        if (!ExperimentalMobileDesign.enabled()) {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            return
-        }
-        val builder = alertBuilder ?: { ctx ->
-            MaterialAlertDialogBuilder(themedContext(ctx))
-        }
-        showInfo(context, titleRes, message, builder)
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
     }
 
     fun notify(

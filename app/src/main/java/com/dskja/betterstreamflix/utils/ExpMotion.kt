@@ -16,9 +16,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 
 /**
- * Shared motion helpers for the experimental mobile shell. Every animation is
- * a no-op (or instant) when the experiment is off or the user has disabled
- * animations via the system animator-duration scale.
+ * Shared motion helpers for the Cinema shell. Every animation degrades to an
+ * instant state change when the user has disabled animations via the system
+ * animator-duration scale or StickEnergyMode is active.
  */
 object ExpMotion {
 
@@ -31,8 +31,7 @@ object ExpMotion {
         ) == 0f
     }
 
-    private fun View.motionAllowed(): Boolean =
-        ExperimentalMobileDesign.enabled() && !reduceMotion(context)
+    private fun View.motionAllowed(): Boolean = !reduceMotion(context)
 
     /** Fade a view out and mark it GONE afterwards (loading screens). */
     fun fadeOutAndHide(view: View, duration: Long = 240) {
@@ -155,7 +154,6 @@ object ExpMotion {
 
     /** Light haptic tick for primary actions. */
     fun hapticTap(view: View) {
-        if (!ExperimentalMobileDesign.enabled()) return
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
@@ -167,7 +165,7 @@ object ExpMotion {
         val visible = views.filterNotNull()
         if (visible.isEmpty()) return
         val context = visible.first().context
-        if (!ExperimentalMobileDesign.enabled() || reduceMotion(context)) {
+        if (reduceMotion(context)) {
             visible.forEach { it.alpha = 1f; it.translationY = 0f }
             return
         }

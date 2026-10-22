@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static preview rendered in the system widget picker. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="#FF14141C" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+    <item android:left="14dp" android:top="12dp" android:right="14dp" android:bottom="88dp">
+        <shape>
+            <solid android:color="#E6FFFFFF" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <item android:left="14dp" android:top="44dp" android:right="220dp" android:bottom="52dp">
+        <shape>
+            <solid android:color="#FF2A2A38" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+    <item android:left="54dp" android:top="52dp" android:right="80dp" android:bottom="72dp">
+        <shape>
+            <solid android:color="#B3FFFFFF" />
+            <corners android:radius="3dp" />
+        </shape>
+    </item>
+    <item android:left="14dp" android:top="84dp" android:right="220dp" android:bottom="12dp">
+        <shape>
+            <solid android:color="#FF2A2A38" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+    <item android:left="54dp" android:top="92dp" android:right="110dp" android:bottom="32dp">
+        <shape>
+            <solid android:color="#B3FFFFFF" />
+            <corners android:radius="3dp" />
+        </shape>
+    </item>
+</layer-list>

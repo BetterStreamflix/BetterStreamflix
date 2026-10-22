@@ -37,17 +37,23 @@ object IntegrationStatus {
         val isHealthy: Boolean get() = level == Level.READY || level == Level.SIGNED_IN
     }
 
-    fun trakt(): Snapshot = when {
+    fun trakt(): Snapshot = trakt(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TRAKT),
+    )
+
+    private fun trakt(profileEnabled: Boolean): Snapshot = when {
         !TraktConfig.hasAppCredentials() -> Snapshot(Level.UNAVAILABLE)
-        !UserPreferences.traktEnabled ||
-            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TRAKT) ->
-            Snapshot(Level.DISABLED)
+        !UserPreferences.traktEnabled || !profileEnabled -> Snapshot(Level.DISABLED)
         TraktConfig.isSignedIn() -> Snapshot(Level.SIGNED_IN)
         else -> Snapshot(Level.NOT_CONFIGURED)
     }
 
-    fun jellyfin(): Snapshot {
-        if (!ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.JELLYFIN)) {
+    fun jellyfin(): Snapshot = jellyfin(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.JELLYFIN),
+    )
+
+    private fun jellyfin(profileEnabled: Boolean): Snapshot {
+        if (!profileEnabled) {
             return Snapshot(Level.DISABLED)
         }
         val url = UserPreferences.jellyfinBaseUrl.trim()
@@ -60,8 +66,12 @@ object IntegrationStatus {
         }
     }
 
-    fun plex(): Snapshot {
-        if (!ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.PLEX)) {
+    fun plex(): Snapshot = plex(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.PLEX),
+    )
+
+    private fun plex(profileEnabled: Boolean): Snapshot {
+        if (!profileEnabled) {
             return Snapshot(Level.DISABLED)
         }
         val url = UserPreferences.plexBaseUrl.trim()
@@ -73,10 +83,12 @@ object IntegrationStatus {
         }
     }
 
-    fun debrid(): Snapshot {
-        if (!UserPreferences.debridEnabled ||
-            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.DEBRID)
-        ) {
+    fun debrid(): Snapshot = debrid(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.DEBRID),
+    )
+
+    private fun debrid(profileEnabled: Boolean): Snapshot {
+        if (!UserPreferences.debridEnabled || !profileEnabled) {
             return Snapshot(Level.DISABLED)
         }
         val provider = DebridProviderId.fromId(UserPreferences.debridProvider)
@@ -87,17 +99,23 @@ object IntegrationStatus {
         }
     }
 
-    fun simkl(): Snapshot = when {
-        !UserPreferences.simklEnabled ||
-            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.SIMKL) ->
-            Snapshot(Level.DISABLED)
+    fun simkl(): Snapshot = simkl(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.SIMKL),
+    )
+
+    private fun simkl(profileEnabled: Boolean): Snapshot = when {
+        !UserPreferences.simklEnabled || !profileEnabled -> Snapshot(Level.DISABLED)
         SimklConfig.configured() -> Snapshot(Level.SIGNED_IN)
         SimklConfig.clientId().isBlank() -> Snapshot(Level.NOT_CONFIGURED)
         else -> Snapshot(Level.NOT_CONFIGURED)
     }
 
-    fun openSubtitles(): Snapshot {
-        if (!ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.OPENSUBTITLES)) {
+    fun openSubtitles(): Snapshot = openSubtitles(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.OPENSUBTITLES),
+    )
+
+    private fun openSubtitles(profileEnabled: Boolean): Snapshot {
+        if (!profileEnabled) {
             return Snapshot(Level.DISABLED)
         }
         if (!OpenSubtitlesV1Client.configured()) return Snapshot(Level.NOT_CONFIGURED)
@@ -116,23 +134,34 @@ object IntegrationStatus {
         }
     }
 
-    fun plugins(): Snapshot {
-        val count = runCatching { PluginRegistry.size }.getOrDefault(0)
-        return if (count > 0) Snapshot(Level.READY, count.toString())
-        else Snapshot(Level.NOT_CONFIGURED)
-    }
+    fun tmdb(): Snapshot = tmdb(
+        ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TMDB),
+    )
 
-    fun tmdb(): Snapshot = when {
-        !UserPreferences.enableTmdb ||
-            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TMDB) ->
-            Snapshot(Level.DISABLED)
+    private fun tmdb(profileEnabled: Boolean): Snapshot = when {
+        !UserPreferences.enableTmdb || !profileEnabled -> Snapshot(Level.DISABLED)
         !com.dskja.betterstreamflix.utils.TMDb3.hasApiKey() -> Snapshot(Level.NOT_CONFIGURED)
         else -> Snapshot(Level.READY)
     }
 
+    /**
+     * Snapshot with the per-profile gate forced on — used by the per-profile
+     * integrations editor where the checkbox itself represents the gate.
+     */
+    fun globalOnly(integration: String): Snapshot = when (integration) {
+        UserProfile.Integration.TRAKT -> trakt(profileEnabled = true)
+        UserProfile.Integration.JELLYFIN -> jellyfin(profileEnabled = true)
+        UserProfile.Integration.PLEX -> plex(profileEnabled = true)
+        UserProfile.Integration.DEBRID -> debrid(profileEnabled = true)
+        UserProfile.Integration.SIMKL -> simkl(profileEnabled = true)
+        UserProfile.Integration.OPENSUBTITLES -> openSubtitles(profileEnabled = true)
+        UserProfile.Integration.TMDB -> tmdb(profileEnabled = true)
+        else -> Snapshot(Level.NOT_CONFIGURED)
+    }
+
     fun hubOverview(context: Context): String {
         val snapshots = listOf(
-            trakt(), jellyfin(), plex(), debrid(), simkl(), openSubtitles(), player(context), plugins(), tmdb(),
+            trakt(), jellyfin(), plex(), debrid(), simkl(), openSubtitles(), player(context), tmdb(),
         )
         val connected = snapshots.count { it.isHealthy }
         return context.getString(R.string.platform_hub_overview, connected, snapshots.size)
@@ -158,7 +187,6 @@ object IntegrationStatus {
         "screen_platform_simkl" -> simkl()
         "screen_platform_subtitles" -> openSubtitles()
         "screen_platform_player" -> player(context)
-        "screen_platform_plugins" -> plugins()
         else -> Snapshot(Level.NOT_CONFIGURED)
     }
 

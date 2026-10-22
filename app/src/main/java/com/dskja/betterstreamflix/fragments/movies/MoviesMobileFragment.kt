@@ -24,10 +24,8 @@ import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.launch
 
 class MoviesMobileFragment : Fragment() {
@@ -55,25 +53,9 @@ class MoviesMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        ExpNavAutoHide.attach(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvMovies)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.startAnimation(binding.rvMovies, R.anim.exp_fade_slide_in)
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_movies_eyebrow),
-                binding.root.findViewById(R.id.tv_movies_brand),
-                binding.root.findViewById(R.id.tv_movies_tagline),
-                binding.root.findViewById(R.id.v_movies_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movies_rule))
-            wireCatalogSortChip(
-                binding.root.findViewById(R.id.tv_movies_sort_chip),
-                onChanged = { viewModel.getMovies() },
-            )
-        }
+
 
         initializeMovies()
         HomeProfileChip.refresh(this, binding.root)
@@ -96,20 +78,17 @@ class MoviesMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getMovies() }) {
                                 return@collect
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
-                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 val doRetry = { viewModel.getMovies() }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
@@ -147,53 +126,6 @@ class MoviesMobileFragment : Fragment() {
             addItemDecoration(
                 SpacingItemDecoration(10.dp(requireContext()))
             )
-        }
-    }
-
-    private fun wireCatalogSortChip(chip: android.widget.TextView?, onChanged: () -> Unit) {
-        chip ?: return
-        fun refreshLabel() {
-            chip.setText(
-                when (UserPreferences.catalogSortMode) {
-                    com.dskja.betterstreamflix.utils.CatalogSortMode.LAST_RELEASE ->
-                        R.string.catalog_sort_last_release
-                    else -> R.string.catalog_sort_default
-                }
-            )
-            val selected =
-                UserPreferences.catalogSortMode ==
-                    com.dskja.betterstreamflix.utils.CatalogSortMode.LAST_RELEASE
-            chip.isSelected = selected
-            if (ExperimentalMobileDesign.enabled()) {
-                chip.setBackgroundResource(
-                    if (selected) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.chipBackground(),
-                )
-                chip.setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        chip,
-                        if (selected) com.google.android.material.R.attr.colorOnPrimary
-                        else com.google.android.material.R.attr.colorOnSurfaceVariant,
-                    ),
-                )
-                chip.refreshDrawableState()
-                if (selected) ExpMotion.popIn(chip)
-            }
-        }
-        refreshLabel()
-        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-        ExpMotion.popIn(chip)
-        chip.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            UserPreferences.catalogSortMode =
-                when (UserPreferences.catalogSortMode) {
-                    com.dskja.betterstreamflix.utils.CatalogSortMode.DEFAULT ->
-                        com.dskja.betterstreamflix.utils.CatalogSortMode.LAST_RELEASE
-                    else -> com.dskja.betterstreamflix.utils.CatalogSortMode.DEFAULT
-                }
-            refreshLabel()
-            ExpMotion.popIn(chip)
-            onChanged()
         }
     }
 
