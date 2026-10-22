@@ -75,47 +75,74 @@
             <LinearLayout
                 android:id="@+id/card_settings_search"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
-                android:background="@drawable/bg_exp_glass_card"
+                android:background="@drawable/bg_exp_provider_card"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 android:gravity="center_vertical"
+                android:minHeight="72dp"
                 android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp">
+                android:paddingStart="14dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="14dp">
+
+                <FrameLayout
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_exp_icon_chip">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_search"
+                        android:tint="?attr/colorPrimary"
+                        tools:ignore="UseAppTint" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_search_entry_title"
+                        android:textAppearance="@style/TextAppearance.CinemaInk.Title"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="@string/settings_search_entry_summary"
+                        android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp" />
+                </LinearLayout>
 
                 <ImageView
                     android:layout_width="18dp"
                     android:layout_height="18dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="6dp"
                     android:importantForAccessibility="no"
-                    android:src="@drawable/ic_search"
+                    android:rotation="270"
+                    android:src="@drawable/ic_exp_chevron_down"
                     android:tint="?attr/colorPrimary"
                     tools:ignore="UseAppTint" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:text="@string/settings_search_entry_title"
-                    android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_exp_chip"
-                    android:paddingStart="8dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="8dp"
-                    android:paddingBottom="3dp"
-                    android:text="@string/settings_search_entry_summary"
-                    android:textAppearance="@style/TextAppearance.CinemaInk.Eyebrow"
-                    android:textColor="?attr/colorPrimary"
-                    android:textSize="10sp" />
             </LinearLayout>
 
             <!-- Recently touched -->
