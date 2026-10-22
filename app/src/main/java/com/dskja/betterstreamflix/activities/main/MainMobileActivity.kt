@@ -48,7 +48,6 @@ import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -160,14 +159,12 @@ class MainMobileActivity : FragmentActivity() {
             )
         )
         setContentView(binding.root)
-        {
-            applyExperimentalNavigationChrome()
-            binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
-                nav.setBackgroundResource(ExperimentalMobileDesign.navPillBackground())
-                ExpMotion.enterScreen(binding.root)
-                ExpMotion.popIn(nav)
-                ExpMotion.popIn(binding.btnMainSearch)
-            }
+        applyExperimentalNavigationChrome()
+        binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
+            nav.setBackgroundResource(R.drawable.bg_meta_pill)
+            ExpMotion.enterScreen(binding.root)
+            ExpMotion.popIn(nav)
+            ExpMotion.popIn(binding.btnMainSearch)
         }
         if (UserPreferences.castEnabled) {
             CastPlaybackHub.ensureCastContext(this)
@@ -276,20 +273,18 @@ class MainMobileActivity : FragmentActivity() {
                     if (keys.isNotEmpty()) badge.number = keys.size.coerceAtMost(99)
                 }
         }
-        {
-            with(ExpPressEffects) { binding.btnMainSearch.applyExpPress() }
-            binding.bnvMain.setOnItemReselectedListener {
+        with(ExpPressEffects) { binding.btnMainSearch.applyExpPress() }
+        binding.bnvMain.setOnItemReselectedListener {
+            ExpMotion.hapticTap(binding.bnvMain)
+        }
+        var lastNavId = navController.currentDestination?.id
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id != lastNavId &&
+                binding.bnvMain.menu.findItem(destination.id) != null
+            ) {
                 ExpMotion.hapticTap(binding.bnvMain)
             }
-            var lastNavId = navController.currentDestination?.id
-            navController.addOnDestinationChangedListener { _, destination, _ ->
-                if (destination.id != lastNavId &&
-                    binding.bnvMain.menu.findItem(destination.id) != null
-                ) {
-                    ExpMotion.hapticTap(binding.bnvMain)
-                }
-                lastNavId = destination.id
-            }
+            lastNavId = destination.id
         }
         binding.btnMainSearch.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -681,61 +676,59 @@ class MainMobileActivity : FragmentActivity() {
             CastPlaybackHub.isCasting &&
             destinationId != R.id.player
         if (show) {
-            {
-                // Prefer flat cast chrome on OEM forks that crash LayerDrawable
-                // linear gradients during draw (BETTERSTREAMFLIX-3J).
-                runCatching {
-                    controller.setBackgroundResource(ExperimentalMobileDesign.castMiniBackground())
-                }.onFailure {
-                    controller.setBackgroundResource(R.drawable.bg_exp_cast_mini_flat)
-                }
-                val wasVisible = controller.visibility == View.VISIBLE
-                controller.visibility = View.VISIBLE
-                controller.elevation = 10f * resources.displayMetrics.density
-                if (!wasVisible) ExpMotion.popIn(controller)
-                if (controller.getTag(R.id.exp_enter_animated_tag) != true) {
-                    controller.setTag(R.id.exp_enter_animated_tag, true)
-                    val primary = MaterialColors.getColor(
-                        controller, androidx.appcompat.R.attr.colorPrimary,
-                    )
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                        fun wire(group: android.view.ViewGroup) {
-                            for (i in 0 until group.childCount) {
-                                val child = group.getChildAt(i)
-                                if (child.isClickable) child.applyExpPress()
-                                when (child) {
-                                    is android.widget.ImageButton,
-                                    is android.widget.ImageView,
-                                    -> {
-                                        if (child.isClickable || child is android.widget.ImageButton) {
-                                            runCatching {
-                                                child.setBackgroundResource(
-                                                    ExperimentalMobileDesign.iconChipBackground(),
-                                                )
-                                            }
-                                            (child as android.widget.ImageView).imageTintList =
-                                                android.content.res.ColorStateList.valueOf(primary)
-                                            ExpMotion.popIn(child)
+            // Prefer flat cast chrome on OEM forks that crash LayerDrawable
+            // linear gradients during draw (BETTERSTREAMFLIX-3J).
+            runCatching {
+                controller.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            }.onFailure {
+                controller.setBackgroundResource(R.drawable.bg_exp_cast_mini_flat)
+            }
+            val wasVisible = controller.visibility == View.VISIBLE
+            controller.visibility = View.VISIBLE
+            controller.elevation = 10f * resources.displayMetrics.density
+            if (!wasVisible) ExpMotion.popIn(controller)
+            if (controller.getTag(R.id.exp_enter_animated_tag) != true) {
+                controller.setTag(R.id.exp_enter_animated_tag, true)
+                val primary = MaterialColors.getColor(
+                    controller, androidx.appcompat.R.attr.colorPrimary,
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    fun wire(group: android.view.ViewGroup) {
+                        for (i in 0 until group.childCount) {
+                            val child = group.getChildAt(i)
+                            if (child.isClickable) child.applyExpPress()
+                            when (child) {
+                                is android.widget.ImageButton,
+                                is android.widget.ImageView,
+                                -> {
+                                    if (child.isClickable || child is android.widget.ImageButton) {
+                                        runCatching {
+                                            child.setBackgroundResource(
+                                                R.drawable.bg_detail_icon_chip,
+                                            )
                                         }
-                                    }
-                                    is android.widget.ProgressBar -> {
-                                        child.progressTintList =
+                                        (child as android.widget.ImageView).imageTintList =
                                             android.content.res.ColorStateList.valueOf(primary)
-                                    }
-                                    is android.widget.TextView -> {
-                                        child.setTextColor(
-                                            MaterialColors.getColor(
-                                                child,
-                                                com.google.android.material.R.attr.colorOnSurface,
-                                            ),
-                                        )
+                                        ExpMotion.popIn(child)
                                     }
                                 }
-                                if (child is android.view.ViewGroup) wire(child)
+                                is android.widget.ProgressBar -> {
+                                    child.progressTintList =
+                                        android.content.res.ColorStateList.valueOf(primary)
+                                }
+                                is android.widget.TextView -> {
+                                    child.setTextColor(
+                                        MaterialColors.getColor(
+                                            child,
+                                            com.google.android.material.R.attr.colorOnSurface,
+                                        ),
+                                    )
+                                }
                             }
+                            if (child is android.view.ViewGroup) wire(child)
                         }
-                        if (controller is android.view.ViewGroup) wire(controller)
                     }
+                    if (controller is android.view.ViewGroup) wire(controller)
                 }
             }
         } else {
@@ -1322,7 +1315,7 @@ class MainMobileActivity : FragmentActivity() {
         binding.bnvMain.itemTextColor = navColors
         binding.btnMainSearch.clipToOutline = true
         binding.btnMainSearch.imageTintList = ColorStateList.valueOf(primary)
-        binding.btnMainSearch.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+        binding.btnMainSearch.setBackgroundResource(R.drawable.bg_detail_icon_chip)
         binding.btnMainSearch.elevation = 6f * resources.displayMetrics.density
         binding.bnvMain.post {
             val menuView = binding.bnvMain.getChildAt(0) as? android.view.ViewGroup ?: return@post

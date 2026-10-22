@@ -46,7 +46,6 @@ import androidx.preference.PreferenceManager
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
@@ -233,7 +232,7 @@ class TvShowViewHolder(
         badge.text = text
         badge.isVisible = text.isNotBlank()
         if (isIptvProvider()) {
-            badge.setBackgroundResource(ExperimentalMobileDesign.liveIndicatorBackground())
+            badge.setBackgroundResource(R.drawable.bg_meta_pill)
             badge.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     badge,
@@ -261,7 +260,7 @@ class TvShowViewHolder(
             }
         } else {
             badge.clearAnimation()
-            badge.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            badge.setBackgroundResource(R.drawable.bg_meta_pill)
             badge.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     badge, com.google.android.material.R.attr.colorOnSecondaryContainer,
@@ -452,7 +451,7 @@ class TvShowViewHolder(
             val wasVisible = isVisible
             isVisible = show
             if (show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
@@ -573,7 +572,7 @@ class TvShowViewHolder(
             val wasVisible = isVisible
             isVisible = show
             if (show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
@@ -690,9 +689,7 @@ class TvShowViewHolder(
             view.background = GradientDrawable().apply {
                 setColor(Color.TRANSPARENT)
                 setStroke(width, stroke)
-                {
-                    cornerRadius = 10f * context.resources.displayMetrics.density
-                }
+                cornerRadius = 10f * context.resources.displayMetrics.density
             }
             view.setPadding(width, width, width, width)
             if (view.getTag(R.id.exp_enter_animated_tag) != "selected"
@@ -894,7 +891,7 @@ class TvShowViewHolder(
         val wasVisible = view.isVisible
         view.isVisible = visible
         if (visible) {
-            view.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            view.setBackgroundResource(R.drawable.bg_detail_icon_chip)
             val pad = (4 * context.resources.displayMetrics.density).toInt()
             view.setPadding(pad, pad, pad, pad)
             if (!wasVisible || view.getTag(R.id.exp_enter_animated_tag) != true) {
@@ -988,23 +985,21 @@ class TvShowViewHolder(
         bindTvShowSeasonsMobile(binding)
 
     private fun displaySeasonsTv(binding: ContentTvShowSeasonsTvBinding) {
-        {
-            binding.tvTvShowSeasonsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvTvShowSeasonsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvTvShowSeasonsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvTvShowSeasonsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_tv_show_seasons_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvTvShowSeasonsLabel,
+                binding.root.findViewById(R.id.v_tv_show_seasons_rule),
             )
-            binding.root.findViewById<View>(R.id.v_tv_show_seasons_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvTvShowSeasonsLabel,
-                    binding.root.findViewById(R.id.v_tv_show_seasons_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_seasons_rule))
-                ExpMotion.staggerFirstFill(binding.hgvTvShowSeasons)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_seasons_rule))
+            ExpMotion.staggerFirstFill(binding.hgvTvShowSeasons)
         }
         binding.hgvTvShowSeasons.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1035,23 +1030,21 @@ class TvShowViewHolder(
         }
     }
     private fun displayDirectorsTv(binding: ContentTvShowDirectorsTvBinding) {
-        {
-            binding.tvTvShowDirectorsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvTvShowDirectorsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvTvShowDirectorsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvTvShowDirectorsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_tv_show_directors_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvTvShowDirectorsLabel,
+                binding.root.findViewById(R.id.v_tv_show_directors_rule),
             )
-            binding.root.findViewById<View>(R.id.v_tv_show_directors_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvTvShowDirectorsLabel,
-                    binding.root.findViewById(R.id.v_tv_show_directors_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_directors_rule))
-                ExpMotion.staggerFirstFill(binding.hgvTvShowDirectors)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_directors_rule))
+            ExpMotion.staggerFirstFill(binding.hgvTvShowDirectors)
         }
         binding.hgvTvShowDirectors.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1085,23 +1078,21 @@ class TvShowViewHolder(
     }
 
     private fun displayCastTv(binding: ContentTvShowCastTvBinding) {
-        {
-            binding.tvTvShowCastLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvTvShowCastLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvTvShowCastLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvTvShowCastLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_tv_show_cast_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvTvShowCastLabel,
+                binding.root.findViewById(R.id.v_tv_show_cast_rule),
             )
-            binding.root.findViewById<View>(R.id.v_tv_show_cast_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvTvShowCastLabel,
-                    binding.root.findViewById(R.id.v_tv_show_cast_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_cast_rule))
-                ExpMotion.staggerFirstFill(binding.hgvTvShowCast)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_cast_rule))
+            ExpMotion.staggerFirstFill(binding.hgvTvShowCast)
         }
         binding.hgvTvShowCast.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1150,25 +1141,23 @@ class TvShowViewHolder(
     }
 
     private fun displayRecommendationsTv(binding: ContentTvShowRecommendationsTvBinding) {
-        {
-            binding.tvTvShowRecommendationsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvTvShowRecommendationsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvTvShowRecommendationsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvTvShowRecommendationsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_tv_show_recommendations_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvTvShowRecommendationsLabel,
+                binding.root.findViewById(R.id.v_tv_show_recommendations_rule),
             )
-            binding.root.findViewById<View>(R.id.v_tv_show_recommendations_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvTvShowRecommendationsLabel,
-                    binding.root.findViewById(R.id.v_tv_show_recommendations_rule),
-                )
-                ExpMotion.pulseAccentRule(
-                    binding.root.findViewById(R.id.v_tv_show_recommendations_rule),
-                )
-                ExpMotion.staggerFirstFill(binding.hgvTvShowRecommendations)
-            }
+            ExpMotion.pulseAccentRule(
+                binding.root.findViewById(R.id.v_tv_show_recommendations_rule),
+            )
+            ExpMotion.staggerFirstFill(binding.hgvTvShowRecommendations)
         }
         binding.hgvTvShowRecommendations.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.

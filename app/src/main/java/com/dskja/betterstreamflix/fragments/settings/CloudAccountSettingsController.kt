@@ -25,16 +25,13 @@ import com.dskja.betterstreamflix.sync.SupabaseProvider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 object CloudAccountSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        {
-            androidx.appcompat.app.AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     /**
      * Link-Code claim path: password dialog with host email prefilled.
@@ -236,22 +233,18 @@ object CloudAccountSettingsController {
                 setText(prefilledEmail.trim())
                 setSelection(text?.length ?: 0)
             }
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
         val password = EditText(context).apply {
             hint = context.getString(R.string.cloud_sync_password_hint)
             isSingleLine = true
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             transformationMethod = PasswordTransformationMethod.getInstance()
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
         val glass = ExpDialogChrome.buildGlassMessage(
                 context,
@@ -330,20 +323,16 @@ object CloudAccountSettingsController {
             null,
             android.R.attr.progressBarStyleHorizontal,
         ).apply {
-            {
-                progressTintList = android.content.res.ColorStateList.valueOf(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        androidx.appcompat.R.attr.colorPrimary,
-                    ),
-                )
-            }
+            progressTintList = android.content.res.ColorStateList.valueOf(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
         }
         val message = TextView(context).apply {
             setText(R.string.cloud_sync_progress_connecting)
-            {
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL

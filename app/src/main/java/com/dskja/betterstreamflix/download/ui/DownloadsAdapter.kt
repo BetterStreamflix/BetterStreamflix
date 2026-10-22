@@ -16,7 +16,6 @@ import com.dskja.betterstreamflix.download.DownloadErrorCode
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.TvFocusChain
 
 class DownloadsAdapter(
@@ -109,20 +108,18 @@ class DownloadsAdapter(
         private val title: TextView = view.findViewById(R.id.tv_download_header)
         fun bind(item: DownloadRowUiModel.Header) {
             title.text = item.title
-            {
-                itemView.setBackgroundResource(
-                    ExperimentalMobileDesign.glassCardBackground(),
+            itemView.setBackgroundResource(
+                R.drawable.bg_cinema_glass_card,
+            )
+            if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                itemView.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    title,
+                    itemView.findViewById(R.id.v_download_header_rule),
                 )
-                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
-                    itemView.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.revealHeader(
-                        title,
-                        itemView.findViewById(R.id.v_download_header_rule),
-                    )
-                    ExpMotion.pulseAccentRule(
-                        itemView.findViewById(R.id.v_download_header_rule),
-                    )
-                }
+                ExpMotion.pulseAccentRule(
+                    itemView.findViewById(R.id.v_download_header_rule),
+                )
             }
         }
     }
@@ -153,19 +150,15 @@ class DownloadsAdapter(
                 ExpMotion.hapticTap(it)
                 onSeriesToggle(item)
             }
-            {
-                itemView.setBackgroundResource(
-                    ExperimentalMobileDesign.glassCardBackground(),
-                )
-            }
+            itemView.setBackgroundResource(
+                R.drawable.bg_cinema_glass_card,
+            )
         }
     }
 
     inner class PackVH(view: View) : RecyclerView.ViewHolder(view) {
         init {
-            {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
-            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
         }
         private val title: TextView = view.findViewById(R.id.tv_download_season_title)
         private val subtitle: TextView = view.findViewById(R.id.tv_download_season_subtitle)
@@ -189,7 +182,7 @@ class DownloadsAdapter(
             ) {
                 itemView.setTag(R.id.exp_enter_animated_tag, true)
                 itemView.setBackgroundResource(
-                    ExperimentalMobileDesign.glassCardBackground(),
+                    R.drawable.bg_cinema_glass_card,
                 )
                 ExpMotion.revealHeader(title, subtitle)
                 ExpMotion.popIn(itemView)
@@ -197,11 +190,9 @@ class DownloadsAdapter(
                     .setDuration(420L)
                     .start()
             } else {
-                {
-                    itemView.setBackgroundResource(
-                        ExperimentalMobileDesign.glassCardBackground(),
-                    )
-                }
+                itemView.setBackgroundResource(
+                    R.drawable.bg_cinema_glass_card,
+                )
                 progress.progress = target
             }
             more.setOnClickListener {
@@ -235,9 +226,7 @@ class DownloadsAdapter(
 
     inner class ItemVH(view: View) : RecyclerView.ViewHolder(view) {
         init {
-            {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
-            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
         }
         private val poster: ImageView = view.findViewById(R.id.iv_download_poster)
         private val title: TextView = view.findViewById(R.id.tv_download_title)
@@ -291,34 +280,32 @@ class DownloadsAdapter(
                 ExpMotion.hapticTap(it)
                 onItemMore(item, it)
             }
-            {
-                itemView.setBackgroundResource(
-                    ExperimentalMobileDesign.glassCardBackground(),
-                )
-                subtitle.setBackgroundResource(
-                    ExperimentalMobileDesign.metaPillBackground(),
-                )
-                val density = itemView.resources.displayMetrics.density
-                subtitle.setPadding(
-                    (8 * density).toInt(),
-                    (3 * density).toInt(),
-                    (8 * density).toInt(),
-                    (3 * density).toInt(),
-                )
-                actionPrimary.setBackgroundResource(
-                    ExperimentalMobileDesign.primaryButtonBackground(),
-                )
-                actionDelete.setBackgroundResource(
-                    ExperimentalMobileDesign.chipBackground(),
-                )
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    actionPrimary.applyExpPress()
-                    actionDelete.applyExpPress()
-                }
-                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
-                    itemView.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.popIn(itemView)
-                }
+            itemView.setBackgroundResource(
+                R.drawable.bg_cinema_glass_card,
+            )
+            subtitle.setBackgroundResource(
+                R.drawable.bg_meta_pill,
+            )
+            val density = itemView.resources.displayMetrics.density
+            subtitle.setPadding(
+                (8 * density).toInt(),
+                (3 * density).toInt(),
+                (8 * density).toInt(),
+                (3 * density).toInt(),
+            )
+            actionPrimary.setBackgroundResource(
+                R.drawable.bg_button_mobile,
+            )
+            actionDelete.setBackgroundResource(
+                R.drawable.bg_outlined_chip,
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                actionPrimary.applyExpPress()
+                actionDelete.applyExpPress()
+            }
+            if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                itemView.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.popIn(itemView)
             }
             itemView.setOnLongClickListener {
                 ExpMotion.hapticTap(it)
@@ -399,21 +386,19 @@ class DownloadsAdapter(
                 ExpMotion.popIn(actionPrimary)
             } else if (item.state != DownloadItemState.FAILED) {
                 progressLine.setTag(R.id.exp_enter_animated_tag, null)
-                {
-                    val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                        progressLine,
-                        com.google.android.material.R.attr.colorOnSurfaceVariant,
-                    )
-                    progressLine.setTextColor(onVariant)
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        progress,
-                        androidx.appcompat.R.attr.colorPrimary,
-                    )
-                    progress.progressTintList =
-                        android.content.res.ColorStateList.valueOf(primary)
-                    progress.indeterminateTintList =
-                        android.content.res.ColorStateList.valueOf(primary)
-                }
+                val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                    progressLine,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                )
+                progressLine.setTextColor(onVariant)
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    progress,
+                    androidx.appcompat.R.attr.colorPrimary,
+                )
+                progress.progressTintList =
+                    android.content.res.ColorStateList.valueOf(primary)
+                progress.indeterminateTintList =
+                    android.content.res.ColorStateList.valueOf(primary)
             }
         }
     }

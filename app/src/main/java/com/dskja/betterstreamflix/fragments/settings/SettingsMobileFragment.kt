@@ -63,7 +63,6 @@ import com.dskja.betterstreamflix.utils.CatalogSortMode
 import com.dskja.betterstreamflix.utils.SearchSortMode
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.ui.UserDataNotifier
@@ -80,9 +79,7 @@ import java.util.Locale
 
 class SettingsMobileFragment : PreferenceFragmentCompat() {
     private fun alertBuilder() =
-        {
-            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
 
     private data class SettingsScreenState(
         val rootKey: String?,
@@ -386,41 +383,39 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
         if (childFragmentManager.isStateSaved) return
         super.onDisplayPreferenceDialog(preference)
-        {
-            view?.post {
-                val dialog = (childFragmentManager
-                    .findFragmentByTag("androidx.preference.PreferenceFragment.DIALOG")
-                    as? androidx.fragment.app.DialogFragment)?.dialog
-                if (dialog != null) {
-                    // Dialog is already shown — OnShowListener would never fire.
-                    ExpDialogChrome.polishShown(dialog)
-                    dialog.window?.setBackgroundDrawableResource(
-                        ExperimentalMobileDesign.dialogBackground(),
-                    )
-                    dialog.window?.decorView?.let { decor ->
-                        ExpMotion.enterScreen(decor)
-                        fun styleFields(group: android.view.ViewGroup) {
-                            for (i in 0 until group.childCount) {
-                                val child = group.getChildAt(i)
-                                when (child) {
-                                    is android.widget.EditText ->
-                                        child.setBackgroundResource(
-                                            ExperimentalMobileDesign.searchFieldBackground(),
-                                        )
-                                    is android.widget.CheckedTextView ->
-                                        child.setBackgroundResource(
-                                            if (child.isChecked) {
-                                                ExperimentalMobileDesign.chipBackground()
-                                            } else {
-                                                ExperimentalMobileDesign.optionItemBackground()
-                                            },
-                                        )
-                                    is android.view.ViewGroup -> styleFields(child)
-                                }
+        view?.post {
+            val dialog = (childFragmentManager
+                .findFragmentByTag("androidx.preference.PreferenceFragment.DIALOG")
+                as? androidx.fragment.app.DialogFragment)?.dialog
+            if (dialog != null) {
+                // Dialog is already shown — OnShowListener would never fire.
+                ExpDialogChrome.polishShown(dialog)
+                dialog.window?.setBackgroundDrawableResource(
+                    R.drawable.bg_profile_dialog,
+                )
+                dialog.window?.decorView?.let { decor ->
+                    ExpMotion.enterScreen(decor)
+                    fun styleFields(group: android.view.ViewGroup) {
+                        for (i in 0 until group.childCount) {
+                            val child = group.getChildAt(i)
+                            when (child) {
+                                is android.widget.EditText ->
+                                    child.setBackgroundResource(
+                                        R.drawable.bg_search_edittext,
+                                    )
+                                is android.widget.CheckedTextView ->
+                                    child.setBackgroundResource(
+                                        if (child.isChecked) {
+                                            R.drawable.bg_outlined_chip
+                                        } else {
+                                            R.drawable.bg_outlined_chip
+                                        },
+                                    )
+                                is android.view.ViewGroup -> styleFields(child)
                             }
                         }
-                        if (decor is android.view.ViewGroup) styleFields(decor)
                     }
+                    if (decor is android.view.ViewGroup) styleFields(decor)
                 }
             }
         }
@@ -485,20 +480,18 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         applyScreenTitle()
         view?.let { ensureSettingsHub(it) }
         settingsHubController?.updateVisibility()
-        {
-            view?.let { root ->
-                if (root.getTag(R.id.exp_enter_animated_tag) != true) {
-                    root.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.enterScreen(root)
-                }
+        view?.let { root ->
+            if (root.getTag(R.id.exp_enter_animated_tag) != true) {
+                root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.enterScreen(root)
             }
-            if (currentScreenState.rootKey != null) {
-                listView?.let { list ->
-                    ExpMotion.startAnimation(list, R.anim.support_fade_slide_up)
-                    if (list.getTag(R.id.exp_enter_animated_tag) != currentScreenState.rootKey) {
-                        list.setTag(R.id.exp_enter_animated_tag, currentScreenState.rootKey)
-                        ExpMotion.staggerFirstFill(list)
-                    }
+        }
+        if (currentScreenState.rootKey != null) {
+            listView?.let { list ->
+                ExpMotion.startAnimation(list, R.anim.support_fade_slide_up)
+                if (list.getTag(R.id.exp_enter_animated_tag) != currentScreenState.rootKey) {
+                    list.setTag(R.id.exp_enter_animated_tag, currentScreenState.rootKey)
+                    ExpMotion.staggerFirstFill(list)
                 }
             }
         }
@@ -1118,12 +1111,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         editText.imeOptions = EditorInfo.IME_ACTION_DONE
                         editText.hint = configProvider.defaultBaseUrl
                         editText.setText(summary)
-                        {
-                            val pad = (20 * resources.displayMetrics.density).toInt()
-                            editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                            editText.setPadding(pad, pad, pad, pad)
-                            editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                        }
+                        val pad = (20 * resources.displayMetrics.density).toInt()
+                        editText.setBackgroundResource(R.drawable.bg_search_edittext)
+                        editText.setPadding(pad, pad, pad, pad)
+                        editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                     }
                     setOnPreferenceChangeListener { _, newValue ->
                         val toSave = (newValue as String)
@@ -1159,12 +1150,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         editText.imeOptions = EditorInfo.IME_ACTION_DONE
                         editText.hint = portalProvider.defaultPortalUrl
                         editText.setText(summary)
-                        {
-                            val pad = (20 * resources.displayMetrics.density).toInt()
-                            editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                            editText.setPadding(pad, pad, pad, pad)
-                            editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                        }
+                        val pad = (20 * resources.displayMetrics.density).toInt()
+                        editText.setBackgroundResource(R.drawable.bg_search_edittext)
+                        editText.setPadding(pad, pad, pad, pad)
+                        editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                     }
                     setOnPreferenceChangeListener { _, newValue ->
                         val toSave = (newValue as String)
@@ -1515,11 +1504,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             val input = android.widget.EditText(ctx).apply {
                 hint = getString(R.string.settings_send_sentry_feedback_hint)
                 minLines = 3
-                {
-                    setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    setPadding(48, 36, 48, 36)
-                    setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                }
+                setBackgroundResource(R.drawable.bg_search_edittext)
+                setPadding(48, 36, 48, 36)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
             val glass = ExpDialogChrome.buildGlassMessage(
                     ctx,
@@ -2055,9 +2042,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
     private fun showSettingsInfo(message: CharSequence, titleRes: Int = R.string.settings_parental_pin_title) {
         if (!isAdded) return
-        {
-            ExpDialogChrome.showInfo(requireContext(), titleRes, message, { alertBuilder() })
-        }
+        ExpDialogChrome.showInfo(requireContext(), titleRes, message, { alertBuilder() })
     }
 
     private fun changeParentalSettingWithPinCheck(onVerified: () -> Unit) {
@@ -2229,11 +2214,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = getString(R.string.settings_parental_pin_hint)
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(48, 36, 48, 36)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(48, 36, 48, 36)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
 
         val dialog = run {
@@ -2286,11 +2269,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = getString(R.string.settings_parental_pin_hint)
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(48, 36, 48, 36)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(48, 36, 48, 36)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         }
 
         fun wirePositive(dialog: AlertDialog) {
@@ -2504,12 +2485,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             .create()
             .apply {
                 setCanceledOnTouchOutside(false)
-                {
-                    window?.setBackgroundDrawableResource(ExperimentalMobileDesign.dialogBackground())
-                    ExpMotion.enterScreen(contentView)
-                    ExpDialogChrome.polishShown(this)
-                    contentView.findViewById<View>(R.id.pb_is_loading)?.let { ExpMotion.popIn(it) }
-                }
+                window?.setBackgroundDrawableResource(R.drawable.bg_profile_dialog)
+                ExpMotion.enterScreen(contentView)
+                ExpDialogChrome.polishShown(this)
+                contentView.findViewById<View>(R.id.pb_is_loading)?.let { ExpMotion.popIn(it) }
                 show()
             }
     }

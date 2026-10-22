@@ -15,7 +15,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
  * Full-featured local crash log viewer with copy / share / clear.
@@ -24,14 +23,12 @@ object CrashLogDialog {
     fun show(context: Context) {
         val text = CrashReporter.latestCrashText(context)
         if (text.isNullOrBlank()) {
-            {
-                com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
-                    context,
-                    R.string.settings_view_crash_log_title,
-                    context.getString(R.string.settings_view_crash_log_empty),
-                ) { ctx ->
-                    androidx.appcompat.app.AlertDialog.Builder(ctx)
-                }
+            com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
+                context,
+                R.string.settings_view_crash_log_title,
+                context.getString(R.string.settings_view_crash_log_empty),
+            ) { ctx ->
+                androidx.appcompat.app.AlertDialog.Builder(ctx)
             }
             return
         }
@@ -91,33 +88,31 @@ object CrashLogDialog {
             }
         }
 
-        {
-            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            view.findViewById<View>(R.id.sv_crash_log_body)
-                ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            ExpMotion.enterScreen(view)
-            ExpMotion.revealHeader(
-                view.findViewById(R.id.tv_crash_log_title),
-                view.findViewById(R.id.v_crash_log_rule),
-            )
-            ExpMotion.pulseAccentRule(view.findViewById(R.id.v_crash_log_rule))
-            view.findViewById<View>(R.id.sv_crash_log_body)?.let { ExpMotion.popIn(it) }
-            listOf(
-                R.id.btn_crash_log_copy,
-                R.id.btn_crash_log_share,
-                R.id.btn_crash_log_clear,
-            ).forEachIndexed { index, id ->
-                view.findViewById<View>(id)?.let { btn ->
-                    btn.setBackgroundResource(
-                        when (id) {
-                            R.id.btn_crash_log_copy -> ExperimentalMobileDesign.primaryButtonBackground()
-                            else -> ExperimentalMobileDesign.chipBackground()
-                        },
-                    )
-                    btn.applyExpPress()
-                    btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
-                }
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        view.setBackgroundResource(R.drawable.bg_profile_dialog)
+        view.findViewById<View>(R.id.sv_crash_log_body)
+            ?.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+        ExpMotion.enterScreen(view)
+        ExpMotion.revealHeader(
+            view.findViewById(R.id.tv_crash_log_title),
+            view.findViewById(R.id.v_crash_log_rule),
+        )
+        ExpMotion.pulseAccentRule(view.findViewById(R.id.v_crash_log_rule))
+        view.findViewById<View>(R.id.sv_crash_log_body)?.let { ExpMotion.popIn(it) }
+        listOf(
+            R.id.btn_crash_log_copy,
+            R.id.btn_crash_log_share,
+            R.id.btn_crash_log_clear,
+        ).forEachIndexed { index, id ->
+            view.findViewById<View>(id)?.let { btn ->
+                btn.setBackgroundResource(
+                    when (id) {
+                        R.id.btn_crash_log_copy -> R.drawable.bg_button_mobile
+                        else -> R.drawable.bg_outlined_chip
+                    },
+                )
+                btn.applyExpPress()
+                btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
             }
         }
 

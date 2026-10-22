@@ -21,7 +21,6 @@ import com.dskja.betterstreamflix.providers.ProviderPassport
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemProviderMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemProviderTvBinding
 import com.dskja.betterstreamflix.models.Provider
@@ -40,9 +39,7 @@ class ProviderViewHolder(
 
     private val context = itemView.context
     init {
-        {
-            itemView.applyExpPress()
-        }
+        itemView.applyExpPress()
     }
 
     private lateinit var provider: Provider
@@ -78,15 +75,13 @@ class ProviderViewHolder(
         val favWasVisible = binding.ivProviderFavorite.visibility == View.VISIBLE
         binding.ivProviderFavorite.visibility =
             if (provider.isFavorite) View.VISIBLE else View.GONE
-        {
-            if (provider.isFavorite) {
-                binding.ivProviderFavorite.setBackgroundResource(
-                    ExperimentalMobileDesign.iconChipBackground(),
-                )
-                if (!favWasVisible) ExpMotion.popIn(binding.ivProviderFavorite)
-            } else {
-                binding.ivProviderFavorite.background = null
-            }
+        if (provider.isFavorite) {
+            binding.ivProviderFavorite.setBackgroundResource(
+                R.drawable.bg_detail_icon_chip,
+            )
+            if (!favWasVisible) ExpMotion.popIn(binding.ivProviderFavorite)
+        } else {
+            binding.ivProviderFavorite.background = null
         }
 
         binding.root.findViewById<ImageView>(R.id.iv_provider_selected)?.let { selected ->
@@ -94,7 +89,7 @@ class ProviderViewHolder(
             val wasVisible = selected.visibility == View.VISIBLE
             selected.visibility = if (isCurrent) View.VISIBLE else View.GONE
             if (isCurrent) {
-                selected.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                selected.setBackgroundResource(R.drawable.bg_detail_icon_chip)
                 if (!wasVisible) ExpMotion.popIn(selected)
             } else if (!isCurrent) {
                 selected.background = null
@@ -110,24 +105,22 @@ class ProviderViewHolder(
         val lang = Locale.forLanguageTag(provider.language)
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
-        {
-            // OEM LayerDrawable/GradientDrawable draw crashes (BETTERSTREAMFLIX-3J).
-            setBackgroundResourceSafe(
-                binding.root,
-                ExperimentalMobileDesign.glassCardBackground(),
-            )
-            setBackgroundResourceSafe(
-                binding.tvProviderLanguage,
-                ExperimentalMobileDesign.metaPillBackground(),
-            )
-            binding.tvProviderLanguage.text = lang
-            bindProviderHealthPill(binding.root, lang)
-            bindProviderPassportPill(binding.root)
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.popIn(binding.root)
-                ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
-            }
+        // OEM LayerDrawable/GradientDrawable draw crashes (BETTERSTREAMFLIX-3J).
+        setBackgroundResourceSafe(
+            binding.root,
+            R.drawable.bg_cinema_glass_card,
+        )
+        setBackgroundResourceSafe(
+            binding.tvProviderLanguage,
+            R.drawable.bg_meta_pill,
+        )
+        binding.tvProviderLanguage.text = lang
+        bindProviderHealthPill(binding.root, lang)
+        bindProviderPassportPill(binding.root)
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.popIn(binding.root)
+            ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
         }
     }
 
@@ -163,9 +156,7 @@ class ProviderViewHolder(
                 0xFFE8E8E8.toInt(),
             ),
         )
-        {
-            pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-        }
+        pill.setBackgroundResource(R.drawable.bg_meta_pill)
         pill.visibility = View.VISIBLE
         if (!wasVisible) ExpMotion.popIn(pill)
     }
@@ -315,9 +306,7 @@ class ProviderViewHolder(
                 0xFFE8E8E8.toInt(),
             ),
         )
-        {
-            pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-        }
+        pill.setBackgroundResource(R.drawable.bg_meta_pill)
         pill.visibility = View.VISIBLE
         if (!wasVisible) ExpMotion.popIn(pill)
     }
@@ -435,11 +424,9 @@ class ProviderViewHolder(
         }
         gear.isFocusable = true
         gear.isClickable = true
-        {
-            gear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            if (!wasVisible) ExpMotion.popIn(gear)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { gear.applyExpPress() }
-        }
+        gear.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        if (!wasVisible) ExpMotion.popIn(gear)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { gear.applyExpPress() }
         gear.setOnClickListener { view ->
             ExpMotion.hapticTap(view)
             openProviderLoginSettings()

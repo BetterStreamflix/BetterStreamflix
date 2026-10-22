@@ -84,7 +84,6 @@ import com.dskja.betterstreamflix.databinding.ItemSupportBannerTvBinding
 import com.dskja.betterstreamflix.databinding.ItemWatchlistDigestMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemWatchlistDigestTvBinding
 import com.dskja.betterstreamflix.adapters.viewholders.ProviderOutageBannerViewHolder
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.support.SupportUiBinder
@@ -1161,9 +1160,7 @@ class AppAdapter(
         fun bind(header: FavoriteSectionHeader) {
             itemView.findViewById<TextView>(R.id.tv_favorite_section_title)?.text = header.title
             val rule = itemView.findViewById<View>(R.id.v_favorite_section_rule)
-            {
-                itemView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            }
+            itemView.setBackgroundResource(R.drawable.bg_cinema_glass_card)
             if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
                 itemView.setTag(R.id.exp_enter_animated_tag, true)
                 ExpMotion.revealHeader(
@@ -1221,33 +1218,31 @@ class AppAdapter(
             SupportUiBinder.applyFocusScale(cta)
             SupportUiBinder.applyFocusScale(dismiss)
             SupportUiBinder.applyFocusScale(root)
-            {
-                root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    root.applyExpPress()
-                    cta.applyExpPress()
-                    dismiss.applyExpPress()
-                }
-                cta.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                dismiss.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                root.findViewById<android.widget.ImageView>(R.id.iv_support_banner_icon)?.let { icon ->
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        icon,
-                        androidx.appcompat.R.attr.colorPrimary,
-                        icon.context.getColor(R.color.m3_primary),
-                    )
-                    icon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
-                }
-                if (root.getTag(R.id.exp_enter_animated_tag) != true) {
-                    root.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.revealHeader(
-                        root.findViewById(R.id.tv_support_banner_title),
-                        root.findViewById(R.id.tv_support_banner_subtitle),
-                    )
-                    root.findViewById<View>(R.id.iv_support_banner_icon)?.let { ExpMotion.popIn(it) }
-                    ExpMotion.popIn(cta)
-                    ExpMotion.popIn(dismiss)
-                }
+            root.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                root.applyExpPress()
+                cta.applyExpPress()
+                dismiss.applyExpPress()
+            }
+            cta.setBackgroundResource(R.drawable.bg_button_mobile)
+            dismiss.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+            root.findViewById<android.widget.ImageView>(R.id.iv_support_banner_icon)?.let { icon ->
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    icon,
+                    androidx.appcompat.R.attr.colorPrimary,
+                    icon.context.getColor(R.color.m3_primary),
+                )
+                icon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
+            }
+            if (root.getTag(R.id.exp_enter_animated_tag) != true) {
+                root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    root.findViewById(R.id.tv_support_banner_title),
+                    root.findViewById(R.id.tv_support_banner_subtitle),
+                )
+                root.findViewById<View>(R.id.iv_support_banner_icon)?.let { ExpMotion.popIn(it) }
+                ExpMotion.popIn(cta)
+                ExpMotion.popIn(dismiss)
             }
         }
     }
@@ -1316,30 +1311,28 @@ class AppAdapter(
             SupportUiBinder.applyFocusScale(cta)
             SupportUiBinder.applyFocusScale(dismiss)
             SupportUiBinder.applyFocusScale(root)
-            {
-                root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    root.applyExpPress()
-                    cta.applyExpPress()
-                    dismiss.applyExpPress()
-                }
-                cta.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                dismiss.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                root.findViewById<android.widget.ImageView>(R.id.iv_watchlist_digest_icon)?.let { icon ->
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        icon,
-                        androidx.appcompat.R.attr.colorPrimary,
-                        icon.context.getColor(R.color.m3_primary),
-                    )
-                    icon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
-                }
-                if (root.getTag(R.id.exp_enter_animated_tag) != true) {
-                    root.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.revealHeader(titleView, subtitleView)
-                    root.findViewById<View>(R.id.iv_watchlist_digest_icon)?.let { ExpMotion.popIn(it) }
-                    ExpMotion.popIn(cta)
-                    ExpMotion.popIn(dismiss)
-                }
+            root.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                root.applyExpPress()
+                cta.applyExpPress()
+                dismiss.applyExpPress()
+            }
+            cta.setBackgroundResource(R.drawable.bg_button_mobile)
+            dismiss.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+            root.findViewById<android.widget.ImageView>(R.id.iv_watchlist_digest_icon)?.let { icon ->
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    icon,
+                    androidx.appcompat.R.attr.colorPrimary,
+                    icon.context.getColor(R.color.m3_primary),
+                )
+                icon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
+            }
+            if (root.getTag(R.id.exp_enter_animated_tag) != true) {
+                root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(titleView, subtitleView)
+                root.findViewById<View>(R.id.iv_watchlist_digest_icon)?.let { ExpMotion.popIn(it) }
+                ExpMotion.popIn(cta)
+                ExpMotion.popIn(dismiss)
             }
         }
     }
@@ -1355,22 +1348,20 @@ class AppAdapter(
         binding.root
     ) {
         fun bind() {
-            {
-                val shimmer = itemView.findViewById<View>(R.id.sh_load_more)
-                val spinner = itemView.findViewById<View>(R.id.pb_load_more_is_loading)
-                    ?: itemView.findViewById(R.id.pb_is_loading)
-                if (shimmer != null) {
-                    shimmer.visibility = View.VISIBLE
-                    spinner?.visibility = View.GONE
-                    (shimmer as? com.facebook.shimmer.ShimmerFrameLayout)?.startShimmer()
-                    if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
-                        itemView.setTag(R.id.exp_enter_animated_tag, true)
-                        ExpMotion.fadeInAndShow(shimmer)
-                    }
-                } else if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+            val shimmer = itemView.findViewById<View>(R.id.sh_load_more)
+            val spinner = itemView.findViewById<View>(R.id.pb_load_more_is_loading)
+                ?: itemView.findViewById(R.id.pb_is_loading)
+            if (shimmer != null) {
+                shimmer.visibility = View.VISIBLE
+                spinner?.visibility = View.GONE
+                (shimmer as? com.facebook.shimmer.ShimmerFrameLayout)?.startShimmer()
+                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
                     itemView.setTag(R.id.exp_enter_animated_tag, true)
-                    spinner?.let { ExpMotion.popIn(it) } ?: ExpMotion.popIn(itemView)
+                    ExpMotion.fadeInAndShow(shimmer)
                 }
+            } else if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                itemView.setTag(R.id.exp_enter_animated_tag, true)
+                spinner?.let { ExpMotion.popIn(it) } ?: ExpMotion.popIn(itemView)
             }
         }
     }

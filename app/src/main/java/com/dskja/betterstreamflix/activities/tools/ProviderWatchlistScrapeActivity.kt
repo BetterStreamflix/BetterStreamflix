@@ -31,7 +31,6 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -114,9 +113,7 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        {
-            DynamicColors.applyToActivityIfAvailable(this)
-        }
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(
             R.layout.activity_watchlist_import,
@@ -135,17 +132,15 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
         importButton = findViewById(R.id.watchlist_import)
         cancelButton = findViewById(R.id.watchlist_cancel)
 
-        {
-            val content = findViewById<android.view.View>(android.R.id.content)
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(content)
-            statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                importButton.applyExpPress()
-                cancelButton.applyExpPress()
-            }
-            importButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            cancelButton.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+        val content = findViewById<android.view.View>(android.R.id.content)
+        com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(content)
+        statusView.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            importButton.applyExpPress()
+            cancelButton.applyExpPress()
         }
+        importButton.setBackgroundResource(R.drawable.bg_button_mobile)
+        cancelButton.setBackgroundResource(R.drawable.bg_outlined_chip)
 
         statusView.setText(R.string.watchlist_import_login_hint)
         val screenTitle = if (saveSessionOnly) {
@@ -154,10 +149,8 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             getString(R.string.settings_watchlist_import_title)
         }
         title = screenTitle
-        {
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
-        }
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
         importButton.setText(
             if (saveSessionOnly) {
                 R.string.settings_serienstream_session_login
@@ -319,12 +312,10 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
                 val show = newProgress in 1..99
-                {
-                    if (show && progressBar.visibility != android.view.View.VISIBLE) {
-                        com.dskja.betterstreamflix.utils.ExpMotion.fadeInAndShow(progressBar)
-                    } else if (!show && progressBar.visibility == android.view.View.VISIBLE) {
-                        com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(progressBar)
-                    }
+                if (show && progressBar.visibility != android.view.View.VISIBLE) {
+                    com.dskja.betterstreamflix.utils.ExpMotion.fadeInAndShow(progressBar)
+                } else if (!show && progressBar.visibility == android.view.View.VISIBLE) {
+                    com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(progressBar)
                 }
             }
         }
@@ -881,14 +872,12 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
             getString(R.string.watchlist_import_done, count)
         }
         statusView.text = message
-        {
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(statusView)
-            statusView.postDelayed({
-                notifyUserAndFinish(message)
-            }, 280L)
-            return
-        }
+        com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(statusView)
+        statusView.postDelayed({
+            notifyUserAndFinish(message)
+        }, 280L)
+        return
         notifyUserAndFinish(message)
     }
 

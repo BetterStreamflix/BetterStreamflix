@@ -14,7 +14,6 @@ import com.dskja.betterstreamflix.support.SupportProvider
 import com.dskja.betterstreamflix.support.SupportUrls
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 class SettingsAboutMobileFragment : Fragment() {
 
@@ -45,78 +44,76 @@ class SettingsAboutMobileFragment : Fragment() {
             binding.tvAboutSupportersSubtitle,
         )
 
-        {
-            ExpMotion.enterScreen(binding.root)
-            ExpMotion.revealHeader(
-                binding.tvAboutTitle,
-                binding.tvAboutBrand,
-                binding.root.findViewById(com.dskja.betterstreamflix.R.id.v_about_accent_rule),
-                binding.tvAboutVersion,
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(com.dskja.betterstreamflix.R.id.v_about_accent_rule))
-            binding.root.setBackgroundResource(com.dskja.betterstreamflix.R.drawable.bg_exp_canvas_atmosphere)
-            binding.btnAboutBack.setBackgroundResource(com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.iconChipBackground())
-            ExpMotion.popIn(binding.btnAboutBack)
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                com.google.android.material.R.attr.colorOnSurface,
-                0xFFF5F5F5.toInt(),
-            )
-            val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-                0xFFA3A3A3.toInt(),
-            )
-            val primary = com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                androidx.appcompat.R.attr.colorPrimary,
-                0xFFE50914.toInt(),
-            )
-            binding.tvAboutTitle.setTextColor(onSurface)
-            binding.tvAboutBrand.setTextColor(onSurface)
-            binding.tvAboutVersion.setTextColor(onVariant)
-            binding.btnAboutBack.imageTintList =
-                android.content.res.ColorStateList.valueOf(onSurface)
-            listOf(
-                binding.btnAboutBack,
-                binding.btnAboutGithub,
-                binding.btnAboutBmc,
-                binding.btnAboutSponsors,
-                binding.btnAboutPatreon,
-                binding.btnAboutDiscord,
-                binding.btnAboutTelegram,
-                binding.btnAboutUpstream,
-                binding.btnAboutSupportHub,
-            ).forEach { it.applyExpPress() }
-            binding.btnAboutSupportHub.setBackgroundResource(
-                ExperimentalMobileDesign.primaryButtonBackground(),
-            )
-            listOf(
-                binding.btnAboutGithub,
-                binding.btnAboutBmc,
-                binding.btnAboutSponsors,
-                binding.btnAboutPatreon,
-                binding.btnAboutDiscord,
-                binding.btnAboutTelegram,
-                binding.btnAboutUpstream,
-            ).forEach { row ->
-                row.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
-                (row.getChildAt(0) as? android.widget.ImageView)?.imageTintList =
-                    android.content.res.ColorStateList.valueOf(primary)
-            }
-            listOf(
-                binding.btnAboutSupportHub,
-                binding.llAboutSupporters,
-                binding.btnAboutGithub,
-                binding.btnAboutBmc,
-                binding.btnAboutSponsors,
-                binding.btnAboutPatreon,
-                binding.btnAboutDiscord,
-                binding.btnAboutTelegram,
-                binding.btnAboutUpstream,
-            ).forEachIndexed { index, row ->
-                row.postDelayed({ ExpMotion.popIn(row) }, 40L * index)
-            }
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.revealHeader(
+            binding.tvAboutTitle,
+            binding.tvAboutBrand,
+            binding.root.findViewById(com.dskja.betterstreamflix.R.id.v_about_accent_rule),
+            binding.tvAboutVersion,
+        )
+        ExpMotion.pulseAccentRule(binding.root.findViewById(com.dskja.betterstreamflix.R.id.v_about_accent_rule))
+        binding.root.setBackgroundResource(com.dskja.betterstreamflix.R.drawable.bg_exp_canvas_atmosphere)
+        binding.btnAboutBack.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        ExpMotion.popIn(binding.btnAboutBack)
+        val onSurface = com.google.android.material.color.MaterialColors.getColor(
+            requireContext(),
+            com.google.android.material.R.attr.colorOnSurface,
+            0xFFF5F5F5.toInt(),
+        )
+        val onVariant = com.google.android.material.color.MaterialColors.getColor(
+            requireContext(),
+            com.google.android.material.R.attr.colorOnSurfaceVariant,
+            0xFFA3A3A3.toInt(),
+        )
+        val primary = com.google.android.material.color.MaterialColors.getColor(
+            requireContext(),
+            androidx.appcompat.R.attr.colorPrimary,
+            0xFFE50914.toInt(),
+        )
+        binding.tvAboutTitle.setTextColor(onSurface)
+        binding.tvAboutBrand.setTextColor(onSurface)
+        binding.tvAboutVersion.setTextColor(onVariant)
+        binding.btnAboutBack.imageTintList =
+            android.content.res.ColorStateList.valueOf(onSurface)
+        listOf(
+            binding.btnAboutBack,
+            binding.btnAboutGithub,
+            binding.btnAboutBmc,
+            binding.btnAboutSponsors,
+            binding.btnAboutPatreon,
+            binding.btnAboutDiscord,
+            binding.btnAboutTelegram,
+            binding.btnAboutUpstream,
+            binding.btnAboutSupportHub,
+        ).forEach { it.applyExpPress() }
+        binding.btnAboutSupportHub.setBackgroundResource(
+            R.drawable.bg_button_mobile,
+        )
+        listOf(
+            binding.btnAboutGithub,
+            binding.btnAboutBmc,
+            binding.btnAboutSponsors,
+            binding.btnAboutPatreon,
+            binding.btnAboutDiscord,
+            binding.btnAboutTelegram,
+            binding.btnAboutUpstream,
+        ).forEach { row ->
+            row.setBackgroundResource(R.drawable.bg_outlined_chip)
+            (row.getChildAt(0) as? android.widget.ImageView)?.imageTintList =
+                android.content.res.ColorStateList.valueOf(primary)
+        }
+        listOf(
+            binding.btnAboutSupportHub,
+            binding.llAboutSupporters,
+            binding.btnAboutGithub,
+            binding.btnAboutBmc,
+            binding.btnAboutSponsors,
+            binding.btnAboutPatreon,
+            binding.btnAboutDiscord,
+            binding.btnAboutTelegram,
+            binding.btnAboutUpstream,
+        ).forEachIndexed { index, row ->
+            row.postDelayed({ ExpMotion.popIn(row) }, 40L * index)
         }
 
         binding.btnAboutBack.setOnClickListener {

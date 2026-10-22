@@ -11,7 +11,6 @@ import androidx.preference.PreferenceFragmentCompat
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.FragmentSettingsHubMobileBinding
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
  * Support-style cinematic hub overlay for Settings root and Integrations
@@ -139,13 +138,11 @@ internal class SettingsHubController(
                         fragment.getString(R.string.platform_settings_title),
                     )
                 }
-                {
-                    binding.cardSettingsFeatured.setBackgroundResource(
-                        ExperimentalMobileDesign.glassCardBackground(),
-                    )
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                        binding.cardSettingsFeatured.applyExpPress()
-                    }
+                binding.cardSettingsFeatured.setBackgroundResource(
+                    R.drawable.bg_cinema_glass_card,
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    binding.cardSettingsFeatured.applyExpPress()
                 }
                 setSectionLabel(binding, R.id.ll_settings_hub_app, R.string.settings_hub_section_app, true)
                 setSectionLabel(binding, R.id.ll_settings_hub_account, R.string.settings_hub_section_account, true)
@@ -282,24 +279,20 @@ internal class SettingsHubController(
             ExpMotion.hapticTap(it)
             onClick()
         }
-        {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
-            row.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
-            (row.findViewById<ImageView>(R.id.iv_settings_hub_card_icon).parent as? View)
-                ?.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            (row as? ViewGroup)?.let { group ->
-                val chevron = group.getChildAt(group.childCount - 1) as? ImageView
-                chevron?.imageTintList = android.content.res.ColorStateList.valueOf(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        row, androidx.appcompat.R.attr.colorPrimary,
-                    ),
-                )
-            }
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
+        row.setBackgroundResource(R.drawable.bg_outlined_chip)
+        (row.findViewById<ImageView>(R.id.iv_settings_hub_card_icon).parent as? View)
+            ?.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        (row as? ViewGroup)?.let { group ->
+            val chevron = group.getChildAt(group.childCount - 1) as? ImageView
+            chevron?.imageTintList = android.content.res.ColorStateList.valueOf(
+                com.google.android.material.color.MaterialColors.getColor(
+                    row, androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
         }
         container.addView(row)
-        {
-            row.alpha = 0f
-            row.postDelayed({ ExpMotion.popIn(row) }, 32L * index)
-        }
+        row.alpha = 0f
+        row.postDelayed({ ExpMotion.popIn(row) }, 32L * index)
     }
 }

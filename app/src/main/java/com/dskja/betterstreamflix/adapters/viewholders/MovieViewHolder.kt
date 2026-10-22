@@ -6,7 +6,6 @@ import com.dskja.betterstreamflix.adapters.viewholders.detail.bindMovieTvDetail
 
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -385,7 +384,7 @@ class MovieViewHolder(
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
             if (show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
@@ -394,7 +393,7 @@ class MovieViewHolder(
             val year = movie.released?.format("yyyy")
             text = year ?: context.getString(R.string.movie_item_type)
             if (!year.isNullOrBlank()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 val wasVisible = visibility == View.VISIBLE
                 visibility = View.VISIBLE
                 if (!wasVisible) ExpMotion.popIn(this)
@@ -420,7 +419,7 @@ class MovieViewHolder(
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM) {
-                binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                binding.root.setBackgroundResource(R.drawable.bg_cinema_glass_card)
             }
             ExpMotion.kenBurns(binding.ivMoviePoster)
             ExpMotion.revealHeader(binding.tvMovieTitle)
@@ -577,7 +576,7 @@ class MovieViewHolder(
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
             if (show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
@@ -586,7 +585,7 @@ class MovieViewHolder(
             val year = movie.released?.format("yyyy")
             text = year
             if (!year.isNullOrBlank()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setBackgroundResource(R.drawable.bg_meta_pill)
                 setPadding(
                     (6 * context.resources.displayMetrics.density).toInt(),
                     (2 * context.resources.displayMetrics.density).toInt(),
@@ -715,9 +714,7 @@ class MovieViewHolder(
             view.background = GradientDrawable().apply {
                 setColor(Color.TRANSPARENT)
                 setStroke(width, stroke)
-                {
-                    cornerRadius = 10f * context.resources.displayMetrics.density
-                }
+                cornerRadius = 10f * context.resources.displayMetrics.density
             }
             view.setPadding(width, width, width, width)
             if (view.getTag(R.id.exp_enter_animated_tag) != "selected"
@@ -761,7 +758,7 @@ class MovieViewHolder(
         val wasVisible = view.visibility == View.VISIBLE
         view.visibility = if (visible) View.VISIBLE else View.GONE
         if (visible) {
-            view.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            view.setBackgroundResource(R.drawable.bg_detail_icon_chip)
             val pad = (4 * context.resources.displayMetrics.density).toInt()
             view.setPadding(pad, pad, pad, pad)
             if (!wasVisible || view.getTag(R.id.exp_enter_animated_tag) != true) {
@@ -1034,23 +1031,21 @@ class MovieViewHolder(
     }
 
     private fun displayCastTv(binding: ContentMovieCastTvBinding) {
-        {
-            binding.tvMovieCastLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvMovieCastLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvMovieCastLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieCastLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_movie_cast_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieCastLabel,
+                binding.root.findViewById(R.id.v_movie_cast_rule),
             )
-            binding.root.findViewById<View>(R.id.v_movie_cast_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvMovieCastLabel,
-                    binding.root.findViewById(R.id.v_movie_cast_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_cast_rule))
-                ExpMotion.staggerFirstFill(binding.hgvMovieCast)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_cast_rule))
+            ExpMotion.staggerFirstFill(binding.hgvMovieCast)
         }
         binding.hgvMovieCast.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1083,23 +1078,21 @@ class MovieViewHolder(
         }
     }
     private fun displayDirectorsTv(binding: ContentMovieDirectorsTvBinding) {
-        {
-            binding.tvMovieDirectorsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvMovieDirectorsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvMovieDirectorsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieDirectorsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_movie_directors_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieDirectorsLabel,
+                binding.root.findViewById(R.id.v_movie_directors_rule),
             )
-            binding.root.findViewById<View>(R.id.v_movie_directors_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvMovieDirectorsLabel,
-                    binding.root.findViewById(R.id.v_movie_directors_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
-                ExpMotion.staggerFirstFill(binding.hgvMovieDirectors)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
+            ExpMotion.staggerFirstFill(binding.hgvMovieDirectors)
         }
         binding.hgvMovieDirectors.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1149,25 +1142,23 @@ class MovieViewHolder(
     }
 
     private fun displayRecommendationsTv(binding: ContentMovieRecommendationsTvBinding) {
-        {
-            binding.tvMovieRecommendationsLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvMovieRecommendationsLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
+        binding.tvMovieRecommendationsLabel.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieRecommendationsLabel,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        binding.root.findViewById<View>(R.id.v_movie_recommendations_rule)?.visibility = View.VISIBLE
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieRecommendationsLabel,
+                binding.root.findViewById(R.id.v_movie_recommendations_rule),
             )
-            binding.root.findViewById<View>(R.id.v_movie_recommendations_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvMovieRecommendationsLabel,
-                    binding.root.findViewById(R.id.v_movie_recommendations_rule),
-                )
-                ExpMotion.pulseAccentRule(
-                    binding.root.findViewById(R.id.v_movie_recommendations_rule),
-                )
-                ExpMotion.staggerFirstFill(binding.hgvMovieRecommendations)
-            }
+            ExpMotion.pulseAccentRule(
+                binding.root.findViewById(R.id.v_movie_recommendations_rule),
+            )
+            ExpMotion.staggerFirstFill(binding.hgvMovieRecommendations)
         }
         binding.hgvMovieRecommendations.apply {
             // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
@@ -1209,9 +1200,7 @@ class MovieViewHolder(
             remaining.text = com.dskja.betterstreamflix.ui.DetailWatchLabels
                 .remainingMinutesLabel(context, watchHistory)
                 ?: context.getString(R.string.continue_watching_percent, 0)
-            {
-                remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            }
+            remaining.setBackgroundResource(R.drawable.bg_meta_pill)
             val wasVisible = remaining.visibility == View.VISIBLE
             remaining.visibility = View.VISIBLE
             if (!wasVisible) ExpMotion.popIn(remaining)

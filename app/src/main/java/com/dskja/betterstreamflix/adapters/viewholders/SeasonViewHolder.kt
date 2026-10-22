@@ -11,7 +11,6 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemSeasonMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemSeasonTvBinding
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
@@ -26,9 +25,7 @@ class SeasonViewHolder(
 
     private val context = itemView.context
     init {
-        {
-            itemView.applyExpPress()
-        }
+        itemView.applyExpPress()
     }
 
     private lateinit var season: Season
@@ -75,7 +72,7 @@ class SeasonViewHolder(
             binding.ivSeasonWatchedRibbon.isVisible = watched
             if (watched) {
                 binding.ivSeasonWatchedRibbon.setBackgroundResource(
-                    ExperimentalMobileDesign.iconChipBackground(),
+                    R.drawable.bg_detail_icon_chip,
                 )
                 val pad = (4 * context.resources.displayMetrics.density).toInt()
                 binding.ivSeasonWatchedRibbon.setPadding(pad, pad, pad, pad)
@@ -87,7 +84,7 @@ class SeasonViewHolder(
         if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            binding.root.setBackgroundResource(R.drawable.bg_cinema_glass_card)
             ExpMotion.revealHeader(binding.tvSeasonTitle)
         }
     }

@@ -7,7 +7,6 @@ import android.webkit.CookieManager
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -80,12 +79,10 @@ object ConnectionServicesController {
             edit.summary = maskedKeySummary(context, value)
             edit.setOnBindEditTextListener { editText ->
                 editText.setSingleLine()
-                {
-                    val pad = (20 * context.resources.displayMetrics.density).toInt()
-                    editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    editText.setPadding(pad, pad, pad, pad)
-                    editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                }
+                val pad = (20 * context.resources.displayMetrics.density).toInt()
+                editText.setBackgroundResource(R.drawable.bg_search_edittext)
+                editText.setPadding(pad, pad, pad, pad)
+                editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
             edit.setOnPreferenceChangeListener { preference, newValue ->
                 val typed = (newValue as? String).orEmpty().trim()
@@ -114,12 +111,10 @@ object ConnectionServicesController {
                 editText.hint = "192.168.1.50"
                 editText.setText(UserPreferences.bypassWsAdvertisedHost)
                 editText.setSelection(editText.text?.length ?: 0)
-                {
-                    val pad = (20 * context.resources.displayMetrics.density).toInt()
-                    editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    editText.setPadding(pad, pad, pad, pad)
-                    editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                }
+                val pad = (20 * context.resources.displayMetrics.density).toInt()
+                editText.setBackgroundResource(R.drawable.bg_search_edittext)
+                editText.setPadding(pad, pad, pad, pad)
+                editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
             edit.setOnPreferenceChangeListener { preference, newValue ->
                 val value = (newValue as? String).orEmpty().trim()
@@ -432,8 +427,6 @@ object ConnectionServicesController {
         }
 
     private fun haptic(fragment: Fragment) {
-        {
-            runCatching { ExpMotion.hapticTap(fragment.requireView()) }
-        }
+        runCatching { ExpMotion.hapticTap(fragment.requireView()) }
     }
 }

@@ -42,7 +42,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ActivityQrScannerBinding
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.google.android.material.color.DynamicColors
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -129,9 +128,7 @@ class QrScannerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        {
-            DynamicColors.applyToActivityIfAvailable(this)
-        }
+        DynamicColors.applyToActivityIfAvailable(this)
 
         super.onCreate(savedInstanceState)
 
@@ -147,26 +144,24 @@ class QrScannerActivity : AppCompatActivity() {
 
         cameraManager = getSystemService(CameraManager::class.java)
 
-        {
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.qrScannerClose.applyExpPress()
-            }
-            binding.qrScannerClose.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_qr_scanner_title),
-                binding.root.findViewById(R.id.ll_qr_scanner_header),
-            )
-            binding.root.findViewById<View>(R.id.fl_qr_scanner_frame)?.let {
-                com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
-            }
-            binding.root.findViewById<View>(R.id.ll_qr_scanner_header)?.setBackgroundResource(
-                ExperimentalMobileDesign.navPillBackground(),
-            )
-            binding.root.findViewById<View>(R.id.tv_qr_scanner_hint)?.let {
-                it.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
-            }
+        com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            binding.qrScannerClose.applyExpPress()
+        }
+        binding.qrScannerClose.setBackgroundResource(R.drawable.bg_detail_icon_chip)
+        com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+            binding.root.findViewById(R.id.tv_qr_scanner_title),
+            binding.root.findViewById(R.id.ll_qr_scanner_header),
+        )
+        binding.root.findViewById<View>(R.id.fl_qr_scanner_frame)?.let {
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
+        }
+        binding.root.findViewById<View>(R.id.ll_qr_scanner_header)?.setBackgroundResource(
+            R.drawable.bg_meta_pill,
+        )
+        binding.root.findViewById<View>(R.id.tv_qr_scanner_hint)?.let {
+            it.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
         }
 
         binding.qrScannerClose.setOnClickListener {
@@ -432,24 +427,22 @@ class QrScannerActivity : AppCompatActivity() {
     private fun deliverResult(result: String) {
         if (!resultDelivered.compareAndSet(false, true)) return
 
-        {
-            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(findViewById(android.R.id.content))
-            findViewById<View>(R.id.fl_qr_scanner_frame)?.let { frame ->
-                frame.animate()
-                    .scaleX(1.06f)
-                    .scaleY(1.06f)
-                    .setDuration(90L)
-                    .withEndAction {
-                        frame.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
-                        setResult(
-                            Activity.RESULT_OK,
-                            Intent().putExtra(EXTRA_QR_VALUE, result)
-                        )
-                        finish()
-                    }
-                    .start()
-                return
-            }
+        com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(findViewById(android.R.id.content))
+        findViewById<View>(R.id.fl_qr_scanner_frame)?.let { frame ->
+            frame.animate()
+                .scaleX(1.06f)
+                .scaleY(1.06f)
+                .setDuration(90L)
+                .withEndAction {
+                    frame.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
+                    setResult(
+                        Activity.RESULT_OK,
+                        Intent().putExtra(EXTRA_QR_VALUE, result)
+                    )
+                    finish()
+                }
+                .start()
+            return
         }
 
         setResult(

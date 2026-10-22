@@ -15,7 +15,6 @@ import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -43,18 +42,14 @@ object ProfilesSettingsController {
         message: CharSequence,
         titleRes: Int = R.string.profile_switch_title,
     ) {
-        {
-            ExpDialogChrome.showInfo(context, titleRes, message, ::alertBuilder)
-        }
+        ExpDialogChrome.showInfo(context, titleRes, message, ::alertBuilder)
     }
 
     private fun styleExpInput(input: EditText, context: Context) {
         val pad = (24 * context.resources.displayMetrics.density).toInt()
-        {
-            input.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-            input.setPadding(pad, pad, pad, pad)
-            input.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-        }
+        input.setBackgroundResource(R.drawable.bg_search_edittext)
+        input.setPadding(pad, pad, pad, pad)
+        input.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
     }
 
     fun bind(
@@ -626,14 +621,12 @@ object ProfilesSettingsController {
         val context = fragment.requireContext()
         val profile = ProfileManager.activeProfile() ?: return
         if (ProfileManager.profiles().size <= 1) {
-            {
-                ExpDialogChrome.showInfo(
-                    context,
-                    R.string.profile_delete_title,
-                    context.getString(R.string.profile_cannot_delete_last),
-                    ::alertBuilder,
-                )
-            }
+            ExpDialogChrome.showInfo(
+                context,
+                R.string.profile_delete_title,
+                context.getString(R.string.profile_cannot_delete_last),
+                ::alertBuilder,
+            )
             return
         }
 
@@ -693,9 +686,7 @@ object ProfilesSettingsController {
                     isClickable = true
                     contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                    {
-                        with(ExpPressEffects) { applyExpPress() }
-                    }
+                    with(ExpPressEffects) { applyExpPress() }
                     setOnClickListener {
                         ExpMotion.hapticTap(it)
                         selected = palette.key
@@ -714,13 +705,11 @@ object ProfilesSettingsController {
 
         val cancel = view.findViewById<TextView>(R.id.btn_profile_avatar_cancel)
         val ok = view.findViewById<TextView>(R.id.btn_profile_avatar_ok)
-        {
-            cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            with(ExpPressEffects) {
-                cancel.applyExpPress()
-                ok.applyExpPress()
-            }
+        cancel.setBackgroundResource(R.drawable.bg_outlined_chip)
+        ok.setBackgroundResource(R.drawable.bg_button_mobile)
+        with(ExpPressEffects) {
+            cancel.applyExpPress()
+            ok.applyExpPress()
         }
         cancel.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -733,10 +722,8 @@ object ProfilesSettingsController {
             dialog.dismiss()
         }
         dialog.setOnShowListener {
-            {
-                view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                ExpDialogChrome.polishShown(dialog)
-            }
+            view.setBackgroundResource(R.drawable.bg_profile_dialog)
+            ExpDialogChrome.polishShown(dialog)
         }
         dialog.show()
     }

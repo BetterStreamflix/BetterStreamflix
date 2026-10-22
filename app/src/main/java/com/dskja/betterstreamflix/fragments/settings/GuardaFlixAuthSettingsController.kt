@@ -15,7 +15,6 @@ import com.dskja.betterstreamflix.providers.GuardaFlixProvider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -119,11 +118,9 @@ object GuardaFlixAuthSettingsController {
         val fieldGap = (10 * density).toInt()
                 fun styledField(block: EditText.() -> Unit) = EditText(context).apply {
             isSingleLine = true
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             block()
         }
         val username = styledField {

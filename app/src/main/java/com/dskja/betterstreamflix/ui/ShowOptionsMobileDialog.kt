@@ -63,49 +63,9 @@ class ShowOptionsMobileDialog(
         findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
             ?.setBackgroundColor(Color.TRANSPARENT)
 
-        {
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
-            ExpMotion.enterScreen(binding.root)
-            with(ExpPressEffects) {
-                listOf(
-                    R.id.btn_option_episode_open_tv_show,
-                    R.id.btn_option_show_favorite,
-                    R.id.btn_option_show_watched,
-                    R.id.btn_option_show_download,
-                    R.id.btn_option_episode_note,
-                    R.id.btn_option_episode_mark_all_previous_watched,
-                    R.id.btn_option_program_clear,
-                    R.id.btn_option_recently_watched_clear,
-                    R.id.btn_option_cancel,
-                ).forEach { id ->
-                    binding.root.findViewById<View>(id)?.let { btn ->
-                        btn.setBackgroundResource(
-                            if (id == R.id.btn_option_cancel) {
-                                ExperimentalMobileDesign.chipBackground()
-                            } else {
-                                ExperimentalMobileDesign.optionItemBackground()
-                            },
-                        )
-                        btn.applyExpPress()
-                    }
-                }
-            }
-            ExpMotion.revealHeader(
-                binding.ivOptionsShowPoster,
-                binding.tvOptionsShowTitle,
-                binding.tvShowSubtitle,
-                binding.root.findViewById(R.id.v_show_options_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_show_options_rule))
-        }
-
-        when (show) {
-            is Episode -> displayEpisode(show)
-            is Movie -> displayMovie(show)
-            is TvShow -> displayTvShow(show)
-        }
-
-        {
+        binding.root.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.enterScreen(binding.root)
+        with(ExpPressEffects) {
             listOf(
                 R.id.btn_option_episode_open_tv_show,
                 R.id.btn_option_show_favorite,
@@ -116,10 +76,46 @@ class ShowOptionsMobileDialog(
                 R.id.btn_option_program_clear,
                 R.id.btn_option_recently_watched_clear,
                 R.id.btn_option_cancel,
-            ).forEachIndexed { index, id ->
-                binding.root.findViewById<View>(id)?.takeIf { it.visibility == View.VISIBLE }?.let { row ->
-                    row.postDelayed({ ExpMotion.popIn(row) }, 36L * index)
+            ).forEach { id ->
+                binding.root.findViewById<View>(id)?.let { btn ->
+                    btn.setBackgroundResource(
+                        if (id == R.id.btn_option_cancel) {
+                            R.drawable.bg_outlined_chip
+                        } else {
+                            R.drawable.bg_outlined_chip
+                        },
+                    )
+                    btn.applyExpPress()
                 }
+            }
+        }
+        ExpMotion.revealHeader(
+            binding.ivOptionsShowPoster,
+            binding.tvOptionsShowTitle,
+            binding.tvShowSubtitle,
+            binding.root.findViewById(R.id.v_show_options_rule),
+        )
+        ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_show_options_rule))
+
+        when (show) {
+            is Episode -> displayEpisode(show)
+            is Movie -> displayMovie(show)
+            is TvShow -> displayTvShow(show)
+        }
+
+        listOf(
+            R.id.btn_option_episode_open_tv_show,
+            R.id.btn_option_show_favorite,
+            R.id.btn_option_show_watched,
+            R.id.btn_option_show_download,
+            R.id.btn_option_episode_note,
+            R.id.btn_option_episode_mark_all_previous_watched,
+            R.id.btn_option_program_clear,
+            R.id.btn_option_recently_watched_clear,
+            R.id.btn_option_cancel,
+        ).forEachIndexed { index, id ->
+            binding.root.findViewById<View>(id)?.takeIf { it.visibility == View.VISIBLE }?.let { row ->
+                row.postDelayed({ ExpMotion.popIn(row) }, 36L * index)
             }
         }
 
@@ -370,7 +366,7 @@ class ShowOptionsMobileDialog(
 
         binding.tvShowSubtitle.text = movie.released?.format("yyyy")
         if (!binding.tvShowSubtitle.text.isNullOrBlank()) {
-            binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            binding.tvShowSubtitle.setBackgroundResource(R.drawable.bg_meta_pill)
             val density = context.resources.displayMetrics.density
             binding.tvShowSubtitle.setPadding(
                 (10 * density).toInt(),
@@ -412,18 +408,16 @@ class ShowOptionsMobileDialog(
                 freshMovie.isFavorite -> context.getString(R.string.option_show_unfavorite)
                 else -> context.getString(R.string.option_show_favorite)
             }
-            {
-                setBackgroundResource(
-                    if (freshMovie.isFavorite) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.optionItemBackground(),
+            setBackgroundResource(
+                if (freshMovie.isFavorite) R.drawable.bg_button_mobile
+                else R.drawable.bg_outlined_chip,
+            )
+            if (freshMovie.isFavorite) {
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
                 )
-                if (freshMovie.isFavorite) {
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
-                        ),
-                    )
-                }
             }
             visibility = View.VISIBLE
         }
@@ -458,18 +452,16 @@ class ShowOptionsMobileDialog(
                 freshMovie.isWatched -> context.getString(R.string.option_show_unwatched)
                 else -> context.getString(R.string.option_show_watched)
             }
-            {
-                setBackgroundResource(
-                    if (freshMovie.isWatched) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.optionItemBackground(),
+            setBackgroundResource(
+                if (freshMovie.isWatched) R.drawable.bg_button_mobile
+                else R.drawable.bg_outlined_chip,
+            )
+            if (freshMovie.isWatched) {
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
                 )
-                if (freshMovie.isWatched) {
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
-                        ),
-                    )
-                }
             }
             visibility = View.VISIBLE
         }
@@ -543,7 +535,7 @@ class ShowOptionsMobileDialog(
 
         binding.tvShowSubtitle.text = tvShow.released?.format("yyyy")
         if (!binding.tvShowSubtitle.text.isNullOrBlank()) {
-            binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            binding.tvShowSubtitle.setBackgroundResource(R.drawable.bg_meta_pill)
             val density = context.resources.displayMetrics.density
             binding.tvShowSubtitle.setPadding(
                 (10 * density).toInt(),
@@ -585,18 +577,16 @@ class ShowOptionsMobileDialog(
             } else {
                 context.getString(R.string.option_show_favorite)
             }
-            {
-                setBackgroundResource(
-                    if (freshTvShow.isFavorite) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.optionItemBackground(),
+            setBackgroundResource(
+                if (freshTvShow.isFavorite) R.drawable.bg_button_mobile
+                else R.drawable.bg_outlined_chip,
+            )
+            if (freshTvShow.isFavorite) {
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
                 )
-                if (freshTvShow.isFavorite) {
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
-                        ),
-                    )
-                }
             }
             visibility = View.VISIBLE
         }

@@ -30,7 +30,6 @@ import com.dskja.betterstreamflix.providers.KinoGerProvider
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.google.android.material.color.DynamicColors
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -77,9 +76,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        {
-            DynamicColors.applyToActivityIfAvailable(this)
-        }
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(
             R.layout.activity_bypass_webview,
@@ -100,29 +97,27 @@ class BypassWebViewActivity : AppCompatActivity() {
         continueButton.isEnabled = false
         statusView.setText(R.string.bypass_status_complete_in_page)
 
-        {
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(findViewById(android.R.id.content))
-            statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            continueButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            cancelButton.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            findViewById<View>(R.id.bypass_footer)?.setBackgroundResource(
-                ExperimentalMobileDesign.navPillBackground(),
-            )
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
-                findViewById(R.id.tv_bypass_eyebrow),
-                findViewById(R.id.tv_bypass_brand),
-                findViewById(R.id.v_bypass_rule),
-                statusView,
-            )
-            com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
-                findViewById(R.id.v_bypass_rule),
-            )
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(continueButton)
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                continueButton.applyExpPress()
-                cancelButton.applyExpPress()
-            }
+        com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(findViewById(android.R.id.content))
+        statusView.setBackgroundResource(R.drawable.bg_cinema_glass_card)
+        continueButton.setBackgroundResource(R.drawable.bg_button_mobile)
+        cancelButton.setBackgroundResource(R.drawable.bg_outlined_chip)
+        findViewById<View>(R.id.bypass_footer)?.setBackgroundResource(
+            R.drawable.bg_meta_pill,
+        )
+        com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+            findViewById(R.id.tv_bypass_eyebrow),
+            findViewById(R.id.tv_bypass_brand),
+            findViewById(R.id.v_bypass_rule),
+            statusView,
+        )
+        com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
+            findViewById(R.id.v_bypass_rule),
+        )
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(continueButton)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            continueButton.applyExpPress()
+            cancelButton.applyExpPress()
         }
 
         cancelButton.setOnClickListener {

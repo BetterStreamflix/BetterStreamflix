@@ -10,7 +10,6 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.Preference
@@ -28,9 +27,7 @@ import kotlinx.coroutines.launch
 object AniWorldAuthSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        {
-            androidx.appcompat.app.AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     /** Call from Settings onResume after returning from WebView sign-in. */
     fun refresh(findPreference: (String) -> Preference?) {
@@ -226,11 +223,9 @@ object AniWorldAuthSettingsController {
         val fieldGap = (10 * density).toInt()
                 fun styledField(block: android.widget.EditText.() -> Unit) = android.widget.EditText(context).apply {
             isSingleLine = true
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-            }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             block()
         }
         val email = styledField {
@@ -407,39 +402,35 @@ object AniWorldAuthSettingsController {
             maxLines = 8
             setText(AniWorldAuthManager.exportCookieHeader())
             setSelection(text?.length ?: 0)
-            {
-                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+            setBackgroundResource(R.drawable.bg_search_edittext)
+            setPadding(padding, padding, padding, padding)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+        }
+        val glass = ExpDialogChrome.buildGlassMessage(
+            context,
+            context.getString(R.string.aniworld_auth_paste_message),
+        )
+        glass.root.addView(
+            input,
+            android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).also { it.topMargin = padding / 2 },
+        )
+        alertBuilder(context)
+            .setTitle(R.string.aniworld_auth_paste_title)
+            .setView(glass.root)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.aniworld_auth_paste_save) { _, _ ->
+                onSubmit(input.text?.toString().orEmpty())
             }
-        }
-        {
-            val glass = ExpDialogChrome.buildGlassMessage(
-                context,
-                context.getString(R.string.aniworld_auth_paste_message),
-            )
-            glass.root.addView(
-                input,
-                android.widget.LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).also { it.topMargin = padding / 2 },
-            )
-            alertBuilder(context)
-                .setTitle(R.string.aniworld_auth_paste_title)
-                .setView(glass.root)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.aniworld_auth_paste_save) { _, _ ->
-                    onSubmit(input.text?.toString().orEmpty())
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
-                .create()
-                .also { dialog ->
-                    dialog.setOnShowListener {
-                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    }
-                    dialog.show()
-                }
-        }
+                dialog.show()
+            }
     }
 }

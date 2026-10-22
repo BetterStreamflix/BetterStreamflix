@@ -429,7 +429,7 @@ class WebViewResolver(private val context: Context) {
                         id = View.generateViewId()
                         text = context.getString(R.string.bypass_tv_instructions)
                         setBackgroundResource(
-                            ExperimentalMobileDesign.primaryButtonBackground(),
+                            R.drawable.bg_button_mobile,
                         )
                         setTextColor(
                             runCatching {
@@ -486,7 +486,7 @@ class WebViewResolver(private val context: Context) {
                         val margin = (14 * density).toInt()
                         val closeBtn = android.widget.ImageButton(uiContext).apply {
                             setImageResource(R.drawable.ic_support_close)
-                            setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                            setBackgroundResource(R.drawable.bg_detail_icon_chip)
                             val onSurface = runCatching {
                                 com.google.android.material.color.MaterialColors.getColor(
                                     uiContext,

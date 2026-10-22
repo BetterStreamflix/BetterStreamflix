@@ -228,7 +228,7 @@ class PlayerGestureHelper(
         volumeLayout.visibility = View.GONE
         if (wasGone) {
             ExpMotion.hapticTap(brightnessLayout)
-            brightnessLayout.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+            brightnessLayout.setBackgroundResource(R.drawable.bg_meta_pill)
             ExpMotion.popIn(brightnessLayout)
         }
 
@@ -263,7 +263,7 @@ class PlayerGestureHelper(
         brightnessLayout.visibility = View.GONE
         if (wasGone) {
             ExpMotion.hapticTap(volumeLayout)
-            volumeLayout.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+            volumeLayout.setBackgroundResource(R.drawable.bg_meta_pill)
             ExpMotion.popIn(volumeLayout)
         }
 

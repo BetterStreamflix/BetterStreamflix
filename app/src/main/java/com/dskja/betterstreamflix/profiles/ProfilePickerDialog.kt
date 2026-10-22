@@ -28,7 +28,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /** Centered profile switcher popup with avatar orbs and optional PIN gate. */
@@ -104,20 +103,18 @@ class ProfilePickerDialog : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         if (startInManageMode) manageMode = true
         ExpMotion.enterScreen(view)
-        {
-            view.findViewById<TextView>(R.id.btn_profile_picker_create)
-                ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            view.findViewById<TextView>(R.id.btn_profile_picker_manage)
-                ?.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            val primary = com.google.android.material.color.MaterialColors.getColor(
-                requireContext(),
-                androidx.appcompat.R.attr.colorPrimary,
-                requireContext().getColor(R.color.m3_primary),
-            )
-            view.findViewById<TextView>(R.id.tv_profile_picker_brand)?.setTextColor(primary)
-            ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_create))
-            ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_manage))
-        }
+        view.findViewById<TextView>(R.id.btn_profile_picker_create)
+            ?.setBackgroundResource(R.drawable.bg_button_mobile)
+        view.findViewById<TextView>(R.id.btn_profile_picker_manage)
+            ?.setBackgroundResource(R.drawable.bg_outlined_chip)
+        val primary = com.google.android.material.color.MaterialColors.getColor(
+            requireContext(),
+            androidx.appcompat.R.attr.colorPrimary,
+            requireContext().getColor(R.color.m3_primary),
+        )
+        view.findViewById<TextView>(R.id.tv_profile_picker_brand)?.setTextColor(primary)
+        ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_create))
+        ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_manage))
         applyManageChrome(view)
         bindProfiles(view)
         view.findViewById<View>(R.id.btn_profile_picker_close)?.setOnClickListener {
@@ -784,11 +781,11 @@ class ProfilePickerDialog : DialogFragment() {
             pinInput?.applyExpPress()
             kidsCheck?.applyExpPress()
         }
-        cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-        ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-        form.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-        nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-        pinInput?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+        cancel.setBackgroundResource(R.drawable.bg_outlined_chip)
+        ok.setBackgroundResource(R.drawable.bg_button_mobile)
+        form.setBackgroundResource(R.drawable.bg_profile_dialog)
+        nameInput.setBackgroundResource(R.drawable.bg_search_edittext)
+        pinInput?.setBackgroundResource(R.drawable.bg_search_edittext)
         ExpMotion.revealHeader(
             form.findViewById(R.id.tv_profile_create_title),
             form.findViewById(R.id.v_profile_create_rule),
@@ -891,22 +888,20 @@ class ProfilePickerDialog : DialogFragment() {
             }
         }
         dialog.setOnShowListener {
-            {
-                view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                ExpMotion.enterScreen(view)
-                ExpDialogChrome.polishShown(dialog)
-                input.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                view.findViewById<TextView>(R.id.btn_profile_pin_cancel)
-                    ?.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                view.findViewById<TextView>(R.id.btn_profile_pin_ok)
-                    ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                ExpMotion.revealHeader(
-                    view.findViewById(R.id.pav_profile_pin_avatar),
-                    view.findViewById(R.id.tv_profile_pin_title),
-                    view.findViewById(R.id.v_profile_pin_rule),
-                )
-                ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_pin_rule))
-            }
+            view.setBackgroundResource(R.drawable.bg_profile_dialog)
+            ExpMotion.enterScreen(view)
+            ExpDialogChrome.polishShown(dialog)
+            input.setBackgroundResource(R.drawable.bg_search_edittext)
+            view.findViewById<TextView>(R.id.btn_profile_pin_cancel)
+                ?.setBackgroundResource(R.drawable.bg_outlined_chip)
+            view.findViewById<TextView>(R.id.btn_profile_pin_ok)
+                ?.setBackgroundResource(R.drawable.bg_button_mobile)
+            ExpMotion.revealHeader(
+                view.findViewById(R.id.pav_profile_pin_avatar),
+                view.findViewById(R.id.tv_profile_pin_title),
+                view.findViewById(R.id.v_profile_pin_rule),
+            )
+            ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_pin_rule))
         }
         dialog.show()
         input.requestFocus()
@@ -1127,17 +1122,15 @@ class ProfilePickerDialog : DialogFragment() {
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             val cancel = view.findViewById<TextView>(R.id.btn_profile_create_cancel)
             val ok = view.findViewById<TextView>(R.id.btn_profile_create_ok)
-            {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                    cancel.applyExpPress()
-                    ok.applyExpPress()
-                    kidsCheck.applyExpPress()
-                    nameInput.applyExpPress()
-                    pinInput?.applyExpPress()
-                }
-                cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                cancel.applyExpPress()
+                ok.applyExpPress()
+                kidsCheck.applyExpPress()
+                nameInput.applyExpPress()
+                pinInput?.applyExpPress()
             }
+            cancel.setBackgroundResource(R.drawable.bg_outlined_chip)
+            ok.setBackgroundResource(R.drawable.bg_button_mobile)
             cancel.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 dialog.dismiss()
@@ -1186,18 +1179,16 @@ class ProfilePickerDialog : DialogFragment() {
                 onCreated?.invoke(created)
             }
             dialog.setOnShowListener {
-                {
-                    view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                    ExpDialogChrome.polishShown(dialog)
-                    nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    pinInput?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    ExpMotion.revealHeader(
-                        view.findViewById(R.id.tv_profile_create_title),
-                        view.findViewById(R.id.v_profile_create_rule),
-                        avatarLabel,
-                    )
-                    ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_create_rule))
-                }
+                view.setBackgroundResource(R.drawable.bg_profile_dialog)
+                ExpDialogChrome.polishShown(dialog)
+                nameInput.setBackgroundResource(R.drawable.bg_search_edittext)
+                pinInput?.setBackgroundResource(R.drawable.bg_search_edittext)
+                ExpMotion.revealHeader(
+                    view.findViewById(R.id.tv_profile_create_title),
+                    view.findViewById(R.id.v_profile_create_rule),
+                    avatarLabel,
+                )
+                ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_create_rule))
             }
             dialog.show()
             nameInput.requestFocus()
@@ -1338,9 +1329,7 @@ class ProfilePickerDialog : DialogFragment() {
                     isClickable = true
                     contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                    {
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-                    }
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
                     setOnClickListener {
                         ExpMotion.hapticTap(it)
                         onSelect(palette.key)
