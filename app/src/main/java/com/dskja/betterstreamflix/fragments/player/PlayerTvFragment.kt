@@ -2673,9 +2673,8 @@ class PlayerTvFragment : Fragment(),
                 override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                     super.onTracksChanged(tracks)
                     val marks = SkipIntroChapters.fromTracks(tracks)
-                    if (marks.isNotEmpty()) {
-                        skipIntroChapters = marks
-                    }
+                    skipIntroChapters = marks
+                    updateSeekbarChapterMarkers(marks)
                     val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
                     val videoTracks = videoGroups.sumOf { it.length }
                     val selectedHeights = buildList {
@@ -4216,10 +4215,27 @@ class PlayerTvFragment : Fragment(),
             skipIntroContentId = id
             skipIntroConsumed = false
             skipIntroChapters = emptyList()
+            updateSeekbarChapterMarkers(emptyList())
             activeSkipOpportunity = null
             skipIntroProbe?.release()
             skipIntroProbe = null
             showSkipIntroButton(false)
+        }
+
+        /** Renders embedded chapter marks as dots on the player seek bar. */
+        private fun updateSeekbarChapterMarkers(marks: List<SmartSkipIntro.ChapterMark>) {
+            val bar = _binding?.pvPlayer
+                ?.findViewById<androidx.media3.ui.TimeBar>(R.id.exo_progress)
+                ?: return
+            (bar as? androidx.media3.ui.DefaultTimeBar)?.apply {
+                val accent = androidx.core.content.ContextCompat.getColor(
+                    requireContext(), R.color.profile_accent,
+                )
+                setAdMarkerColor(accent)
+                setPlayedAdMarkerColor(accent)
+            }
+            val times = LongArray(marks.size) { i -> marks[i].startMs }
+            bar.setAdGroupTimesMs(times, BooleanArray(marks.size), marks.size)
         }
 
         private fun ensureSkipIntroProbe() {
