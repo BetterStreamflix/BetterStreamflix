@@ -972,11 +972,11 @@
     <string name="settings_gesture_zoom_title">Pinch-Zoom</string>
     <string name="settings_gesture_zoom_summary">Zwei-Finger-Pinch skaliert das Video</string>
     <string name="settings_gesture_double_tap_title">Doppeltippen</string>
-    <string name="settings_gesture_double_tap_summary">Setzt den Zoom auf 1× zurück</string>
+    <string name="settings_gesture_double_tap_summary">±10s auf der getippten Seite; setzt bei Zoom zurück auf 1×</string>
     <string name="settings_gesture_guide_brightness">Wische während der Wiedergabe auf der linken Bildhälfte hoch oder runter. Eine Anzeige zeigt den Wert – loslassen zum Übernehmen.</string>
     <string name="settings_gesture_guide_volume">Wische auf der rechten Bildhälfte hoch oder runter. Eine Anzeige zeigt die aktuelle Stufe.</string>
     <string name="settings_gesture_guide_zoom">Mit zwei Fingern auseinander- oder zusammenziehen, um das Bild zwischen 0,25× und 5× zu zoomen – hilfreich bei beschnittenen Videos.</string>
-    <string name="settings_gesture_guide_double_tap">Zweimal schnell tippen, um den Zoom wieder auf die Standard-Ansicht zurückzusetzen.</string>
+    <string name="settings_gesture_guide_double_tap">Links doppeltippen für 10s zurück, rechts für 10s vor — bei gezoomtem Bild wird auf die Standard-Ansicht zurückgesetzt.</string>
     <string name="settings_gesture_zoom_mode_title">Manueller Zoom-Modus</string>
     <string name="settings_gesture_guide_zoom_mode">Über das Player-Menü startest du den manuellen Zoom: mit zwei Fingern X/Y getrennt strecken, Doppeltippen zum Zurücksetzen, Einzeltippen zum Beenden.</string>
     <string name="settings_gesture_speed_boost_title">Halten für 2×-Tempo</string>

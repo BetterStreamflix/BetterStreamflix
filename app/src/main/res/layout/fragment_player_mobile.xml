@@ -437,4 +437,27 @@
             app:tint="@color/cinema_text" />
     </LinearLayout>
 
+    <!-- Double-tap seek feedback pill (accumulates like YouTube: "+10 s" → "+20 s"). -->
+    <TextView
+        android:id="@+id/tv_seek_feedback"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_meta_pill"
+        android:elevation="8dp"
+        android:fontFamily="@font/manrope"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/cinema_text"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="+10 s"
+        tools:visibility="visible" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

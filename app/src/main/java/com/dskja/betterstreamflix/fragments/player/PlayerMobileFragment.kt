@@ -570,8 +570,26 @@ class PlayerMobileFragment : Fragment(),
             binding.tvBrightnessPercentage,
             binding.llVolume,
             binding.pbVolume,
-            binding.tvVolumePercentage
+            binding.tvVolumePercentage,
+            binding.tvSeekFeedback,
         )
+        // Double-tap seek: ±10s per tap side, clamped to the stream bounds.
+        gestureHelper.onSeekDelta = { delta ->
+            runCatching {
+                if (::player.isInitialized && !playerReleased &&
+                    player.isCurrentMediaItemSeekable
+                ) {
+                    val duration = player.duration
+                    val target = player.currentPosition + delta
+                    player.seekTo(
+                        when {
+                            duration > 0 -> target.coerceIn(0, duration)
+                            else -> target.coerceAtLeast(0)
+                        },
+                    )
+                }
+            }
+        }
         // Hold-to-boost: 2x while held, restore the previous speed on release.
         gestureHelper.onSpeedBoost = { boosting ->
             runCatching {

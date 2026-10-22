@@ -1204,11 +1204,11 @@
     <string name="settings_gesture_zoom_title">Pinch to zoom</string>
     <string name="settings_gesture_zoom_summary">Two-finger pinch scales the video</string>
     <string name="settings_gesture_double_tap_title">Double tap</string>
-    <string name="settings_gesture_double_tap_summary">Resets the zoom back to 1×</string>
+    <string name="settings_gesture_double_tap_summary">Seek ±10s on the tapped side; resets zoom while zoomed</string>
     <string name="settings_gesture_guide_brightness">Swipe up or down on the left half of the video while it plays. A pill shows the level; release to keep it.</string>
     <string name="settings_gesture_guide_volume">Swipe up or down on the right half of the video. A pill shows the current level.</string>
     <string name="settings_gesture_guide_zoom">Pinch with two fingers to zoom the picture between 0.25× and 5× — useful for cropped or letterboxed videos.</string>
-    <string name="settings_gesture_guide_double_tap">Tap twice quickly to snap the zoom back to the default fit.</string>
+    <string name="settings_gesture_guide_double_tap">Tap the left half twice to jump back 10s, the right half to jump forward — while zoomed it snaps back to the default fit.</string>
     <string name="settings_gesture_zoom_mode_title">Manual zoom mode</string>
     <string name="settings_gesture_guide_zoom_mode">From the player menu you can enter manual zoom: drag with two fingers to stretch X/Y independently, double tap to reset, single tap to exit.</string>
     <string name="settings_gesture_speed_boost_title">Hold for 2× speed</string>

@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.utils
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.GestureDetector
 import android.view.InputDevice
@@ -28,7 +29,8 @@ class PlayerGestureHelper(
     private val brightnessText: TextView,
     private val volumeLayout: View,
     private val volumeBar: ProgressBar,
-    private val volumeText: TextView
+    private val volumeText: TextView,
+    private val seekFeedback: TextView? = null,
 ) {
 
     private val gestureDetector: GestureDetector
@@ -51,7 +53,36 @@ class PlayerGestureHelper(
      */
     var onSpeedBoost: ((Boolean) -> Unit)? = null
 
+    /** Double-tap seek: invoked with a signed ±SEEK_STEP_MS delta per tap. */
+    var onSeekDelta: ((Long) -> Unit)? = null
+
     private var speedBoosting = false
+
+    /** Running double-tap seek total shown in the pill (resets after a pause). */
+    private var seekAccumMs = 0L
+    private var lastSeekTapAt = 0L
+    private var seekHideJob: Job? = null
+
+    private fun showSeekFeedback() {
+        val pill = seekFeedback ?: return
+        val sign = if (seekAccumMs >= 0) "+" else "−"
+        pill.text = "$sign${kotlin.math.abs(seekAccumMs) / 1000} s"
+        if (pill.visibility != View.VISIBLE) {
+            pill.visibility = View.VISIBLE
+            pill.alpha = 0f
+            pill.scaleX = 0.85f
+            pill.scaleY = 0.85f
+            pill.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(120).start()
+        }
+        seekHideJob?.cancel()
+        seekHideJob = CoroutineScope(Dispatchers.Main).launch {
+            delay(SEEK_PILL_HIDE_MS)
+            pill.animate().alpha(0f).setDuration(160).withEndAction {
+                pill.visibility = View.GONE
+                pill.alpha = 1f
+            }.start()
+        }
+    }
 
     private val density = context.resources.displayMetrics.density
     private val topGestureExclusionPx = 72f * density
@@ -120,10 +151,21 @@ class PlayerGestureHelper(
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
-                if (controlsLocked || !UserPreferences.playerGestureDoubleTap) return false
+                if (controlsLocked || speedBoosting || !UserPreferences.playerGestureDoubleTap) return false
                 val videoView = playerView.videoSurfaceView ?: return false
-                videoView.scaleX = 1.0f
-                videoView.scaleY = 1.0f
+                if (videoView.scaleX != 1.0f || videoView.scaleY != 1.0f) {
+                    videoView.scaleX = 1.0f
+                    videoView.scaleY = 1.0f
+                    return true
+                }
+                // Unzoomed: seek ±10s on the tapped half, accumulating rapid taps.
+                val now = SystemClock.uptimeMillis()
+                if (now - lastSeekTapAt > SEEK_ACCUM_WINDOW_MS) seekAccumMs = 0
+                lastSeekTapAt = now
+                val delta = if (e.x >= playerView.width / 2) SEEK_STEP_MS else -SEEK_STEP_MS
+                seekAccumMs += delta
+                onSeekDelta?.invoke(delta)
+                showSeekFeedback()
                 return true
             }
 
@@ -266,13 +308,27 @@ class PlayerGestureHelper(
     fun release() {
         hideJob?.cancel()
         hideJob = null
+        seekHideJob?.cancel()
+        seekHideJob = null
+        seekAccumMs = 0
+        lastSeekTapAt = 0
         if (speedBoosting) {
             speedBoosting = false
             onSpeedBoost?.invoke(false)
         }
         brightnessLayout.animate().cancel()
         volumeLayout.animate().cancel()
+        seekFeedback?.animate()?.cancel()
         brightnessLayout.visibility = View.GONE
         volumeLayout.visibility = View.GONE
+        seekFeedback?.visibility = View.GONE
+    }
+
+    private companion object {
+        /** Double-tap seek step per tap (±10s), matching YouTube/Netflix. */
+        const val SEEK_STEP_MS = 10_000L
+        /** Rapid taps within this window accumulate in the pill label. */
+        const val SEEK_ACCUM_WINDOW_MS = 900L
+        const val SEEK_PILL_HIDE_MS = 800L
     }
 }
