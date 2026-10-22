@@ -4,7 +4,6 @@ import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -183,12 +182,7 @@ object DownloadsSettingsController {
             }.toTypedArray()
             val packages = players.map { it.activityInfo.packageName }
             val checked = packages.indexOf(current).coerceAtLeast(-1)
-            val builder = if (ExperimentalMobileDesign.enabled()) {
-                MaterialAlertDialogBuilder(context)
-            } else {
-                AlertDialog.Builder(context)
-            }
-            builder
+            AlertDialog.Builder(context)
                 .setTitle(R.string.settings_external_player_title)
                 .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalStreamHandoff.rememberChosenPackage(packages.getOrNull(which))
@@ -220,14 +214,9 @@ object DownloadsSettingsController {
             }
             val current = UserPreferences.externalDownloaderPackage
             val checked = installed.indexOf(current).coerceAtLeast(-1)
-            val builder = if (ExperimentalMobileDesign.enabled()) {
-                MaterialAlertDialogBuilder(context)
-            } else {
-                AlertDialog.Builder(context)
-            }
             val labels = installed.map { ExternalDownloadHandoff.packageLabel(context, it) }
                 .toTypedArray()
-            builder
+            AlertDialog.Builder(context)
                 .setTitle(R.string.settings_external_downloader_title)
                 .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalDownloadHandoff.rememberChosenPackage(installed.getOrNull(which))
@@ -513,30 +502,16 @@ object DownloadsSettingsController {
         onCancel: (() -> Unit)? = null,
         onConfirm: () -> Unit,
     ) {
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            // Match Exp-on Material path so destructive confirms stay consistent
-            // when Experimental UI is off (DL-P3-C).
-            MaterialAlertDialogBuilder(context)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, context.getString(messageRes))
-        } else {
-            null
-        }
-        builder.setTitle(titleRes)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(messageRes)
-        builder
+        MaterialAlertDialogBuilder(context)
+            .setTitle(titleRes)
+            .setMessage(messageRes)
             .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }
             .setNegativeButton(android.R.string.cancel) { _, _ -> onCancel?.invoke() }
             .setOnCancelListener { onCancel?.invoke() }
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    else ExpDialogChrome.polishButtons(dialog)
+                    ExpDialogChrome.polishButtons(dialog)
                 }
                 dialog.show()
             }

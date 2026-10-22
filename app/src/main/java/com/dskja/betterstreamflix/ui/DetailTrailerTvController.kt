@@ -14,7 +14,6 @@ import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.models.TrailerEntry
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,7 +44,6 @@ object DetailTrailerTvController {
         pipelineSession: TrailerPlayPipeline.Session? = null,
     ) {
         binding.root.tag = "detail_section_trailer"
-        polishHeader(binding)
         TrailerPlayPipeline.beginSession(pipelineSession)
         wireStreamNow(binding, pipelineSession)
 
@@ -97,9 +95,6 @@ object DetailTrailerTvController {
                 binding.btnDetailTrailerStreamNow.visibility = View.VISIBLE
             } else {
                 binding.btnDetailTrailerStreamNow.visibility = View.GONE
-            }
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.staggerFirstFill(binding.hgvDetailTrailers)
             }
         }
 
@@ -162,9 +157,6 @@ object DetailTrailerTvController {
         btn.post {
             if (btn.isShown) btn.requestFocus()
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.popIn(btn)
-        }
     }
 
     private fun wireStreamNow(
@@ -184,22 +176,4 @@ object DetailTrailerTvController {
             TrailerPlayPipeline.activeSession?.onStreamNow != null
     }
 
-    private fun polishHeader(binding: ContentDetailTrailerTvBinding) {
-        if (!ExperimentalMobileDesign.enabled()) return
-        binding.tvDetailTrailerLabel.setTextColor(
-            com.google.android.material.color.MaterialColors.getColor(
-                binding.tvDetailTrailerLabel,
-                androidx.appcompat.R.attr.colorPrimary,
-            ),
-        )
-        binding.root.findViewById<View>(R.id.v_detail_trailer_rule)?.visibility = View.VISIBLE
-        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.revealHeader(
-                binding.tvDetailTrailerLabel,
-                binding.root.findViewById(R.id.v_detail_trailer_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_detail_trailer_rule))
-        }
-    }
 }

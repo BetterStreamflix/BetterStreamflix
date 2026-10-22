@@ -21,7 +21,6 @@ import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
@@ -76,9 +75,6 @@ class MovieMobileFragment : Fragment() {
         }
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.staggerFirstFill(binding.rvMovie)
-        }
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)
         appAdapter.onDetailTabSelectedListener = { tab ->
@@ -115,7 +111,7 @@ class MovieMobileFragment : Fragment() {
                             root = binding.isLoading.root,
                             context = requireContext(),
                             error = state.error,
-                            showToast = !ExperimentalMobileDesign.enabled(),
+                            showToast = true,
                             onRetry = { viewModel.getMovie(args.id) },
                         )
                     }

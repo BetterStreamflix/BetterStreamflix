@@ -16,13 +16,10 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.toActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,17 +50,6 @@ internal fun TvShowViewHolder.bindTvShowSeasonsMobile(binding: ContentTvShowSeas
             ExpMotion.hapticTap(it)
             showSeasonPicker(binding, seasons, seasonUi)
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            applyExpPress()
-        }
-    }
-
-    if (ExperimentalMobileDesign.enabled() &&
-        binding.root.getTag(R.id.exp_enter_animated_tag) != true
-    ) {
-        binding.root.setTag(R.id.exp_enter_animated_tag, true)
-        ExpMotion.popIn(binding.btnTvShowSeasonPicker)
-        ExpMotion.staggerFirstFill(binding.rvTvShowEpisodes)
     }
 
     bindSeasonEpisodes(binding, selectedSeason, seasonUi)
@@ -99,12 +85,7 @@ private fun TvShowViewHolder.showSeasonPicker(
     }.toTypedArray()
     val selectedIndex = seasons.indexOfFirst { it.id == seasonUi?.selectedSeasonId }
         .coerceAtLeast(0)
-    val builder = if (ExperimentalMobileDesign.enabled()) {
-        MaterialAlertDialogBuilder(context)
-    } else {
-        AlertDialog.Builder(context)
-    }
-    builder
+    AlertDialog.Builder(context)
         .setTitle(R.string.tv_show_seasons)
         .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
             val season = seasons.getOrNull(which) ?: return@setSingleChoiceItems

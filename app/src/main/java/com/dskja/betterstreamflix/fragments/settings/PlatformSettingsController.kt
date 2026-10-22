@@ -4,9 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.EditTextPreference
@@ -50,11 +48,7 @@ object PlatformSettingsController {
     }
 
     private fun alertBuilder(context: android.content.Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        AlertDialog.Builder(context)
 
     fun bind(
         fragment: Fragment,
@@ -149,19 +143,9 @@ object PlatformSettingsController {
         }
 
         fun showTraktUnavailableDialog() {
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
-                    context,
-                    context.getString(R.string.platform_trakt_unavailable_dialog_message),
-                )
-            } else {
-                null
-            }
-            val builder = alertBuilder(context)
+            alertBuilder(context)
                 .setTitle(R.string.platform_trakt_unavailable_dialog_title)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.platform_trakt_unavailable_dialog_message)
-            builder
+                .setMessage(R.string.platform_trakt_unavailable_dialog_message)
                 .setPositiveButton(R.string.platform_trakt_unavailable_dialog_support) { _, _ ->
                     openSupportHub()
                 }
@@ -169,8 +153,7 @@ object PlatformSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishButtons(dialog)
                     }
                     dialog.show()
                 }
@@ -745,8 +728,6 @@ object PlatformSettingsController {
     }
 
     private fun haptic(fragment: Fragment) {
-        if (ExperimentalMobileDesign.enabled()) {
-            runCatching { ExpMotion.hapticTap(fragment.requireView()) }
-        }
+        runCatching { ExpMotion.hapticTap(fragment.requireView()) }
     }
 }

@@ -9,8 +9,6 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 
 /**
@@ -54,11 +52,7 @@ object TasteSignalsUi {
             add(context.getString(R.string.taste_action_hide))
         }.toTypedArray()
         val favoriteOffset = if (includeFavorite) 1 else 0
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(themed)
-        } else {
-            AlertDialog.Builder(themed)
-        }
+        val builder = AlertDialog.Builder(themed)
         builder
             .setTitle(title.ifBlank { context.getString(R.string.taste_actions_title) })
             .setItems(labels) { _, which ->
@@ -137,11 +131,7 @@ object TasteSignalsUi {
         onCleared: (() -> Unit)? = null,
     ) {
         val themed = ExpDialogChrome.themedContext(context)
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(themed)
-        } else {
-            AlertDialog.Builder(themed)
-        }
+        val builder = AlertDialog.Builder(themed)
         val view = android.view.LayoutInflater.from(themed)
             .inflate(R.layout.dialog_taste_hidden, null, false)
         val countView = view.findViewById<android.widget.TextView>(R.id.tv_taste_hidden_count)
@@ -207,11 +197,7 @@ object TasteSignalsUi {
         onCleared: (() -> Unit)? = null,
     ) {
         val themed = ExpDialogChrome.themedContext(context)
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(themed)
-        } else {
-            AlertDialog.Builder(themed)
-        }
+        val builder = AlertDialog.Builder(themed)
         builder
             .setTitle(R.string.taste_clear_all_title)
             .setMessage(R.string.taste_clear_all_message)

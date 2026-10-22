@@ -21,10 +21,8 @@ import androidx.navigation.fragment.NavHostFragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.QrUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -204,13 +202,7 @@ object DownloadPackUi {
             addView(container)
         }
 
-        val useGlass = ExperimentalMobileDesign.enabled()
-        val builder = if (useGlass) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(context)
-        }
-        val dialog = builder
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(R.string.download_pack_share_title)
             .setView(scroll)
             .setPositiveButton(R.string.download_pack_share_action) { _, _ ->
@@ -281,18 +273,8 @@ object DownloadPackUi {
             payload.episodeCount(),
             payload.providerName,
         )
-        val useGlass = ExperimentalMobileDesign.enabled()
-        val builder = if (useGlass) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(activity))
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(activity)
-        }
-        val glass = if (useGlass) {
-            ExpDialogChrome.buildGlassMessage(activity, message)
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root) else builder.setMessage(message)
+        val builder = androidx.appcompat.app.AlertDialog.Builder(activity)
+        builder.setMessage(message)
         var importing = false
         val encodedMark = runCatching { DownloadPackLinks.encode(payload) }.getOrNull()
         val dialog = builder
@@ -424,12 +406,7 @@ object DownloadPackUi {
         if (!DownloadConnectivityMonitor.isMetered(activity)) return false
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             activity.runOnUiThread {
-                val builder = if (ExperimentalMobileDesign.enabled()) {
-                    MaterialAlertDialogBuilder(activity)
-                } else {
-                    androidx.appcompat.app.AlertDialog.Builder(activity)
-                }
-                builder
+                androidx.appcompat.app.AlertDialog.Builder(activity)
                     .setTitle(R.string.download_options_cellular_confirm_title)
                     .setMessage(R.string.download_options_cellular_confirm_message)
                     .setPositiveButton(android.R.string.ok) { _, _ ->
