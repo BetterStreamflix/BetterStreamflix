@@ -1,5 +1,8 @@
 package com.dskja.betterstreamflix.fragments.settings
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.app.ActivityOptions
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
@@ -7,6 +10,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -31,6 +35,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.constraintlayout.widget.Group
+import androidx.core.content.ContextCompat
 import androidx.leanback.preference.LeanbackPreferenceFragmentCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -38,6 +43,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
+import androidx.preference.PreferenceGroupAdapter
 import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceScreen
 import androidx.preference.SeekBarPreference
@@ -276,7 +282,51 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 },
             )
         }
-        view?.postDelayed({ scrollToPreference(entry.prefKey) }, 60)
+        view?.postDelayed({
+            scrollToPreference(entry.prefKey)
+            flashSearchedPreference(entry.prefKey)
+        }, 60)
+    }
+
+    /**
+     * Briefly pulses a cinema-accent wash over the matched preference row so the
+     * user can spot where the search result landed after the scroll settles.
+     */
+    private fun flashSearchedPreference(prefKey: String) {
+        val recycler = listView ?: return
+        recycler.postDelayed({
+            if (!isAdded) return@postDelayed
+            val adapter = recycler.adapter as? PreferenceGroupAdapter
+                ?: return@postDelayed
+            val preference = findPreference(prefKey) ?: return@postDelayed
+            val position = adapter.getPreferenceAdapterPosition(preference)
+            val holder = recycler.findViewHolderForAdapterPosition(position)
+                ?: return@postDelayed
+            val item = holder.itemView
+            val previousForeground = item.foreground
+            val highlight = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 12f * resources.displayMetrics.density
+                setColor(
+                    ContextCompat.getColor(
+                        item.context,
+                        R.color.cinema_accent,
+                    ),
+                )
+                alpha = 0
+            }
+            item.foreground = highlight
+            ValueAnimator.ofInt(0, 44, 0).apply {
+                duration = 850
+                addUpdateListener { highlight.alpha = it.animatedValue as Int }
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        item.foreground = previousForeground
+                    }
+                })
+                start()
+            }
+        }, 420)
     }
 
     private fun expAlertBuilder(
