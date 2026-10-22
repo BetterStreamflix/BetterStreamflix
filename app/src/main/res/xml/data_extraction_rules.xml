@@ -11,10 +11,10 @@
         <exclude domain="sharedpref" path="cloud_notes_looks_queue.xml" />
         <exclude domain="sharedpref" path="trakt_oauth.xml" />
         <exclude domain="sharedpref" path="download_headers.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix_preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug_preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app.preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app.debug.preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app_preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app.debug_preferences.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="downloads/" />
@@ -25,9 +25,9 @@
         <exclude domain="sharedpref" path="cloud_notes_looks_queue.xml" />
         <exclude domain="sharedpref" path="trakt_oauth.xml" />
         <exclude domain="sharedpref" path="download_headers.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix_preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug_preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app.preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app.debug.preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app_preferences.xml" />
+        <exclude domain="sharedpref" path="com.betterstreamflix.app.debug_preferences.xml" />
     </device-transfer>
 </data-extraction-rules>

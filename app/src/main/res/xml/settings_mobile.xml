@@ -83,7 +83,7 @@
         android:widgetLayout="@layout/preference_widget_chevron"
         app:iconSpaceReserved="false">
 
-        <com.dskja.betterstreamflix.fragments.settings.ProfileHeroPreference
+        <com.betterstreamflix.app.fragments.settings.ProfileHeroPreference
             android:key="PROFILE_HERO"
             app:iconSpaceReserved="false" />
 
@@ -1349,7 +1349,7 @@
                 android:widgetLayout="@layout/preference_widget_chevron"
                 app:iconSpaceReserved="false">
 
-                <com.dskja.betterstreamflix.fragments.settings.SubtitleStudioPreviewPreference
+                <com.betterstreamflix.app.fragments.settings.SubtitleStudioPreviewPreference
                     android:key="SUBTITLE_STUDIO_PREVIEW"
                     android:selectable="false"
                     app:iconSpaceReserved="false" />
@@ -1442,7 +1442,7 @@
             android:title="@string/settings_cinema_room_title"
             app:iconSpaceReserved="false">
 
-            <com.dskja.betterstreamflix.fragments.settings.CinemaRoomPreviewPreference
+            <com.betterstreamflix.app.fragments.settings.CinemaRoomPreviewPreference
                 android:key="CINEMA_ROOM_PREVIEW"
                 android:selectable="false"
                 app:iconSpaceReserved="false" />

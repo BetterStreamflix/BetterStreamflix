@@ -63,7 +63,7 @@
                 android:layout_marginTop="14dp"
                 android:background="@drawable/bg_cinema_accent_rule" />
 
-            <com.dskja.betterstreamflix.profiles.ProfileAvatarView
+            <com.betterstreamflix.app.profiles.ProfileAvatarView
                 android:id="@+id/pav_profile_create_preview"
                 android:layout_width="88dp"
                 android:layout_height="88dp"

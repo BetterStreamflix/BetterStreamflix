@@ -9,7 +9,7 @@
         android:shortcutDisabledMessage="@string/main_menu_search">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetClass="com.dskja.betterstreamflix.activities.main.MainMobileActivity">
+            android:targetClass="com.betterstreamflix.app.activities.main.MainMobileActivity">
             <extra android:name="open_search" android:value="true" />
         </intent>
         <categories android:name="android.shortcut.conversation" />
@@ -23,7 +23,7 @@
         android:shortcutDisabledMessage="@string/main_menu_favorites">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetClass="com.dskja.betterstreamflix.activities.main.MainMobileActivity">
+            android:targetClass="com.betterstreamflix.app.activities.main.MainMobileActivity">
             <extra android:name="open_favorites" android:value="true" />
         </intent>
         <categories android:name="android.shortcut.conversation" />
@@ -37,7 +37,7 @@
         android:shortcutDisabledMessage="@string/main_menu_downloads">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetClass="com.dskja.betterstreamflix.activities.main.MainMobileActivity">
+            android:targetClass="com.betterstreamflix.app.activities.main.MainMobileActivity">
             <extra android:name="open_downloads" android:value="true" />
         </intent>
         <categories android:name="android.shortcut.conversation" />

@@ -8,7 +8,7 @@
     android:background="?attr/app_background_color"
     tools:context=".activities.main.MainMobileActivity">
 
-    <com.dskja.betterstreamflix.live.ChannelPinStripView
+    <com.betterstreamflix.app.live.ChannelPinStripView
         android:id="@+id/channel_pin_strip"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -57,7 +57,7 @@
         app:layout_constraintStart_toStartOf="parent"
         tools:ignore="FragmentTagUsage" />
 
-    <com.dskja.betterstreamflix.ui.WideBottomNavigationView
+    <com.betterstreamflix.app.ui.WideBottomNavigationView
         android:id="@+id/bnv_main"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

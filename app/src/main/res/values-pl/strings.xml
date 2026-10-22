@@ -417,7 +417,7 @@
 <string name="player_live_zapping">Switching channel…</string>
 <string name="settings_about_credits">Credits</string>
 <string name="settings_about_credits_summary">Based on Streamflix Reborn (upstream) and the original Streamflix by Lory-Stan TANASI</string>
-<string name="settings_about_maintainer">Maintained by dskja</string>
+<string name="settings_about_maintainer">Maintained by BetterStreamflix</string>
 <string name="settings_about_upstream">Upstream project</string>
 <string name="settings_about_version_name">Version %s</string>
 <string name="settings_download_auto_delete_watched">Delete watched episodes</string>

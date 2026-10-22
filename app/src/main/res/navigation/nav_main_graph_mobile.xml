@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/providers"
-        android:name="com.dskja.betterstreamflix.fragments.providers.ProvidersMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.providers.ProvidersMobileFragment"
         android:label="fragment_providers_mobile"
         tools:layout="@layout/fragment_providers_mobile">
         <action
@@ -43,7 +43,7 @@
 
     <fragment
         android:id="@+id/home"
-        android:name="com.dskja.betterstreamflix.fragments.home.HomeMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.home.HomeMobileFragment"
         android:label="fragment_home_mobile"
         tools:layout="@layout/fragment_home_mobile">
         <action
@@ -63,7 +63,7 @@
     </fragment>
     <fragment
         android:id="@+id/live_hub"
-        android:name="com.dskja.betterstreamflix.fragments.live.LiveHubMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.live.LiveHubMobileFragment"
         android:label="fragment_live_hub_mobile"
         tools:layout="@layout/fragment_live_hub_mobile">
         <action
@@ -83,7 +83,7 @@
     </fragment>
     <fragment
         android:id="@+id/favorites"
-        android:name="com.dskja.betterstreamflix.fragments.favorites.FavoritesMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.favorites.FavoritesMobileFragment"
         android:label="fragment_favorites_mobile"
         tools:layout="@layout/fragment_favorites_mobile">
         <action
@@ -103,7 +103,7 @@
     </fragment>
     <fragment
         android:id="@+id/downloads"
-        android:name="com.dskja.betterstreamflix.fragments.downloads.DownloadsMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.downloads.DownloadsMobileFragment"
         android:label="fragment_downloads_mobile"
         tools:layout="@layout/fragment_downloads_mobile">
         <action
@@ -130,7 +130,7 @@
     </fragment>
     <fragment
         android:id="@+id/search"
-        android:name="com.dskja.betterstreamflix.fragments.search.SearchMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.search.SearchMobileFragment"
         android:label="fragment_search_mobile"
         tools:layout="@layout/fragment_search_mobile">
         <action
@@ -164,7 +164,7 @@
     </fragment>
     <fragment
         android:id="@+id/movies"
-        android:name="com.dskja.betterstreamflix.fragments.movies.MoviesMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.movies.MoviesMobileFragment"
         android:label="fragment_movies_mobile"
         tools:layout="@layout/fragment_movies_mobile">
         <action
@@ -177,7 +177,7 @@
     </fragment>
     <fragment
         android:id="@+id/tv_shows"
-        android:name="com.dskja.betterstreamflix.fragments.tv_shows.TvShowsMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.tv_shows.TvShowsMobileFragment"
         android:label="fragment_tv_shows_mobile"
         tools:layout="@layout/fragment_tv_shows_mobile">
         <action
@@ -190,7 +190,7 @@
     </fragment>
     <fragment
         android:id="@+id/movie"
-        android:name="com.dskja.betterstreamflix.fragments.movie.MovieMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.movie.MovieMobileFragment"
         android:label="fragment_movie_mobile"
         tools:layout="@layout/fragment_movie_mobile">
         <argument
@@ -239,7 +239,7 @@
     </fragment>
     <fragment
         android:id="@+id/tv_show"
-        android:name="com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.tv_show.TvShowMobileFragment"
         android:label="fragment_tv_show_mobile"
         tools:layout="@layout/fragment_tv_show_mobile">
         <argument
@@ -305,7 +305,7 @@
     </fragment>
     <fragment
         android:id="@+id/season"
-        android:name="com.dskja.betterstreamflix.fragments.season.SeasonMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.season.SeasonMobileFragment"
         android:label="fragment_season_mobile"
         tools:layout="@layout/fragment_season_mobile">
         <action
@@ -345,7 +345,7 @@
     </fragment>
     <fragment
         android:id="@+id/genre"
-        android:name="com.dskja.betterstreamflix.fragments.genre.GenreMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.genre.GenreMobileFragment"
         android:label="fragment_genre_mobile"
         tools:layout="@layout/fragment_genre_mobile">
         <argument
@@ -371,7 +371,7 @@
     </fragment>
     <fragment
         android:id="@+id/people"
-        android:name="com.dskja.betterstreamflix.fragments.people.PeopleMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.people.PeopleMobileFragment"
         android:label="fragment_people_mobile"
         tools:layout="@layout/fragment_people_mobile">
         <argument
@@ -401,7 +401,7 @@
     </fragment>
     <fragment
         android:id="@+id/player"
-        android:name="com.dskja.betterstreamflix.fragments.player.PlayerMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.player.PlayerMobileFragment"
         android:label="fragment_player_mobile"
         tools:layout="@layout/fragment_player_mobile">
         <argument
@@ -415,7 +415,7 @@
             app:argType="string" />
         <argument
             android:name="videoType"
-            app:argType="com.dskja.betterstreamflix.models.Video$Type" />
+            app:argType="com.betterstreamflix.app.models.Video$Type" />
         <argument
             android:name="preferredServerName"
             android:defaultValue="@null"
@@ -442,7 +442,7 @@
     </fragment>
     <fragment
         android:id="@+id/settings"
-        android:name="com.dskja.betterstreamflix.fragments.settings.SettingsMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.settings.SettingsMobileFragment"
         android:label="fragment_settings_mobile" >
         <action
             android:id="@+id/action_settings_to_settings_about"
@@ -461,11 +461,11 @@
     </fragment>
     <fragment
         android:id="@+id/settings_about"
-        android:name="com.dskja.betterstreamflix.fragments.settings.about.SettingsAboutMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.settings.about.SettingsAboutMobileFragment"
         android:label="fragment_settings_about_mobile" />
     <fragment
         android:id="@+id/support"
-        android:name="com.dskja.betterstreamflix.fragments.support.SupportMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.support.SupportMobileFragment"
         android:label="fragment_support_mobile"
         tools:layout="@layout/fragment_support_mobile">
         <action
@@ -478,7 +478,7 @@
     </fragment>
     <fragment
         android:id="@+id/support_details"
-        android:name="com.dskja.betterstreamflix.fragments.support.SupportDetailsMobileFragment"
+        android:name="com.betterstreamflix.app.fragments.support.SupportDetailsMobileFragment"
         android:label="fragment_support_details_mobile"
         tools:layout="@layout/fragment_support_details_mobile" />
     <action

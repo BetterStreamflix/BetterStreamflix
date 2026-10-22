@@ -101,7 +101,7 @@
 
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            android:value="com.dskja.betterstreamflix.cast.CastOptionsProvider" />
+            android:value="com.betterstreamflix.app.cast.CastOptionsProvider" />
 
         <activity
             android:name=".cast.CastExpandedControllerActivity"
@@ -244,7 +244,7 @@
             android:name=".platform.playerbackend.ExternalPlayerChosenReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.dskja.betterstreamflix.ACTION_EXTERNAL_PLAYER_CHOSEN" />
+                <action android:name="com.betterstreamflix.app.ACTION_EXTERNAL_PLAYER_CHOSEN" />
             </intent-filter>
         </receiver>
 
@@ -252,7 +252,7 @@
             android:name=".download.ExternalDownloaderChosenReceiver"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.dskja.betterstreamflix.ACTION_EXTERNAL_DOWNLOADER_CHOSEN" />
+                <action android:name="com.betterstreamflix.app.ACTION_EXTERNAL_DOWNLOADER_CHOSEN" />
             </intent-filter>
         </receiver>
 

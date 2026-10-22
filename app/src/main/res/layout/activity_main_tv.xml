@@ -24,7 +24,7 @@
         app:menuGravity="center"
         app:menuSpacing="8dp" />
 
-    <com.dskja.betterstreamflix.live.ChannelPinStripView
+    <com.betterstreamflix.app.live.ChannelPinStripView
         android:id="@+id/channel_pin_strip"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

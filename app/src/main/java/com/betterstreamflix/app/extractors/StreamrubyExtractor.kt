@@ -1,0 +1,73 @@
+package com.betterstreamflix.app.extractors
+
+import okhttp3.OkHttpClient
+import com.betterstreamflix.app.utils.withExtractorTimeouts
+import com.betterstreamflix.app.models.Video
+import com.betterstreamflix.app.utils.JsUnpacker
+import com.betterstreamflix.app.utils.UserPreferences
+import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import org.jsoup.nodes.Document
+import retrofit2.Retrofit
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Url
+import java.net.URL
+
+class StreamrubyExtractor: Extractor() {
+    override val name = "Streamruby"
+    override val mainUrl = "https://streamruby.com"
+    override val aliasUrls = listOf("https://stmruby.com", "https://rubystm.com", "https://rubyvid.com", "https://moflix-stream.fans")
+
+    companion object {
+        private const val DEFAULT_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+
+    override suspend fun extract(link: String): Video {
+        val baseUrl = URL(link).protocol + "://" + URL(link).host
+        val service = Service.build(baseUrl)
+
+        val source = service.getSource(
+            url = link,
+            userAgent = DEFAULT_USER_AGENT
+        )
+
+        val packedJS = Regex("(eval\\(function\\(p,a,c,k,e,d\\)(.|\\n)*?)</script>")
+            .find(source.toString())?.let { it.groupValues[1] }
+            ?: throw Exception("Packed JS not found")
+
+        val unPacked = JsUnpacker(packedJS).unpack()
+            ?: throw Exception("Unpacked is null")
+
+        val finalUrl = Regex("""file\s*:\s*["']([^"']+)["']""")
+            .find(unPacked)?.groupValues?.get(1)
+            ?.takeIf { it.isNotBlank() }
+            ?: throw Exception("Streamruby source not found")
+
+        return Video(
+            source = finalUrl,
+            headers = mapOf(
+                "Referer" to "$baseUrl/",
+                "User-Agent" to DEFAULT_USER_AGENT,
+            ),
+        )
+    }
+
+    private interface Service {
+        @GET
+        suspend fun getSource(
+            @Url url: String,
+            @Header("User-Agent") userAgent: String = DEFAULT_USER_AGENT
+        ): Document
+
+        companion object {
+            fun build(baseUrl: String): Service {
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl)
+                    .addConverterFactory(JsoupConverterFactory.create())
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
+                return retrofit.create(Service::class.java)
+            }
+        }
+    }
+}

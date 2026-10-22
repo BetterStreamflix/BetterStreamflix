@@ -1,0 +1,105 @@
+package com.betterstreamflix.app.extractors
+
+import com.betterstreamflix.app.models.Video
+import com.betterstreamflix.app.utils.ExtractorTimeouts
+import com.betterstreamflix.app.utils.withExtractorTimeouts
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Url
+
+class PrimeSrcExtractor : Extractor() {
+
+    override val name = "PrimeSrc"
+    override val mainUrl = "https://primesrc.me"
+
+    suspend fun servers(videoType: Video.Type): List<Video.Server> {
+        val apiUrl = when (videoType) {
+            is Video.Type.Episode -> "$mainUrl/api/v1/s?tmdb=${videoType.tvShow.id}&season=${videoType.season.number}&episode=${videoType.number}&type=tv"
+            is Video.Type.Movie -> "$mainUrl/api/v1/s?tmdb=${videoType.id}&type=movie"
+        }
+
+        return try {
+            val service = Service.build(mainUrl)
+            val serversResponse = service.getServers(apiUrl)
+
+            // Track server name counts to number duplicates
+            val nameCount = mutableMapOf<String, Int>()
+
+            serversResponse.servers.map { server ->
+                val count = nameCount.getOrDefault(server.name, 0) + 1
+                nameCount[server.name] = count
+
+                val suffix = if (count > 1) " $count" else ""
+                val displayName = "${server.name}$suffix (PrimeSrc)"
+
+                Video.Server(
+                    id = "${server.name}-${server.key} (PrimeSrc)",
+                    name = displayName,
+                    src = "$mainUrl/api/v1/l?key=${server.key}"
+                )
+            }
+        } catch (e: Exception) {
+            if (ExtractorTimeouts.isTimeout(e)) throw e
+            emptyList()
+        }
+    }
+
+    suspend fun server(videoType: Video.Type): Video.Server {
+        return servers(videoType).firstOrNull()
+            ?: throw Exception("PrimeSrc returned no servers")
+    }
+
+    override suspend fun extract(link: String): Video {
+        val service = Service.build(mainUrl)
+
+        val videoLink = service.getLink(link).link
+            ?.trim()
+            .orEmpty()
+        // Reject empty / placeholder hosts (e.g. "_") before extractor dispatch.
+        val host = runCatching { java.net.URI(videoLink).host }.getOrNull()
+        if (videoLink.isBlank() ||
+            host.isNullOrBlank() ||
+            host == "_" ||
+            !videoLink.startsWith("http", ignoreCase = true)
+        ) {
+            throw Exception("PrimeSrc returned an invalid stream URL")
+        }
+
+        return Extractor.extract(videoLink)
+    }
+
+    private interface Service {
+        companion object {
+            fun build(baseUrl: String): Service {
+                val client = OkHttpClient.Builder().withExtractorTimeouts().build()
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl)
+                    .client(client)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                return retrofit.create(Service::class.java)
+            }
+        }
+
+        @GET
+        suspend fun getServers(@Url url: String): ServersResponse
+
+        @GET
+        suspend fun getLink(@Url url: String): LinkResponse
+    }
+
+    data class ServersResponse(
+        val servers: List<Server>
+    )
+
+    data class Server(
+        val name: String,
+        val key: String
+    )
+
+    data class LinkResponse(
+        val link: String? = null,
+    )
+}

@@ -61,27 +61,27 @@
 }
 
 # Providers / models used via reflection / serialization
--keep class com.dskja.betterstreamflix.providers.** { *; }
--keep class com.dskja.betterstreamflix.models.** { *; }
--keep class com.dskja.betterstreamflix.extractors.** { *; }
--keep class com.dskja.betterstreamflix.sync.** { *; }
--keep class com.dskja.betterstreamflix.profiles.** { *; }
+-keep class com.betterstreamflix.app.providers.** { *; }
+-keep class com.betterstreamflix.app.models.** { *; }
+-keep class com.betterstreamflix.app.extractors.** { *; }
+-keep class com.betterstreamflix.app.sync.** { *; }
+-keep class com.betterstreamflix.app.profiles.** { *; }
 
 # Gson DTOs in utils without @SerializedName (R8-H1)
--keep class com.dskja.betterstreamflix.utils.AesHelper$AesData { *; }
--keep class com.dskja.betterstreamflix.utils.UserDataCache$* { *; }
--keep class com.dskja.betterstreamflix.utils.HomeCacheStore$* { *; }
--keep class com.dskja.betterstreamflix.utils.SubtitleFileCache$* { *; }
+-keep class com.betterstreamflix.app.utils.AesHelper$AesData { *; }
+-keep class com.betterstreamflix.app.utils.UserDataCache$* { *; }
+-keep class com.betterstreamflix.app.utils.HomeCacheStore$* { *; }
+-keep class com.betterstreamflix.app.utils.SubtitleFileCache$* { *; }
 
 # DnsResolver used from workers/providers (BETTERSTREAMFLIX-1Z NCDFE hardening)
--keep class com.dskja.betterstreamflix.utils.DnsResolver { *; }
--keepclassmembers class com.dskja.betterstreamflix.utils.DnsResolver { *; }
+-keep class com.betterstreamflix.app.utils.DnsResolver { *; }
+-keepclassmembers class com.betterstreamflix.app.utils.DnsResolver { *; }
 
 # Plugin reflection API (R8-H2)
--keep class com.dskja.betterstreamflix.platform.plugins.** { *; }
+-keep class com.betterstreamflix.app.platform.plugins.** { *; }
 
 # Cast OptionsProvider FQCN in manifests (R8-M2)
--keep class com.dskja.betterstreamflix.cast.CastOptionsProvider { *; }
+-keep class com.betterstreamflix.app.cast.CastOptionsProvider { *; }
 
 # WorkManager workers outside kept packages (R8-M3)
 -keep class * extends androidx.work.ListenableWorker {
@@ -92,8 +92,8 @@
 -keep @androidx.room.Dao interface * { *; }
 
 # Kotlinx serialization app types (R8-H4 official-style keep)
--keep,includedescriptorclasses class com.dskja.betterstreamflix.**$$serializer { *; }
--if @kotlinx.serialization.Serializable class com.dskja.betterstreamflix.**
+-keep,includedescriptorclasses class com.betterstreamflix.app.**$$serializer { *; }
+-if @kotlinx.serialization.Serializable class com.betterstreamflix.app.**
 -keepclassmembers class <1> {
     static <1>$Companion Companion;
 }

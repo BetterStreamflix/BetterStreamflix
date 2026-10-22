@@ -1,0 +1,175 @@
+package com.betterstreamflix.app.download
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.activities.main.MainMobileActivity
+import com.betterstreamflix.app.activities.main.MainTvActivity
+import com.betterstreamflix.app.notifications.NotificationPermission
+import com.betterstreamflix.app.utils.UserPreferences
+
+object DownloadNotifier {
+    const val CHANNEL_ID = "downloads"
+    /** Must not collide with StreamflixDownloadService FOREGROUND_NOTIFICATION_ID (42001). */
+    const val NOTIFICATION_ID_ACTIVE = 42003
+    const val NOTIFICATION_ID_COMPLETE = 42002
+    /** Failed downloads get one notification per item, offset from this base. */
+    private const val NOTIFICATION_ID_FAILED_BASE = 42100
+
+    fun ensureChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            context.getString(R.string.download_notification_channel),
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = context.getString(R.string.download_notification_channel_desc)
+            setShowBadge(false)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    fun buildForegroundNotification(
+        context: Context,
+        title: String,
+        progressPct: Int,
+        indeterminate: Boolean,
+        contentText: String,
+    ): Notification {
+        ensureChannel(context)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_menu_downloads)
+            .setContentTitle(title)
+            .setContentText(contentText)
+            .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .setContentIntent(openDownloadsIntent(context))
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .addAction(
+                0,
+                context.getString(R.string.download_notification_pause),
+                actionIntent(context, DownloadActionReceiver.ACTION_PAUSE_ALL),
+            )
+            .addAction(
+                0,
+                context.getString(R.string.download_notification_resume),
+                actionIntent(context, DownloadActionReceiver.ACTION_RESUME_ALL),
+            )
+        if (indeterminate || progressPct < 0) {
+            builder.setProgress(0, 0, true)
+        } else {
+            builder.setProgress(100, progressPct.coerceIn(0, 100), false)
+        }
+        return builder.build()
+    }
+
+    fun notifyCompleted(context: Context, title: String) {
+        if (!UserPreferences.downloadNotifyComplete) return
+        if (!NotificationPermission.canPost(context)) return
+        ensureChannel(context)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_menu_downloads)
+            .setContentTitle(context.getString(R.string.download_notification_complete_title))
+            .setContentText(title)
+            .setAutoCancel(true)
+            .setContentIntent(openDownloadsIntent(context))
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_COMPLETE, notification)
+        }
+    }
+
+    /** Surface FGS start failures so QUEUED items are not silently stuck. */
+    fun notifyServiceStartFailed(context: Context) {
+        ensureChannel(context)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_menu_downloads)
+            .setContentTitle(context.getString(R.string.downloads_title))
+            .setContentText(context.getString(R.string.downloads_service_start_failed))
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(context.getString(R.string.downloads_service_start_failed)),
+            )
+            .setAutoCancel(true)
+            .setContentIntent(openDownloadsIntent(context))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_ACTIVE, notification)
+        }
+    }
+
+    fun cancelActive(context: Context) {
+        NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID_ACTIVE)
+    }
+
+    fun notifyFailed(context: Context, itemId: String, title: String, reason: String? = null) {
+        ensureChannel(context)
+        val body = if (!reason.isNullOrBlank()) "$title · $reason" else title
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_menu_downloads)
+            .setContentTitle(context.getString(R.string.download_notification_failed_title))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setContentIntent(openDownloadsIntent(context))
+            .addAction(
+                0,
+                context.getString(R.string.download_notification_retry),
+                actionIntent(context, DownloadActionReceiver.ACTION_RETRY, itemId),
+            )
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context)
+                .notify(failedNotificationId(itemId), notification)
+        }
+    }
+
+    fun cancelFailed(context: Context, itemId: String) {
+        NotificationManagerCompat.from(context).cancel(failedNotificationId(itemId))
+    }
+
+    private fun failedNotificationId(itemId: String): Int =
+        NOTIFICATION_ID_FAILED_BASE + Math.floorMod(itemId.hashCode(), 900)
+
+    private fun actionIntent(
+        context: Context,
+        action: String,
+        itemId: String? = null,
+    ): PendingIntent {
+        val intent = Intent(context, DownloadActionReceiver::class.java)
+            .setAction(action)
+        if (itemId != null) intent.putExtra(DownloadActionReceiver.EXTRA_ITEM_ID, itemId)
+        return PendingIntent.getBroadcast(
+            context,
+            action.hashCode() + (itemId?.hashCode() ?: 0),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun openDownloadsIntent(context: Context): PendingIntent {
+        val isTv = context.packageManager.hasSystemFeature("android.software.leanback")
+        val intent = Intent(
+            context,
+            if (isTv) MainTvActivity::class.java else MainMobileActivity::class.java,
+        ).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("open_downloads", true)
+        }
+        return PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+}

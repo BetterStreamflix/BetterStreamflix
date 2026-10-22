@@ -688,7 +688,7 @@
     <string name="player_settings_servers_label">Servers</string>
 
     <string name="settings_about">About</string>
-    <string name="settings_about_maintainer">Maintained by dskja</string>
+    <string name="settings_about_maintainer">Maintained by BetterStreamflix</string>
     <string name="settings_about_credits">Credits</string>
     <string name="settings_about_credits_summary">Based on Streamflix Reborn (upstream) and the original Streamflix by Lory-Stan TANASI</string>
     <string name="settings_about_upstream">Upstream project</string>

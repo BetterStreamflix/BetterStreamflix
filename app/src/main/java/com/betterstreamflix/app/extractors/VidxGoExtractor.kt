@@ -1,0 +1,280 @@
+package com.betterstreamflix.app.extractors
+
+import android.util.Base64
+import android.util.Log
+import android.net.Uri
+import com.betterstreamflix.app.models.Video
+import com.betterstreamflix.app.utils.DnsResolver
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicReference
+
+object TokenManager {
+    @Volatile
+    var latestQuery: String? = null
+
+    /** App-lifetime scope for the background token refresh loop (replaces GlobalScope). */
+    internal val refreshScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO
+    )
+
+    private val refreshJob = AtomicReference<Job?>(null)
+
+    /** Cancel any prior refresh loop and start a single replacement job. */
+    fun startRefresh(block: suspend CoroutineScope.() -> Unit) {
+        refreshJob.getAndSet(null)?.cancel()
+        val job = refreshScope.launch(Dispatchers.IO, block = block)
+        refreshJob.set(job)
+        job.invokeOnCompletion { refreshJob.compareAndSet(job, null) }
+    }
+
+    fun stopRefresh() {
+        refreshJob.getAndSet(null)?.cancel()
+    }
+}
+
+class VidxGoExtractor : Extractor() {
+    override val name = "VidxGo"
+    override val mainUrl = "https://v.vidxgo.co"
+
+    override suspend fun extract(link: String): Video {
+        val client = OkHttpClient.Builder()
+            .dns(DnsResolver.doh)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
+
+        val uri = Uri.parse(link)
+        val referer = "${uri.scheme}://${uri.host}/"
+        val requestBuilder = Request.Builder()
+            .url(link)
+            .header("Referer", referer)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        
+        if (!link.contains("/t/")) {
+            requestBuilder.header("sec-fetch-dest", "iframe")
+        }
+
+        val request = requestBuilder.build()
+
+        val html = client.newCall(request).execute().use { response ->
+            if (response.code == 404 || response.code == 410) {
+                throw Exception("VidxGo source not found (404)")
+            }
+            if (!response.isSuccessful) {
+                throw Exception("VidxGo request failed HTTP ${response.code}")
+            }
+            response.body?.string()?.takeIf { it.isNotBlank() }
+                ?: throw Exception("VidxGo source not found")
+        }
+
+        if (link.contains("/t/")) {
+            // TV Series logic: the response is JSON-like with an "url" field
+            val videoUrlRaw = Regex("\"url\"\\s*:\\s*\"([^\"]+)\"").find(html)?.groupValues?.get(1)
+                ?: throw Exception("VidxGo: Could not find url in TV series response")
+            val videoUrl = videoUrlRaw.replace("\\/", "/")
+            
+            var expireTime = Regex("\"expire\"\\s*:\\s*(\\d+)").find(html)?.groupValues?.get(1)?.toLongOrNull()
+            
+            val initialUri = Uri.parse(videoUrl)
+            TokenManager.latestQuery = initialUri.encodedQuery
+            Log.d("TokenManager", "[INIT] Initial token set. expire=${expireTime}")
+
+            TokenManager.startRefresh {
+                while (isActive) {
+                    val delayMs = if (expireTime != null) {
+                        val remaining = expireTime!! - System.currentTimeMillis()
+                        val delay = (remaining - 15_000).coerceAtLeast(5_000)
+                        Log.d("TokenManager", "[SCHEDULE] Next refresh in ${delay / 1000}s (expiry in ${remaining / 1000}s)")
+                        delay
+                    } else {
+                        Log.d("TokenManager", "[SCHEDULE] expire not found, retry in 150s")
+                        150_000L
+                    }
+
+                    delay(delayMs)
+                    ensureActive()
+                    Log.d("TokenManager", "[REFRESH] Starting token refresh request at: ${runCatching { Uri.parse(link).host }.getOrNull()}")
+                    try {
+                        val updateRequest = Request.Builder()
+                            .url(link)
+                            .header("Referer", referer)
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                            .header("sec-fetch-dest", "empty")
+                            .build()
+                        val res = client.newCall(updateRequest).execute()
+                        val statusCode = res.code
+                        val isSuccessful = res.isSuccessful
+                        val newHtml = res.body?.string()
+                        res.close()
+                        if (statusCode == 404 || statusCode == 410) {
+                            Log.w("TokenManager", "[REFRESH] stopped on HTTP $statusCode")
+                            break
+                        }
+                        if (!isSuccessful) {
+                            Log.w("TokenManager", "[REFRESH] HTTP response error: $statusCode")
+                        }
+                        
+                        if (newHtml != null) {
+                            expireTime = Regex("\"expire\"\\s*:\\s*(\\d+)").find(newHtml)?.groupValues?.get(1)?.toLongOrNull()
+                            val newUrlStr = Regex("\"url\"\\s*:\\s*\"([^\"]+)\"").find(newHtml)?.groupValues?.get(1)?.replace("\\/", "/")
+                            if (newUrlStr != null) {
+                                val newUri = Uri.parse(newUrlStr)
+                                TokenManager.latestQuery = newUri.encodedQuery
+                                Log.d("TokenManager", "[REFRESH] New token saved. New expire=${expireTime}")
+                            } else {
+                                Log.w("TokenManager", "[REFRESH] url not found in the response (body ${newHtml.length} chars)")
+                            }
+                        } else {
+                            Log.w("TokenManager", "[REFRESH] Empty response body")
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e("TokenManager", "[REFRESH] Error during token refresh", e)
+                        expireTime = System.currentTimeMillis() + 15_000L
+                    }
+                }
+            }
+
+            return Video(
+                source = videoUrl,
+                headers = mapOf(
+                    "origin" to "https://v.vidxgo.co",
+                    "referer" to "https://v.vidxgo.co/",
+                    "sec-fetch-dest" to "empty",
+                    "sec-fetch-site" to "cross-site",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+                ),
+                maintainToken = true
+            )
+        }
+
+        // Search for the encrypted script blocks: (function() { var k = ... })()
+        val scriptRegex = Regex("<script[\\s\\S]*?>[\\s\\S]*?\\(function\\(\\)\\s*\\{[\\s\\S]*?\\}\\s*\\)\\(\\);[\\s\\S]*?</script>", RegexOption.IGNORE_CASE)
+        val scriptMatches = scriptRegex.findAll(html).toList()
+        
+        var videoUrlRaw: String? = null
+        var currentToken: String? = null
+        var initialExpireRaw: Long? = null
+        
+        for (match in scriptMatches) {
+            val targetScript = match.value
+            
+            val k = Regex("var\\s+k\\s*=\\s*['\"]([^'\"]+)['\"]").find(targetScript)?.groupValues?.get(1) ?: continue
+            val d = Regex("atob\\(['\"]([^'\"]+)['\"]\\)").find(targetScript)?.groupValues?.get(1) ?: continue
+            
+            try {
+                val decodedD = Base64.decode(d, Base64.DEFAULT)
+                val decrypted = ByteArray(decodedD.size)
+                for (i in decodedD.indices) {
+                    decrypted[i] = ((decodedD[i].toInt() and 0xFF) xor (k[i % k.length].code and 0xFF)).toByte()
+                }
+
+                val decryptedText = String(decrypted)
+                
+                videoUrlRaw = Regex("currentSrc\\s*=\\s*['\"]([^'\"]+)['\"]").find(decryptedText)?.groupValues?.get(1)
+                
+                if (videoUrlRaw != null) {
+                    currentToken = Regex("let\\s+currentToken\\s*=\\s*['\"]([^'\"]+)['\"]").find(decryptedText)?.groupValues?.get(1)
+                    initialExpireRaw = Regex("let\\s+currentExpire\\s*=\\s*(\\d+)").find(decryptedText)?.groupValues?.get(1)?.toLongOrNull()
+                    break
+                }
+            } catch (e: Exception) {
+                // Ignore decryption errors and try next script
+                continue
+            }
+        }
+        
+        if (videoUrlRaw == null) {
+            throw Exception("VidxGo: Could not find currentSrc in any encrypted script")
+        }
+
+        val videoUrl = videoUrlRaw.replace("\\/", "/")
+
+        // For film URLs (https://v.vidxgo.co/$imdbId), derive the refresh URL using the /t/ endpoint
+        val filmPathSegment = uri.pathSegments.firstOrNull()
+        val filmRefreshUrl = if (filmPathSegment != null) "https://v.vidxgo.co/t/$filmPathSegment" else null
+
+        val initialUri = Uri.parse(videoUrl)
+        TokenManager.latestQuery = initialUri.encodedQuery
+
+        val initialExpireTime = initialExpireRaw
+        Log.d("TokenManager", "[FILM-INIT] Token/Expiry extracted from JS. tokenPresent=${currentToken != null}, expireTime=${initialExpireTime}")
+
+        if (filmRefreshUrl != null) {
+            TokenManager.startRefresh {
+                var expireTime: Long? = initialExpireTime
+                while (isActive) {
+                    val delayMs = if (expireTime != null) {
+                        val remaining = expireTime!! - System.currentTimeMillis()
+                        val delay = (remaining - 15_000).coerceAtLeast(5_000)
+                        Log.d("TokenManager", "[FILM-SCHEDULE] Next refresh in ${delay / 1000}s")
+                        delay
+                    } else {
+                        Log.d("TokenManager", "[FILM-SCHEDULE] First refresh in 150s")
+                        150_000L
+                    }
+
+                    delay(delayMs)
+                    ensureActive()
+                    Log.d("TokenManager", "[FILM-REFRESH] Starting refresh at: ${runCatching { Uri.parse(filmRefreshUrl).host }.getOrNull()}")
+                    try {
+                        val updateRequest = Request.Builder()
+                            .url(filmRefreshUrl)
+                            .header("Referer", referer)
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                            .header("sec-fetch-dest", "empty")
+                            .build()
+                        val res = client.newCall(updateRequest).execute()
+                        val statusCode = res.code
+                        val isSuccessful = res.isSuccessful
+                        val newHtml = res.body?.string()
+                        res.close()
+                        if (statusCode == 404 || statusCode == 410) {
+                            Log.w("TokenManager", "[FILM-REFRESH] stopped on HTTP $statusCode")
+                            break
+                        }
+                        if (!isSuccessful) {
+                            Log.w("TokenManager", "[FILM-REFRESH] HTTP response error: $statusCode")
+                        }
+
+                        if (newHtml != null) {
+                            expireTime = Regex("\"expire\"\\s*:\\s*(\\d+)").find(newHtml)?.groupValues?.get(1)?.toLongOrNull()
+                            val newUrlStr = Regex("\"url\"\\s*:\\s*\"([^\"]+)\"").find(newHtml)?.groupValues?.get(1)?.replace("\\/", "/")
+                            if (newUrlStr != null) {
+                                val newUri = Uri.parse(newUrlStr)
+                                TokenManager.latestQuery = newUri.encodedQuery
+                                Log.d("TokenManager", "[FILM-REFRESH] New token saved. expire=${expireTime}")
+                            } else {
+                                Log.w("TokenManager", "[FILM-REFRESH] url not found (body ${newHtml.length} chars)")
+                            }
+                        } else {
+                            Log.w("TokenManager", "[FILM-REFRESH] Empty body")
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e("TokenManager", "[FILM-REFRESH] Refresh error", e)
+                        expireTime = System.currentTimeMillis() + 150_000L
+                    }
+                }
+            }
+        }
+
+        return Video(
+            source = videoUrl,
+            headers = mapOf(
+                "origin" to "https://v.vidxgo.co",
+                "referer" to "https://v.vidxgo.co/",
+                "sec-fetch-dest" to "empty",
+                "sec-fetch-site" to "cross-site",
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+            ),
+            maintainToken = true
+        )
+    }
+}

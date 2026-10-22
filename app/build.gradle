@@ -21,7 +21,7 @@ dependencies {
 }
 
 android {
-    namespace 'com.dskja.betterstreamflix'
+    namespace 'com.betterstreamflix.app'
     compileSdk 36
     ndkVersion "26.1.10909125"
 
@@ -29,7 +29,7 @@ android {
     properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
     defaultConfig {
-        applicationId "com.dskja.betterstreamflix"
+        applicationId "com.betterstreamflix.app"
         minSdk 23
         targetSdk 35
         // SemVer display + monotonic Play/update code: major*10000 + minor*100 + patch

@@ -1,0 +1,267 @@
+package com.betterstreamflix.app.fragments.providers
+
+import com.betterstreamflix.app.utils.ExpDialogChrome
+
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Toast
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.databinding.FragmentProvidersMobileBinding
+import com.betterstreamflix.app.models.Provider as ModelProvider
+import com.betterstreamflix.app.providers.Provider
+import com.betterstreamflix.app.ui.SpacingItemDecoration
+import com.betterstreamflix.app.utils.ExpEmptyChrome
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.UserPreferences
+import com.betterstreamflix.app.utils.dp
+import kotlinx.coroutines.launch
+import java.util.Locale
+
+class ProvidersMobileFragment : Fragment() {
+
+    private var _binding: FragmentProvidersMobileBinding? = null
+    private val binding get() = _binding!!
+
+    private val viewModel by viewModels<ProvidersViewModel>()
+
+    private val appAdapter = AppAdapter()
+
+    private var allProviders: List<ModelProvider> = emptyList()
+    private var searchQuery: String = ""
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentProvidersMobileBinding.bind(
+            inflater.inflate(
+                R.layout.fragment_providers_mobile,
+                container,
+                false,
+            )
+        )
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.staggerFirstFill(binding.rvProviders)
+        initializeProviders()
+        initializeProviderSearch()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
+                when (state) {
+                    ProvidersViewModel.State.Loading -> binding.isLoading.apply {
+                        ExpMotion.fadeInAndShow(root)
+                        com.betterstreamflix.app.utils.ExpPressEffects.showLoadingSkeleton(root, true)
+                        gIsLoadingRetry.visibility = View.GONE
+                    }
+                    is ProvidersViewModel.State.SuccessLoading -> {
+                        displayProviders(state.providers)
+                        ExpMotion.fadeOutAndHide(binding.isLoading.root)
+                    }
+                    is ProvidersViewModel.State.FailedLoading -> {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        binding.isLoading.apply {
+                            com.betterstreamflix.app.utils.ExpPressEffects.showLoadingSkeleton(root, false)
+                            gIsLoadingRetry.visibility = View.VISIBLE
+                            val doRetry = { viewModel.getProviders() }
+                            btnIsLoadingRetry.setOnClickListener { doRetry() }
+                            btnIsLoadingClearCache.setOnClickListener {
+                                com.betterstreamflix.app.utils.CacheUtils.clearAppCache(requireContext())
+                                ExpDialogChrome.notify(requireContext(), R.string.clear_cache_done, R.string.loading_error_clear_cache)
+                                doRetry()
+                            }
+                            btnIsLoadingErrorDetails.setOnClickListener {
+                                com.betterstreamflix.app.utils.LoggingUtils.showErrorDialog(requireContext(), state.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
+
+    private fun initializeProviders() {
+        binding.sProvidersLanguage.apply {
+            class Language(
+                val code: String,
+                val name: String,
+            )
+
+            val languages = Provider.providers.keys
+                .distinctBy { it.language }
+                .map {
+                    val locale = Locale.forLanguageTag(it.language)
+
+                    Language(
+                        code = it.language,
+                        name = locale.getDisplayLanguage(locale)
+                            .replaceFirstChar { char -> char.titlecase() },
+                    )
+                }
+                .sortedBy { it.name.lowercase() }
+
+            val labels = mutableListOf(
+                context.getString(R.string.providers_all_languages),
+                context.getString(R.string.providers_favorites),
+            ).apply {
+                addAll(languages.map { it.name })
+            }
+            val spinnerAdapter = ArrayAdapter(
+                this.context,
+                android.R.layout.simple_spinner_item,
+                labels.toTypedArray(),
+            ).also {
+                it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            }
+            setAdapter(spinnerAdapter)
+
+            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    ExpMotion.hapticTap(this@apply)
+                    when (position) {
+                        0 -> {
+                            viewModel.getProviders()
+                            UserPreferences.providerLanguage = null
+                        }
+                        1 -> {
+                            viewModel.getProviders("favorites")
+                            UserPreferences.providerLanguage = "favorites"
+                        }
+                        else -> {
+                            val langCode = languages[position - 2].code
+                            viewModel.getProviders(langCode)
+                            UserPreferences.providerLanguage = langCode
+                        }
+                    }
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {}
+            }
+
+            setSelection(
+                when (val lang = UserPreferences.providerLanguage) {
+                    null -> 0
+                    "favorites" -> 1
+                    else -> {
+                        val index = languages.indexOfFirst { it.code == lang }
+                        if (index != -1) index + 2 else 0
+                    }
+                }
+            )
+        }
+
+        binding.rvProviders.apply {
+            adapter = appAdapter.apply {
+                stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+            }
+            addItemDecoration(
+                SpacingItemDecoration(32.dp(requireContext()))
+            )
+        }
+    }
+
+    private fun initializeProviderSearch() {
+        binding.etProvidersSearch.apply {
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                    clearFocus()
+                    true
+                } else {
+                    false
+                }
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: Editable?) {
+                    searchQuery = s?.toString().orEmpty()
+                    binding.btnProvidersSearchClear.isVisible = searchQuery.isNotBlank()
+                    applyProviderFilter()
+                }
+            })
+        }
+
+        binding.btnProvidersSearchClear.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            binding.etProvidersSearch.setText("")
+            binding.etProvidersSearch.requestFocus()
+        }
+    }
+
+    private fun displayProviders(providers: List<ModelProvider>) {
+        allProviders = providers
+        applyProviderFilter()
+    }
+
+    private fun applyProviderFilter() {
+        val filtered = ProvidersSearch.filter(allProviders, searchQuery)
+        appAdapter.submitList(filtered.onEach {
+            it.itemType = AppAdapter.Type.PROVIDER_MOBILE_ITEM
+        })
+        val empty = filtered.isEmpty()
+        val searching = searchQuery.isNotBlank()
+        val emptyView = binding.tvProvidersEmpty
+        emptyView.setText(
+            if (searching) R.string.providers_search_empty else R.string.providers_empty,
+        )
+        val emptyCta = binding.btnProvidersEmptyCta
+        emptyCta.setText(
+            if (searching) R.string.providers_search_clear else R.string.exp_empty_all_languages,
+        )
+        ExpEmptyChrome.bind(
+            emptyView = emptyView,
+            emptyRule = binding.vProvidersEmptyRule,
+            emptyCta = emptyCta,
+            visible = empty,
+            tintOnSurfaceVariant = false,
+        )
+        if (empty) {
+            emptyCta.visibility = View.VISIBLE
+            emptyCta.setOnClickListener {
+                if (searchQuery.isNotBlank()) {
+                    binding.etProvidersSearch.setText("")
+                    binding.etProvidersSearch.requestFocus()
+                } else {
+                    binding.sProvidersLanguage.setSelection(0)
+                }
+            }
+        }
+        binding.rvProviders.visibility = if (empty) View.GONE else View.VISIBLE
+    }
+}

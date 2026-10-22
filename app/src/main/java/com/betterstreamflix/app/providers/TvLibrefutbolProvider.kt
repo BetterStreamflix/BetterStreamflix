@@ -1,0 +1,686 @@
+package com.betterstreamflix.app.providers
+
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+import com.betterstreamflix.app.utils.UserPreferences
+
+import android.util.Log
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.models.*
+import com.betterstreamflix.app.utils.SportsIptvStreamResolver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import okhttp3.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
+import java.net.ServerSocket
+import java.net.Socket
+import java.net.URLDecoder
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.TimeUnit
+
+object TvLibrefutbolProvider : IptvProvider, ProviderConfigUrl {
+
+    override val name = "Tv Libre Futbol"
+    override val defaultBaseUrl = "https://www.librefutbol2.com"
+    override val baseUrl: String
+        get() = UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_URL).ifBlank { defaultBaseUrl }
+    override val changeUrlMutex = Mutex()
+
+    override suspend fun onChangeUrl(forceRefresh: Boolean): String = changeUrlMutex.withLock {
+        baseUrl
+    }
+    override val logo = "https://i.ibb.co/q3v6R9qQ/librefutbol.jpg"
+    override val language = "es"
+
+    private const val TAG = "Tvlibre"
+    private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+
+    private var serverSocket: ServerSocket? = null
+    private var localServerThread: Thread? = null
+    private var localProxyExecutor: java.util.concurrent.ExecutorService? = null
+    private var currentPlaylistUrl: String = ""
+    private var localPort: Int = 0
+    private val proxyLock = Any()
+
+    private var cachedChannels: List<TvShow>? = null
+    private var cachedHome: List<Category>? = null
+
+    private val client = OkHttpClient.Builder()
+        .cookieJar(object : CookieJar {
+            private val cookieStore = ConcurrentHashMap<String, MutableList<Cookie>>()
+
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+                val domainCookies = cookieStore.getOrPut(url.host) { mutableListOf() }
+                for (cookie in cookies) {
+                    val existingIndex = domainCookies.indexOfFirst { it.name == cookie.name && it.path == cookie.path }
+                    if (existingIndex != -1) {
+                        domainCookies[existingIndex] = cookie
+                    } else {
+                        domainCookies.add(cookie)
+                    }
+                }
+            }
+
+            override fun loadForRequest(url: HttpUrl): List<Cookie> {
+                return cookieStore[url.host]?.filter { it.expiresAt > System.currentTimeMillis() } ?: emptyList()
+            }
+        })
+        .addInterceptor { chain ->
+            val originalRequest = chain.request()
+            val originalUrl = originalRequest.url.toString()
+
+            val requestBuilder = originalRequest.newBuilder()
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "*/*")
+                .header("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
+                .header("X-Requested-With", "XMLHttpRequest")
+
+            SportsIptvStreamResolver.cdnMediaHeaders(originalUrl)?.let { (origin, referer) ->
+                requestBuilder
+                    .header("Origin", origin)
+                    .header("Referer", referer)
+            }
+
+            chain.proceed(requestBuilder.build())
+        }
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    private suspend fun fetchDocument(url: String, referer: String = TvLibrefutbolProvider.baseUrl): Document? {
+        return try {
+            val request = Request.Builder()
+                .url(url)
+                .header("Referer", referer)
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val html = response.body?.string() ?: return null
+                Jsoup.parse(html)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching $url: ${e.message}")
+            null
+        }
+    }
+
+    private fun cleanChannelTitle(title: String): String {
+        var cleanTitle = title.trim()
+        cleanTitle = cleanTitle.replace(Regex("\\.php$", RegexOption.IGNORE_CASE), "")
+        cleanTitle = cleanTitle.replace(Regex("\\s*en vivo por internet\\s*$", RegexOption.IGNORE_CASE), "")
+        cleanTitle = cleanTitle.replace(Regex("\\s*en vivo\\s*$", RegexOption.IGNORE_CASE), "")
+        cleanTitle = cleanTitle.replace(Regex("\\s*online\\s*$", RegexOption.IGNORE_CASE), "")
+        cleanTitle = cleanTitle.replace(Regex("\\s*gratis\\s*$", RegexOption.IGNORE_CASE), "")
+
+        cleanTitle = cleanTitle.split(" ").joinToString(" ") { word ->
+            if (word.length > 2 && word.all { it.isLowerCase() }) {
+                word.replaceFirstChar { it.uppercase() }
+            } else {
+                word
+            }
+        }
+
+        return cleanTitle.trim()
+    }
+
+    private fun extractChannelsFromHtml(doc: Document): List<TvShow> {
+        val channels = mutableListOf<TvShow>()
+        val seenIds = mutableSetOf<String>()
+
+        SportsIptvStreamResolver.collectChannelAnchors(doc).forEach { (href, title, imgSrc) ->
+            val link = when {
+                href.startsWith("http") -> href
+                href.startsWith("/") -> "${baseUrl}$href"
+                href.isNotEmpty() -> "$baseUrl/$href"
+                else -> ""
+            }
+            val img = when {
+                imgSrc.startsWith("http") -> imgSrc
+                imgSrc.startsWith("/") -> "$baseUrl$imgSrc"
+                imgSrc.isNotEmpty() -> "$baseUrl/$imgSrc"
+                else -> ""
+            }
+            if (link.isNotEmpty() && isValidChannel(link, title)) {
+                val cleanTitle = cleanChannelTitle(title)
+                if (seenIds.add(link)) {
+                    channels.add(
+                        TvShow(
+                            id = link,
+                            title = cleanTitle,
+                            poster = img,
+                            banner = img,
+                            providerName = name,
+                        ),
+                    )
+                }
+            }
+        }
+
+        // Legacy: div#channels a.channel-card
+        doc.select("div#channels a.channel-card").forEach { element ->
+            val title = element.selectFirst("p")?.text()?.trim() ?: ""
+            val href = element.attr("href")
+            val link = if (href.startsWith("http")) href else if (href.isNotEmpty()) "${TvLibrefutbolProvider.baseUrl}/$href" else ""
+
+            val imgElement = element.selectFirst("img")
+            var img = ""
+            if (imgElement != null) {
+                val src = imgElement.attr("src")
+                if (src.isNotEmpty()) {
+                    img = if (src.startsWith("http")) src else "${TvLibrefutbolProvider.baseUrl}/$src"
+                }
+            }
+
+            if (title.isNotEmpty() && link.isNotEmpty() && isValidChannel(link, title)) {
+                val cleanTitle = cleanChannelTitle(title)
+                if (seenIds.add(link)) {
+                    channels.add(
+                        TvShow(
+                            id = link,
+                            title = cleanTitle,
+                            poster = img,
+                            banner = img,
+                            providerName = TvLibrefutbolProvider.name
+                        )
+                    )
+                }
+            }
+        }
+
+        // 2. Extraer canales del script JavaScript (showChannels - Regionales)
+        doc.select("script").forEach { script ->
+            val data = script.data()
+            if (data.contains("showChannels")) {
+                // Buscar todos los bloques HTML dentro del template string
+                val channelPattern = Regex("""<a href="(https://www\.librefutbol2\.com/[^"]+\.php)"[^>]*>\s*<div class="live">.*?</div>\s*<img src="([^"]+)"[^>]*>\s*<p>([^<]+)</p>\s*</a>""", RegexOption.DOT_MATCHES_ALL)
+
+                channelPattern.findAll(data).forEach { match ->
+                    val link = match.groupValues[1]
+                    val imgSrc = match.groupValues[2]
+                    val title = match.groupValues[3].trim()
+
+                    var img = ""
+                    if (imgSrc.isNotEmpty()) {
+                        img = if (imgSrc.startsWith("http")) imgSrc else "${TvLibrefutbolProvider.baseUrl}/$imgSrc"
+                    }
+
+                    if (title.isNotEmpty() && link.isNotEmpty() && isValidChannel(link, title)) {
+                        val cleanTitle = cleanChannelTitle(title)
+                        if (seenIds.add(link)) {
+                            channels.add(
+                                TvShow(
+                                    id = link,
+                                    title = cleanTitle,
+                                    poster = img,
+                                    banner = img,
+                                    providerName = TvLibrefutbolProvider.name
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: Buscar todos los enlaces .php en el documento
+        if (channels.size < 10) {
+            doc.select("a[href*='.php']").forEach { element ->
+                val href = element.attr("href")
+                val link = if (href.startsWith("http")) href else if (href.isNotEmpty()) "${TvLibrefutbolProvider.baseUrl}/$href" else ""
+
+                if (link.isNotEmpty() && link != TvLibrefutbolProvider.baseUrl && link != "${TvLibrefutbolProvider.baseUrl}/") {
+                    val imgElement = element.selectFirst("img")
+                    var title = ""
+                    var img = ""
+
+                    if (imgElement != null) {
+                        title = imgElement.attr("alt").trim()
+                        val src = imgElement.attr("src")
+                        if (src.isNotEmpty()) {
+                            img = if (src.startsWith("http")) src else "${TvLibrefutbolProvider.baseUrl}/$src"
+                        }
+                    }
+
+                    if (title.isEmpty()) {
+                        title = element.text().trim()
+                    }
+
+                    if (title.isEmpty()) {
+                        title = link.substringAfterLast("/").replace(".php", "").replace("-", " ")
+                    }
+
+                    val cleanTitle = cleanChannelTitle(title)
+
+                    if (cleanTitle.isNotEmpty() && isValidChannel(link, cleanTitle)) {
+                        if (seenIds.add(link)) {
+                            channels.add(
+                                TvShow(
+                                    id = link,
+                                    title = cleanTitle,
+                                    poster = img,
+                                    banner = img,
+                                    providerName = TvLibrefutbolProvider.name
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Log.d(TAG, "Canales extraídos: ${channels.size}")
+        return channels.distinctBy { it.id }
+    }
+
+    private fun isValidChannel(link: String, title: String): Boolean {
+        val cleanLink = link.trim().removeSuffix("/")
+        val cleanBase = TvLibrefutbolProvider.baseUrl.removeSuffix("/")
+
+        return link.isNotEmpty() &&
+                title.isNotEmpty() &&
+                title.length > 2 &&
+                cleanLink != cleanBase &&
+                !link.contains("#") &&
+                !link.contains("javascript:") &&
+                !title.contains("Telegram", ignoreCase = true) &&
+                !title.contains("Soporte", ignoreCase = true) &&
+                !title.contains("Donar", ignoreCase = true) &&
+                !title.contains("Paypal", ignoreCase = true) &&
+                !title.contains("Mundo Latam", ignoreCase = true) &&
+                !title.contains("🌐", ignoreCase = true) &&
+                !title.contains(".php", ignoreCase = true) &&
+                !title.contains("en vivo por internet", ignoreCase = true) &&
+                !title.contains("inicio", ignoreCase = true) &&
+                !title.contains("home", ignoreCase = true)
+    }
+
+    override suspend fun getHome(): List<Category> = coroutineScope {
+        cachedHome?.let { return@coroutineScope it }
+
+        try {
+            val all = cachedChannels ?: run {
+                val doc = fetchDocument(TvLibrefutbolProvider.baseUrl) ?: throw Exception("No se pudo cargar")
+                val channels = extractChannelsFromHtml(doc)
+                cachedChannels = channels
+                channels
+            }
+
+            Log.d(TAG, "✅ Total canales detectados (Deportes y Regionales): ${all.size}")
+
+            val categories = mutableListOf<Category>()
+
+            if (all.isNotEmpty()) {
+                val contentCategories = listOf(
+                    async { Category(name = "Todos los Canales", list = all) },
+                    async {
+                        Category(name = "Deportes", list = all.filter {
+                            it.title.contains("sport", true) ||
+                                    it.title.contains("espn", true) ||
+                                    it.title.contains("fox", true) ||
+                                    it.title.contains("tyc", true) ||
+                                    it.title.contains("directv", true) ||
+                                    it.title.contains("azteca", true) ||
+                                    it.title.contains("futbol", true) ||
+                                    it.title.contains("liga", true)
+                        })
+                    },
+                    async {
+                        Category(name = "Canales Regionales y Abiertos", list = all.filter {
+                            it.title.contains("telefe", true) ||
+                                    it.title.contains("trece", true) ||
+                                    it.title.contains("telemundo", true) ||
+                                    it.title.contains("univision", true) ||
+                                    it.title.contains("caracol", true) ||
+                                    it.title.contains("rcn", true) ||
+                                    it.title.contains("latina", true) ||
+                                    it.title.contains("atv", true) ||
+                                    it.title.contains("america", true) ||
+                                    it.title.contains("estrellas", true) ||
+                                    it.title.contains("imagen", true)
+                        })
+                    },
+                    async {
+                        Category(name = "Noticias", list = all.filter {
+                            it.title.contains("news", true) ||
+                                    it.title.contains("noticia", true) ||
+                                    it.title.contains("cnn", true) ||
+                                    it.title.contains("24h", true) ||
+                                    it.title.contains("dw", true)
+                        })
+                    },
+                    async {
+                        Category(name = "Cine y Series", list = all.filter {
+                            listOf("hbo", "max", "cine", "warner", "star", "tnt", "film", "movie", "golden", "amc", "axn").any { s ->
+                                it.title.contains(s, true)
+                            }
+                        })
+                    }
+                ).awaitAll().filter { it.list.isNotEmpty() }
+
+                categories.addAll(contentCategories)
+            }
+
+            categories.add(
+                Category(
+                    name = "Soporte y Ayuda",
+                    list = listOf(getInfoItem("creador-info"), getInfoItem("apoyo-info"))
+                )
+            )
+
+            cachedHome = categories
+            categories
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ ERROR: ${e.message}")
+            listOf(Category(name = "Soporte y Ayuda", list = listOf(getInfoItem("creador-info"), getInfoItem("apoyo-info"))))
+        }
+    }
+
+    override suspend fun search(query: String, page: Int): List<AppAdapter.Item> = try {
+        val allChannels = getTvShows(1)
+        allChannels.filter { it.title.contains(query, ignoreCase = true) }
+    } catch (_: Exception) { emptyList() }
+
+    override suspend fun getMovies(page: Int): List<Movie> = emptyList()
+
+    override suspend fun getTvShows(page: Int): List<TvShow> {
+        cachedChannels?.let { return it }
+
+        return try {
+            val doc = fetchDocument(TvLibrefutbolProvider.baseUrl) ?: throw Exception("No se pudo cargar")
+            val channels = extractChannelsFromHtml(doc)
+            cachedChannels = channels
+            channels
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun getGenre(id: String, page: Int): Genre = throw Exception("Not supported")
+    override suspend fun getMovie(id: String): Movie = throw Exception("Not supported")
+
+    override suspend fun getTvShow(id: String): TvShow = when (id) {
+        "creador-info", "apoyo-info" -> getInfoItem(id)
+        else -> {
+            try {
+                val doc = fetchDocument(id) ?: throw Exception("No se pudo cargar")
+                val title = doc.selectFirst("meta[property=og:title]")?.attr("content")
+                    ?: doc.selectFirst("h1")?.text()
+                    ?: "Canal en Vivo"
+                val poster = doc.selectFirst("meta[property=og:image]")?.attr("content") ?: ""
+
+                TvShow(
+                    id = id,
+                    title = cleanChannelTitle(title),
+                    overview = doc.selectFirst("meta[property=og:description]")?.attr("content") ?: "",
+                    poster = poster,
+                    banner = poster,
+                    seasons = listOf(Season(id, 1, "En Vivo", episodes = listOf(Episode(id, 1, "Directo", poster)))),
+                    providerName = TvLibrefutbolProvider.name
+                )
+            } catch (e: Exception) {
+                TvShow(id = id, title = "Error al cargar señal", providerName = TvLibrefutbolProvider.name)
+            }
+        }
+    }
+
+    override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> =
+        listOf(Episode(seasonId, 1, "Señal en Directo"))
+
+    override suspend fun getPeople(id: String, page: Int): People = throw Exception("Not supported")
+
+    override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.betterstreamflix.app.iptv.IptvLiveSession.Channel> {
+        val shows = runCatching { getTvShows(1) }.getOrDefault(emptyList())
+            .filter { it.id !in setOf("creador-info", "apoyo-info", "apoyo-nando") }
+        return com.betterstreamflix.app.iptv.IptvChannelWindow.fromShows(
+            shows = shows,
+            aroundId = aroundId,
+            limit = limit,
+            programNowOf = { "En vivo" },
+        )
+    }
+
+    override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> = withContext(Dispatchers.IO) {
+        try {
+            val doc = fetchDocument(id) ?: throw Exception("No se pudo cargar")
+            val servers = SportsIptvStreamResolver.collectServerUrls(doc, baseUrl)
+                .map { (name, url) -> Video.Server(id = url, name = name, src = url) }
+                .toMutableList()
+
+            if (servers.isEmpty()) {
+                val coreRegex = Regex("""https?://[^"'\\\s]+(?:live\d*/|stream\d*/)?core\.php[^"'\\\s]*""")
+                coreRegex.findAll(doc.html()).forEachIndexed { index, match ->
+                    val url = match.value.replace("\\/", "/")
+                    servers.add(Video.Server(id = url, name = "Opción ${index + 1}", src = url))
+                }
+            }
+
+            servers.distinctBy { it.id }.ifEmpty {
+                listOf(Video.Server(id = id, name = "Opción 1", src = id))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "getServers failed: ${e.message}")
+            listOf(Video.Server(id = id, name = "Opción 1", src = id))
+        }
+    }
+
+    override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
+        try {
+            val playlistUrl = SportsIptvStreamResolver.resolvePlaylistUrl(
+                client = client,
+                serverUrl = server.src.ifBlank { server.id },
+                pageReferer = baseUrl,
+                userAgent = USER_AGENT,
+            )
+            if (playlistUrl.isNullOrBlank()) {
+                throw Exception("Tv Libre Futbol: stream offline or 404 (try another server)")
+            }
+
+            val localServerUrl = synchronized(proxyLock) {
+                stopLocalServer()
+                currentPlaylistUrl = playlistUrl
+                startLocalServer(playlistUrl)
+            }
+            if (localServerUrl.isEmpty()) {
+                throw Exception("Tv Libre Futbol: could not start local playlist proxy")
+            }
+
+            Video(
+                source = "$localServerUrl/manifest.m3u8",
+                headers = emptyMap(),
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error: ${e.message}")
+            throw e
+        }
+    }
+
+    private fun stopLocalServer() {
+        try {
+            serverSocket?.close()
+            localServerThread?.interrupt()
+            localProxyExecutor?.shutdownNow()
+            serverSocket = null
+            localServerThread = null
+            localProxyExecutor = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deteniendo servidor: ${e.message}")
+        }
+    }
+
+    private fun startLocalServer(playlistUrl: String): String {
+        try {
+            serverSocket = ServerSocket(0)
+            val port = serverSocket!!.localPort
+            localPort = port
+            val executor = Executors.newFixedThreadPool(6)
+            localProxyExecutor = executor
+
+            localServerThread = Thread {
+                try {
+                    while (!Thread.currentThread().isInterrupted) {
+                        val clientSocket = serverSocket?.accept() ?: break
+                        try {
+                            executor.execute {
+                                try {
+                                    handleLocalRequest(clientSocket, playlistUrl, port)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error: ${e.message}")
+                                } finally {
+                                    runCatching { clientSocket.close() }
+                                }
+                            }
+                        } catch (_: RejectedExecutionException) {
+                            runCatching { clientSocket.close() }
+                        }
+                    }
+                } catch (e: Exception) {
+                    if (!Thread.currentThread().isInterrupted) {
+                        Log.e(TAG, "Error en servidor: ${e.message}")
+                    }
+                }
+            }
+
+            localServerThread?.start()
+            return "http://127.0.0.1:$localPort"
+        } catch (e: Exception) {
+            Log.e(TAG, "Error iniciando servidor: ${e.message}")
+            return ""
+        }
+    }
+
+    private fun handleLocalRequest(clientSocket: Socket, playlistUrl: String, port: Int) {
+        try {
+            val input = clientSocket.getInputStream()
+            val output = clientSocket.getOutputStream()
+
+            val buffer = ByteArray(8192)
+            val bytesRead = input.read(buffer)
+            if (bytesRead <= 0) return
+
+            val requestStr = String(buffer, 0, bytesRead)
+            val firstLine = requestStr.split("\n")[0]
+
+            if (firstLine.startsWith("GET")) {
+                val path = firstLine.split(" ")[1]
+
+                when {
+                    path.startsWith("/manifest.m3u8") -> {
+                        val freshManifest = fetchFreshManifest(playlistUrl, port)
+                        if (freshManifest.isEmpty()) {
+                            writeProxyResponse(output, 502, "text/plain", "offline".toByteArray())
+                        } else {
+                            writeProxyResponse(
+                                output,
+                                200,
+                                "application/vnd.apple.mpegurl",
+                                freshManifest.toByteArray(),
+                            )
+                        }
+                    }
+
+                    path.startsWith("/segment/") -> {
+                        val encodedUrl = path.substring("/segment/".length)
+                        val segmentUrl = URLDecoder.decode(encodedUrl, "UTF-8")
+                        val segmentReq = Request.Builder().url(segmentUrl).build()
+                        client.newCall(segmentReq).execute().use { segmentRes ->
+                            val segmentBytes = if (segmentRes.isSuccessful) {
+                                readCapped(segmentRes.body)
+                            } else {
+                                null
+                            }
+                            if (segmentBytes == null) {
+                                writeProxyResponse(output, 502, "text/plain", "offline".toByteArray())
+                            } else {
+                                writeProxyResponse(output, 200, "video/mp2t", segmentBytes)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error: ${e.message}")
+        } finally {
+            try { clientSocket.close() } catch (_: Exception) {}
+        }
+    }
+
+    private fun writeProxyResponse(
+        output: java.io.OutputStream,
+        status: Int,
+        contentType: String,
+        body: ByteArray,
+    ) {
+        val reason = if (status == 200) "OK" else "Bad Gateway"
+        val headers = "HTTP/1.1 $status $reason\r\n" +
+            "Content-Type: $contentType\r\n" +
+            "Content-Length: ${body.size}\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Cache-Control: no-cache\r\n" +
+            "Connection: close\r\n\r\n"
+        output.write(headers.toByteArray())
+        output.write(body)
+        output.flush()
+    }
+
+    private fun readCapped(body: ResponseBody?): ByteArray? {
+        if (body == null) return null
+        val advertised = body.contentLength()
+        if (advertised > SportsIptvStreamResolver.MAX_PROXY_SEGMENT_BYTES) return null
+        body.byteStream().use { stream ->
+            val out = java.io.ByteArrayOutputStream()
+            val tmp = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val n = stream.read(tmp)
+                if (n < 0) break
+                total += n
+                if (total > SportsIptvStreamResolver.MAX_PROXY_SEGMENT_BYTES) return null
+                out.write(tmp, 0, n)
+            }
+            return out.toByteArray()
+        }
+    }
+
+    private fun fetchFreshManifest(playlistUrl: String, port: Int): String {
+        try {
+            val request = Request.Builder().url(playlistUrl).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return ""
+                val manifestContent = response.body?.string().orEmpty()
+                if (!manifestContent.contains("#EXTM3U")) return ""
+                return manifestContent.replace(
+                    Regex("""https://deportes\.ksdjugfssddeports\.com:9092/([^\s]+)"""),
+                    "http://127.0.0.1:$port/segment/https://deportes.ksdjugfssddeports.com:9092/$1",
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error: ${e.message}")
+        }
+        return ""
+    }
+
+    private fun getInfoItem(id: String): TvShow {
+        val title = if (id == "creador-info") "Reportar problemas" else "Apoya al Proveedor"
+        val poster = if (id == "creador-info")
+            "https://i.ibb.co/dsknGBHT/Imagen-de-Whats-App-2025-09-06-a-las-19-00-50-e8e5bcaa.jpg"
+        else
+            "https://i.ibb.co/B5gKLkqS/nuevo-formato-2-K-202604112205.jpg"
+
+        return TvShow(
+            id = id,
+            title = title,
+            poster = poster,
+            banner = poster,
+            overview = if (id == "creador-info") "@NandoGT" else "Apoya el proyecto.",
+            providerName = TvLibrefutbolProvider.name
+        )
+    }
+}

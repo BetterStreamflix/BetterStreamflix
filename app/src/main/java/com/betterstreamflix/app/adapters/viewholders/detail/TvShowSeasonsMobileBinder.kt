@@ -1,0 +1,276 @@
+package com.betterstreamflix.app.adapters.viewholders.detail
+
+import android.view.View
+import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.adapters.viewholders.TvShowViewHolder
+import com.betterstreamflix.app.databinding.ContentTvShowSeasonsMobileBinding
+import com.betterstreamflix.app.fragments.tv_show.TvShowMobileFragment
+import com.betterstreamflix.app.fragments.tv_show.TvShowViewModel
+import com.betterstreamflix.app.models.Episode
+import com.betterstreamflix.app.models.Season
+import com.betterstreamflix.app.ui.SpacingItemDecoration
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.UserPreferences
+import com.betterstreamflix.app.utils.dp
+import com.betterstreamflix.app.utils.getCurrentFragment
+import com.betterstreamflix.app.utils.toActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+internal fun TvShowViewHolder.bindTvShowSeasonsMobile(binding: ContentTvShowSeasonsMobileBinding) {
+    binding.root.tag = TvShowViewHolder.DETAIL_SECTION_SEASONS
+
+    val seasons = tvShow.seasons
+    if (seasons.isEmpty()) {
+        binding.btnTvShowSeasonPicker.visibility = View.GONE
+        binding.rvTvShowEpisodes.visibility = View.GONE
+        binding.pbTvShowEpisodesLoading.visibility = View.GONE
+        binding.llTvShowEpisodesEmpty.visibility = View.VISIBLE
+        binding.tvTvShowEpisodesEmpty.setText(R.string.season_empty)
+        binding.btnTvShowEpisodesRetry.visibility = View.GONE
+        return
+    }
+
+    val seasonUi = seasonEpisodeUi()
+    val selectedSeason = resolveSelectedSeason(seasons, seasonUi)
+    seasonUi?.selectedSeasonId = selectedSeason.id
+
+    binding.btnTvShowSeasonPicker.apply {
+        visibility = View.VISIBLE
+        text = selectedSeason.title
+            ?: context.getString(R.string.season_number, selectedSeason.number)
+        setOnClickListener {
+            ExpMotion.hapticTap(it)
+            showSeasonPicker(binding, seasons, seasonUi)
+        }
+    }
+
+    bindSeasonEpisodes(binding, selectedSeason, seasonUi)
+}
+
+private fun TvShowViewHolder.seasonEpisodeUi(): TvShowViewModel? {
+    return (context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment)?.seasonEpisodeUi()
+}
+
+private fun TvShowViewHolder.resolveSelectedSeason(
+    seasons: List<Season>,
+    seasonUi: TvShowViewModel?,
+): Season {
+    val rememberedId = seasonUi?.selectedSeasonId
+    if (rememberedId != null) {
+        seasons.firstOrNull { it.id == rememberedId }?.let { return it }
+    }
+    // Prefer the season that contains the next episode to watch, else first non-zero.
+    val episodeSeasonId = tvShow.episodeToWatch?.season?.id
+    if (episodeSeasonId != null) {
+        seasons.firstOrNull { it.id == episodeSeasonId }?.let { return it }
+    }
+    return seasons.firstOrNull { it.number != 0 } ?: seasons.first()
+}
+
+private fun TvShowViewHolder.showSeasonPicker(
+    binding: ContentTvShowSeasonsMobileBinding,
+    seasons: List<Season>,
+    seasonUi: TvShowViewModel?,
+) {
+    val labels = seasons.map { season ->
+        season.title ?: context.getString(R.string.season_number, season.number)
+    }.toTypedArray()
+    val selectedIndex = seasons.indexOfFirst { it.id == seasonUi?.selectedSeasonId }
+        .coerceAtLeast(0)
+    AlertDialog.Builder(context)
+        .setTitle(R.string.tv_show_seasons)
+        .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
+            val season = seasons.getOrNull(which) ?: return@setSingleChoiceItems
+            seasonUi?.selectedSeasonId = season.id
+            binding.btnTvShowSeasonPicker.text = labels[which]
+            bindSeasonEpisodes(binding, season, seasonUi)
+            dialog.dismiss()
+        }
+        .setNegativeButton(android.R.string.cancel, null)
+        .show()
+}
+
+private fun TvShowViewHolder.bindSeasonEpisodes(
+    binding: ContentTvShowSeasonsMobileBinding,
+    season: Season,
+    seasonUi: TvShowViewModel?,
+) {
+    val episodes = season.episodes.sortedBy { it.number }
+    val adapter = (binding.rvTvShowEpisodes.adapter as? AppAdapter) ?: AppAdapter().also {
+        binding.rvTvShowEpisodes.adapter = it
+        if (binding.rvTvShowEpisodes.itemDecorationCount == 0) {
+            binding.rvTvShowEpisodes.addItemDecoration(SpacingItemDecoration(8.dp(context)))
+        }
+    }
+
+    when {
+        episodes.isNotEmpty() -> {
+            seasonUi?.clearSeasonEpisodeFailure(season.id)
+            binding.pbTvShowEpisodesLoading.visibility = View.GONE
+            binding.llTvShowEpisodesEmpty.visibility = View.GONE
+            binding.btnTvShowEpisodesRetry.visibility = View.GONE
+            binding.rvTvShowEpisodes.visibility = View.VISIBLE
+            adapter.submitList(
+                episodes.onEach { episode ->
+                    val show = episode.tvShow ?: tvShow
+                    if (show.contentRating.isNullOrBlank()) {
+                        show.contentRating = tvShow.contentRating
+                    }
+                    episode.tvShow = show
+                    episode.season = episode.season ?: season
+                    episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
+                },
+            )
+            val upNextIndex = episodes.indexOfFirst { it.id == tvShow.episodeToWatch?.id }
+            val scrollKey = "${season.id}:$upNextIndex"
+            if (binding.rvTvShowEpisodes.getTag(R.id.detail_episodes_scroll_key) != scrollKey) {
+                binding.rvTvShowEpisodes.setTag(R.id.detail_episodes_scroll_key, scrollKey)
+                val mayAutoFocus = seasonUi?.episodesAutoFocused != true
+                if (mayAutoFocus) seasonUi?.episodesAutoFocused = true
+                binding.rvTvShowEpisodes.post {
+                    if (upNextIndex < 0) return@post
+                    val episodeLm =
+                        binding.rvTvShowEpisodes.layoutManager as? LinearLayoutManager
+                    // Constrained height (@dimen/detail_episode_list_height) lets the
+                    // inner list scroll; also nudge the outer detail RV into view.
+                    episodeLm?.scrollToPositionWithOffset(
+                        upNextIndex,
+                        binding.rvTvShowEpisodes.height / 3,
+                    )
+                    if (mayAutoFocus) scrollOuterDetailToSeasons(binding)
+                }
+            }
+        }
+        seasonUi?.isSeasonEpisodeFailed(season.id) == true -> {
+            seasonUi.endSeasonEpisodeLoad(season.id)
+            binding.rvTvShowEpisodes.visibility = View.GONE
+            binding.pbTvShowEpisodesLoading.visibility = View.GONE
+            binding.llTvShowEpisodesEmpty.visibility = View.VISIBLE
+            binding.tvTvShowEpisodesEmpty.setText(R.string.detail_episodes_load_failed)
+            binding.btnTvShowEpisodesRetry.visibility = View.VISIBLE
+            binding.btnTvShowEpisodesRetry.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                seasonUi.clearSeasonEpisodeFailure(season.id)
+                seasonUi.clearSeasonEpisodesSettled(season.id)
+                binding.btnTvShowEpisodesRetry.visibility = View.GONE
+                binding.llTvShowEpisodesEmpty.visibility = View.GONE
+                binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
+                adapter.submitList(emptyList())
+                requestSeasonEpisodes(binding, season, seasonUi)
+            }
+            adapter.submitList(emptyList())
+        }
+        seasonUi?.isSeasonEpisodeLoading(season.id) == true -> {
+            binding.rvTvShowEpisodes.visibility = View.GONE
+            binding.llTvShowEpisodesEmpty.visibility = View.GONE
+            binding.btnTvShowEpisodesRetry.visibility = View.GONE
+            binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
+            adapter.submitList(emptyList())
+        }
+        seasonUi?.isSeasonEpisodesSettled(season.id) == true -> {
+            showSettledEmptyEpisodes(binding, adapter)
+        }
+        else -> {
+            binding.rvTvShowEpisodes.visibility = View.GONE
+            binding.llTvShowEpisodesEmpty.visibility = View.GONE
+            binding.btnTvShowEpisodesRetry.visibility = View.GONE
+            binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
+            adapter.submitList(emptyList())
+            requestSeasonEpisodes(binding, season, seasonUi)
+        }
+    }
+}
+
+private fun showSettledEmptyEpisodes(
+    binding: ContentTvShowSeasonsMobileBinding,
+    adapter: AppAdapter,
+) {
+    binding.rvTvShowEpisodes.visibility = View.GONE
+    binding.pbTvShowEpisodesLoading.visibility = View.GONE
+    binding.btnTvShowEpisodesRetry.visibility = View.GONE
+    binding.llTvShowEpisodesEmpty.visibility = View.VISIBLE
+    binding.tvTvShowEpisodesEmpty.setText(R.string.season_empty)
+    adapter.submitList(emptyList())
+}
+
+private fun TvShowViewHolder.requestSeasonEpisodes(
+    binding: ContentTvShowSeasonsMobileBinding,
+    season: Season,
+    seasonUi: TvShowViewModel?,
+) {
+    if (seasonUi != null) {
+        if (!seasonUi.beginSeasonEpisodeLoad(season.id)) return
+        seasonUi.clearSeasonEpisodeFailure(season.id)
+        val fragment = context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment
+        if (fragment != null) {
+            fragment.loadSeasonEpisodes(season)
+            // Failure is handled via SeasonState.FailedLoading in the fragment.
+            return
+        }
+        seasonUi.endSeasonEpisodeLoad(season.id)
+    }
+
+    // Fallback: load directly if fragment/ViewModel isn't available.
+    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+        val result = withContext(Dispatchers.IO) {
+            runCatching {
+                val provider = UserPreferences.currentProvider
+                    ?: return@runCatching emptyList<Episode>()
+                val episodes = provider.getEpisodesBySeason(season.id)
+                val db = database ?: return@runCatching emptyList<Episode>()
+                val episodeMap = episodes.associateBy { it.id }
+                episodes.map { it.id }.chunked(400).forEach { chunk ->
+                    db.episodeDao().getByIds(chunk).forEach { row ->
+                        episodeMap[row.id]?.merge(row)
+                    }
+                }
+                episodes.forEach {
+                    it.tvShow = tvShow
+                    it.season = season
+                }
+                db.episodeDao().insertAll(episodes)
+                episodes
+            }
+        }
+        result.onSuccess { loaded ->
+            season.episodes = loaded
+            tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = loaded
+            seasonUi?.markSeasonEpisodesSettled(season.id)
+            if (loaded.isEmpty()) {
+                val adapter = binding.rvTvShowEpisodes.adapter as? AppAdapter ?: return@onSuccess
+                showSettledEmptyEpisodes(binding, adapter)
+            } else if (seasonUi?.selectedSeasonId == season.id || seasonUi == null) {
+                bindSeasonEpisodes(binding, season, seasonUi)
+            }
+        }.onFailure {
+            seasonUi?.markSeasonEpisodeFailure(season.id)
+            if (seasonUi?.selectedSeasonId == season.id || seasonUi == null) {
+                bindSeasonEpisodes(binding, season, seasonUi)
+            }
+        }
+    }
+}
+
+/** Bring the seasons block into the outer detail RecyclerView viewport. */
+private fun scrollOuterDetailToSeasons(binding: ContentTvShowSeasonsMobileBinding) {
+    var parent = binding.root.parent
+    while (parent != null && parent !is RecyclerView) {
+        parent = parent.parent
+    }
+    val outer = parent as? RecyclerView ?: return
+    val holder = outer.findContainingViewHolder(binding.root) ?: return
+    val outerLm = outer.layoutManager as? LinearLayoutManager ?: return
+    val position = holder.bindingAdapterPosition
+    if (position == RecyclerView.NO_POSITION) return
+    // Never fight the user: only pull the block up when it is entirely below the fold.
+    if (position <= outerLm.findLastVisibleItemPosition()) return
+    outerLm.scrollToPositionWithOffset(position, 0)
+}

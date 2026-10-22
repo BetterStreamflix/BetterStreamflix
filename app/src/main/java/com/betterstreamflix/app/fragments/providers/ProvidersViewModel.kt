@@ -1,0 +1,111 @@
+package com.betterstreamflix.app.fragments.providers
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.betterstreamflix.app.models.Provider as ModelProvider
+import com.betterstreamflix.app.providers.Provider
+import com.betterstreamflix.app.providers.ProviderHealth
+import com.betterstreamflix.app.providers.TmdbProvider
+import com.betterstreamflix.app.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import java.util.Locale
+
+class ProvidersViewModel : ViewModel() {
+
+    private val _state = MutableStateFlow<State>(State.Loading)
+    val state: Flow<State> = _state
+
+    sealed class State {
+        data object Loading : State()
+        data class SuccessLoading(val providers: List<ModelProvider>) : State()
+        data class FailedLoading(val error: Exception) : State()
+    }
+
+    init {
+        getProviders(UserPreferences.providerLanguage)
+    }
+
+    fun getProviders(language: String? = null) = viewModelScope.launch(Dispatchers.IO) {
+        _state.emit(State.Loading)
+
+        try {
+            val isFavoritesFilter = language == "favorites"
+            val favorites = UserPreferences.favoriteProviders
+
+            val providers = Provider.allProviders().keys
+                .filter {
+                    if (!com.betterstreamflix.app.platform.plugins.PluginRegistry.isProviderVisible(it)) {
+                        return@filter false
+                    }
+                    if (!UserPreferences.showQuarantinedProviders &&
+                        ProviderHealth.isQuarantined(it)
+                    ) {
+                        return@filter false
+                    }
+                    if (!UserPreferences.showVavooVodProviders &&
+                        it is com.betterstreamflix.app.providers.VavooVodProvider
+                    ) {
+                        return@filter false
+                    }
+                    if (isFavoritesFilter) {
+                        favorites.contains(it.name)
+                    } else {
+                        language == null || it.language == language
+                    }
+                }
+                .sortedBy { it.name }
+                .toMutableList()
+
+            if (UserPreferences.enableTmdb && (language == null || isFavoritesFilter)) {
+                val availableLanguages = Provider.allProviders().keys.map { it.language }.distinct()
+                availableLanguages.forEach { lang ->
+                    if (lang != "pl") {
+                        val tmdbName = "TMDb (${getLanguageDisplayName(lang)})"
+                        if (!isFavoritesFilter || favorites.contains(tmdbName)) {
+                            providers.add(TmdbProvider(lang))
+                        }
+                    }
+                }
+            } else if (UserPreferences.enableTmdb && language != null && language != "pl") {
+                providers.add(TmdbProvider(language))
+            }
+
+            val modelProviders = providers.map {
+                val name = if (it is TmdbProvider) {
+                    "TMDb (${getLanguageDisplayName(it.language)})"
+                } else {
+                    it.name
+                }
+                ModelProvider(
+                    name = name,
+                    logo = it.logo,
+                    language = it.language,
+                    provider = it,
+                    isFavorite = favorites.contains(name)
+                )
+            }.sortedWith(
+                compareBy<ModelProvider> { it.provider is TmdbProvider }
+                    .thenByDescending { it.isFavorite }
+                    .thenBy { ProviderHealth.pickerRank(it.name) }
+                    .thenBy { it.name.lowercase(Locale.ROOT) }
+            )
+
+            // Empty favorites / language filter → empty state, never an endless spinner.
+            _state.emit(State.SuccessLoading(modelProviders))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("ProvidersViewModel", "getProviders: ", e)
+            _state.emit(State.FailedLoading(e))
+        }
+    }
+
+    private fun getLanguageDisplayName(languageCode: String): String {
+        return Locale.forLanguageTag(languageCode).displayLanguage
+    }
+}

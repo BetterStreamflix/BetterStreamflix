@@ -1,0 +1,71 @@
+package com.betterstreamflix.app.ui
+
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.models.Season
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.models.Episode
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class DetailContentSignaturesTest {
+
+    @Test
+    fun movie_favoriteAloneDoesNotChangeSignature() {
+        val base = Movie(id = "m1", title = "Alpha", overview = "o")
+        base.isFavorite = false
+        val favorited = Movie(id = "m1", title = "Alpha", overview = "o")
+        favorited.isFavorite = true
+        assertEquals(DetailContentSignatures.movie(base), DetailContentSignatures.movie(favorited))
+    }
+
+    @Test
+    fun movie_watchedAloneDoesNotChangeSignature() {
+        val base = Movie(id = "m1", title = "Alpha")
+        base.isWatched = false
+        val watched = Movie(id = "m1", title = "Alpha")
+        watched.isWatched = true
+        assertEquals(DetailContentSignatures.movie(base), DetailContentSignatures.movie(watched))
+    }
+
+    @Test
+    fun tvShow_favoriteAndWatchingAloneDoNotChangeSignature() {
+        val base = TvShow(id = "t1", title = "Beta")
+        base.isFavorite = false
+        base.isWatching = true
+        val toggled = TvShow(id = "t1", title = "Beta")
+        toggled.isFavorite = true
+        toggled.isWatching = false
+        assertEquals(DetailContentSignatures.tvShow(base), DetailContentSignatures.tvShow(toggled))
+    }
+
+    @Test
+    fun tvShow_seasonEpisodeFillDoesNotChangeSignature() {
+        val empty = TvShow(
+            id = "t1",
+            title = "Beta",
+            seasons = listOf(Season(id = "s1", title = "S1", number = 1)),
+        )
+        val filled = TvShow(
+            id = "t1",
+            title = "Beta",
+            seasons = listOf(
+                Season(
+                    id = "s1",
+                    title = "S1",
+                    number = 1,
+                    episodes = listOf(Episode(id = "e1", number = 1, title = "E1")),
+                ),
+            ),
+        )
+        assertEquals(DetailContentSignatures.tvShow(empty), DetailContentSignatures.tvShow(filled))
+    }
+
+    @Test
+    fun tvShow_lastPlayedEpisodeIdAloneDoesNotChangeSignature() {
+        val base = TvShow(id = "t1", title = "Beta")
+        base.lastPlayedEpisodeId = null
+        val played = TvShow(id = "t1", title = "Beta")
+        played.lastPlayedEpisodeId = "e99"
+        assertEquals(DetailContentSignatures.tvShow(base), DetailContentSignatures.tvShow(played))
+    }
+}

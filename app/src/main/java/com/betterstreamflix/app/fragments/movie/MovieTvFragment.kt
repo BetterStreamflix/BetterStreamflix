@@ -1,0 +1,239 @@
+package com.betterstreamflix.app.fragments.movie
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.navArgs
+import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.database.AppDatabase
+import com.betterstreamflix.app.databinding.FragmentMovieTvBinding
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.ui.DetailContentSignatures
+import com.betterstreamflix.app.ui.DetailLoadingErrorChrome
+import com.betterstreamflix.app.utils.DeviceCapabilities
+import com.betterstreamflix.app.utils.Http409CacheGuard
+import com.betterstreamflix.app.utils.TmdbUtils
+import com.betterstreamflix.app.utils.format
+import com.betterstreamflix.app.utils.loadMovieBanner
+import com.betterstreamflix.app.utils.viewModelsFactory
+import kotlinx.coroutines.launch
+
+class MovieTvFragment : Fragment() {
+
+    private val http409Guard = Http409CacheGuard()
+
+    private var _binding: FragmentMovieTvBinding? = null
+    private val binding get() = _binding!!
+
+    private val args by navArgs<MovieTvFragmentArgs>()
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
+    private val viewModel by viewModelsFactory { MovieViewModel(args.id, database) }
+
+    private val appAdapter = AppAdapter()
+    private var watchFocusedOnce = false
+
+    /** Vertical scroll state kept across view recreation (back-nav). */
+    private var detailListState: android.os.Parcelable? = null
+    /** True after a back-nav restore — suppresses the pos-0 watch-focus jump. */
+    private var detailScrollRestored = false
+
+    private companion object {
+        const val KEY_DETAIL_LIST_STATE = "detail_list_state"
+    }
+    private var lastContentSignature: List<Any?>? = null
+    private var lastBannerKey: String? = null
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentMovieTvBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        detailListState = detailListState ?: savedInstanceState?.let {
+            androidx.core.os.BundleCompat.getParcelable(
+                it, KEY_DETAIL_LIST_STATE, android.os.Parcelable::class.java,
+            )
+        }
+
+        initializeMovie()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
+                when (state) {
+                    MovieViewModel.State.Loading -> {
+                        com.betterstreamflix.app.utils.TvLoadingOverlay.show(binding.isLoading.root)
+                        binding.isLoading.gIsLoadingRetry.visibility = View.GONE
+                    }
+                    is MovieViewModel.State.SuccessLoading -> {
+                        displayMovie(state.movie)
+                        com.betterstreamflix.app.utils.TvLoadingOverlay.hide(binding.isLoading.root)
+                        requestWatchFocus()
+                    }
+                    is MovieViewModel.State.FailedLoading -> {
+                        if (http409Guard.handle(requireContext(), state.error) {
+                                viewModel.getMovie(args.id)
+                            }
+                        ) {
+                            return@collect
+                        }
+                        com.betterstreamflix.app.utils.TvLoadingOverlay.disarm(binding.isLoading.root)
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            requestFocusOnRetry = true,
+                            onRetry = { viewModel.getMovie(args.id) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onPause() {
+        com.betterstreamflix.app.ui.TrailerPlaybackController.silenceAllActive()
+        super.onPause()
+    }
+
+    override fun onDestroyView() {
+        com.betterstreamflix.app.ui.TrailerPlaybackController.silenceAllActive()
+        com.betterstreamflix.app.ui.TrailerPlayPipeline.endSession()
+        com.betterstreamflix.app.ui.TrailerStreamCrossfade.clear()
+        com.betterstreamflix.app.player.PlayerCleanExit.clearHomeRestore()
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.vgvMovie)
+            detailListState = it.vgvMovie.layoutManager?.onSaveInstanceState()
+        }
+        lastContentSignature = null
+        lastBannerKey = null
+        _binding = null
+        super.onDestroyView()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = detailListState ?: _binding?.vgvMovie?.layoutManager?.onSaveInstanceState()
+        if (state != null) outState.putParcelable(KEY_DETAIL_LIST_STATE, state)
+    }
+
+    /** Restores the pre-navigation scroll offset once and parks the pos-0 focus jump. */
+    private fun restoreDetailScrollIfPending() {
+        val state = detailListState ?: return
+        detailListState = null
+        detailScrollRestored = true
+        binding.vgvMovie.post {
+            _binding?.vgvMovie?.layoutManager?.onRestoreInstanceState(state)
+        }
+    }
+
+    private fun initializeMovie() {
+        binding.vgvMovie.apply {
+            adapter = appAdapter.apply {
+                stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+            }
+            setItemSpacing(resources.getDimension(R.dimen.detail_tv_item_spacing).toInt())
+        }
+    }
+
+    /** Public handoff for side-nav / destination focus (Leanback). */
+    fun requestContentFocus(): Boolean {
+        val grid = _binding?.vgvMovie ?: return false
+        if (!grid.isAttachedToWindow || (grid.adapter?.itemCount ?: 0) == 0) return false
+        requestWatchFocus(force = true)
+        return true
+    }
+
+    private fun requestWatchFocus(force: Boolean = false) {
+        binding.vgvMovie.post {
+            if (!isAdded || _binding == null) return@post
+            val watch = binding.vgvMovie
+                .findViewHolderForAdapterPosition(0)
+                ?.itemView
+                ?.findViewById<View>(R.id.btn_movie_watch_now)
+                ?: return@post
+            // After a progress refresh the list is rebuilt and focus is gone.
+            // Keep an existing focus (cast row, overview) where the user left it.
+            if (!force && detailScrollRestored) return@post
+            if (!force && watchFocusedOnce && binding.vgvMovie.findFocus() != null) return@post
+            watch.requestFocus()
+            watchFocusedOnce = true
+        }
+    }
+
+    private fun displayMovie(movie: Movie) {
+        restoreDetailScrollIfPending()
+        val signature = DetailContentSignatures.movie(movie)
+        if (lastContentSignature == signature) {
+            // Favorite-only / list-state refresh: hero CTA already updated in place.
+            return
+        }
+        lastContentSignature = signature
+
+        val bannerKey = "${movie.banner}|${movie.poster}"
+        if (lastBannerKey != bannerKey) {
+            lastBannerKey = bannerKey
+            binding.ivMovieBanner.loadMovieBanner(movie, hero = false) {
+                val (w, h) = com.betterstreamflix.app.ui.FeaturedSwiperChrome
+                    .tvBackdropOverride(requireContext())
+                override(w, h)
+                if (!DeviceCapabilities.shouldReduceHomeEffects(requireContext())) {
+                    transition(DrawableTransitionOptions.withCrossFade())
+                } else {
+                    this
+                }
+            }
+        }
+
+        val items = listOfNotNull(
+            movie.apply { itemType = AppAdapter.Type.MOVIE_TV },
+
+            movie.takeIf { it.directors.isNotEmpty() }
+                ?.copy()
+                ?.apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_TV },
+
+            movie.takeIf { it.cast.isNotEmpty() }
+                ?.copy()
+                ?.apply { itemType = AppAdapter.Type.MOVIE_CAST_TV },
+
+            movie.takeIf {
+                !it.trailer.isNullOrBlank() ||
+                    TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = it.tmdbId,
+                        imdbId = it.imdbId,
+                        title = it.title,
+                        year = it.released?.format("yyyy")?.toIntOrNull(),
+                    )
+            }
+                ?.copy()
+                ?.apply { itemType = AppAdapter.Type.MOVIE_TRAILER_TV },
+
+            movie.takeIf { it.recommendations.isNotEmpty() }
+                ?.copy()
+                ?.apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_TV },
+        )
+        appAdapter.submitList(items)
+        if (args.openTab.equals("similar", ignoreCase = true)) {
+            val similarIndex = items.indexOfFirst {
+                it.itemType == AppAdapter.Type.MOVIE_RECOMMENDATIONS_TV
+            }
+            if (similarIndex >= 0) {
+                binding.vgvMovie.post {
+                    runCatching { binding.vgvMovie.scrollToPosition(similarIndex) }
+                }
+            }
+        }
+    }
+}
