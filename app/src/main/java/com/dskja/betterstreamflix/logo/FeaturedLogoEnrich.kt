@@ -26,6 +26,8 @@ import kotlin.coroutines.cancellation.CancellationException
  * Resolves missing TMDb logos for upcoming items (not just Glide-prefetch of
  * already-known URLs), persists into Room when possible, and preloads the bitmap.
  * Shares [TmdbLogoCache] single-flight so binder + enrich do not double-fetch.
+ * On metered networks only the next item's logo is resolved (no bitmap
+ * prefetch, no backdrop work).
  */
 object FeaturedLogoEnrich {
 
@@ -52,7 +54,11 @@ object FeaturedLogoEnrich {
         if (items.isEmpty() || count <= 0) return
         FeaturedNetworkMonitor.ensureRegistered(context)
         FeaturedNetworkMonitor.addListener(meteredListener)
-        if (wifiOnly && !isDefinitelyUnmetered(context)) return
+        // On metered: still resolve the single next item's logo (one API call,
+        // no bitmap prefetch / backdrop work) so the upcoming slide never ships
+        // a text-only hero just because the user is off WiFi.
+        val unmetered = isDefinitelyUnmetered(context)
+        val effectiveCount = if (wifiOnly && !unmetered) 1 else count
 
         fun start() {
             val owner = anchor.findViewTreeLifecycleOwner()
@@ -71,37 +77,36 @@ object FeaturedLogoEnrich {
             val targets = buildList {
                 var i = 0
                 var offset = 1
-                while (i < count && offset <= items.size) {
+                while (i < effectiveCount && offset <= items.size) {
                     val idx = (fromIndex + offset).floorMod(items.size)
                     offset++
-                    when (val item = items.getOrNull(idx)) {
-                        is Movie -> if (
-                            TmdbLogoPicker.shouldUpgradeLogo(
-                                item.logo,
-                                item.logoLanguage,
-                                UserPreferences.currentProvider?.language,
-                            ) || needsBackdropUpgrade(item.banner, item.poster)
-                        ) {
-                            add(item)
-                            i++
-                        }
-                        is TvShow -> if (
-                            TmdbLogoPicker.shouldUpgradeLogo(
-                                item.logo,
-                                item.logoLanguage,
-                                UserPreferences.currentProvider?.language,
-                            ) || needsBackdropUpgrade(item.banner, item.poster)
-                        ) {
-                            add(item)
-                            i++
-                        }
+                    // Metered single-slot: only spend it on a missing/wrong-logo
+                    // item — backdrop-only upgrades stay WiFi work.
+                    val needsLogo = when (val item = items.getOrNull(idx)) {
+                        is Movie -> TmdbLogoPicker.shouldUpgradeLogo(
+                            item.logo, item.logoLanguage,
+                            UserPreferences.currentProvider?.language,
+                        )
+                        is TvShow -> TmdbLogoPicker.shouldUpgradeLogo(
+                            item.logo, item.logoLanguage,
+                            UserPreferences.currentProvider?.language,
+                        )
+                        else -> false
+                    }
+                    val needsBackdrop = !unmetered && when (val item = items.getOrNull(idx)) {
+                        is Movie -> needsBackdropUpgrade(item.banner, item.poster)
+                        is TvShow -> needsBackdropUpgrade(item.banner, item.poster)
+                        else -> false
+                    }
+                    if (needsLogo || needsBackdrop) {
+                        items.getOrNull(idx)?.let { add(it) }
+                        i++
                     }
                 }
             }
             if (targets.isEmpty()) return
             jobs[anchor] = owner.lifecycleScope.launch {
                 targets.forEach { item ->
-                    if (!isDefinitelyUnmetered(appCtx)) return@launch
                     val url = withContext(Dispatchers.IO) {
                         try {
                             when (item) {
@@ -114,6 +119,8 @@ object FeaturedLogoEnrich {
                             null
                         }
                     }
+                    // Heavy payloads stay unmetered-only: bitmap prefetch + backdrop.
+                    if (!isDefinitelyUnmetered(appCtx)) return@launch
                     if (url != null) TmdbLogoGlide.prefetch(appCtx, url, wifiOnly = true)
                     // Upcoming slide needs a real backdrop too — resolve + persist
                     // so the swiper binds it already upgraded.

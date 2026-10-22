@@ -793,11 +793,19 @@ class EpisodeViewHolder(
         bindEpisodeRemainingPill(binding.root)
 
         binding.tvEpisodeTvShowTitle.text = episode.tvShow?.title ?: ""
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        episode.tvShow?.let { show ->
+            com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+                anchor = binding.root,
+                imageView = binding.ivEpisodeTvShowLogo,
+                titleView = null,
+                tvShow = show,
+                hideUntilReady = true,
+            )
+        } ?: com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
             imageView = binding.ivEpisodeTvShowLogo,
             titleView = null,
-            logoUrl = episode.tvShow?.logo,
-            title = episode.tvShow?.title.orEmpty(),
+            logoUrl = null,
+            title = "",
             hideUntilReady = true,
         )
 
@@ -879,11 +887,19 @@ class EpisodeViewHolder(
         bindEpisodeRemainingPill(binding.root)
 
         binding.tvEpisodeTvShowTitle.text = episode.tvShow?.title ?: ""
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        episode.tvShow?.let { show ->
+            com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+                anchor = binding.root,
+                imageView = binding.ivEpisodeTvShowLogo,
+                titleView = null,
+                tvShow = show,
+                hideUntilReady = true,
+            )
+        } ?: com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
             imageView = binding.ivEpisodeTvShowLogo,
             titleView = null,
-            logoUrl = episode.tvShow?.logo,
-            title = episode.tvShow?.title.orEmpty(),
+            logoUrl = null,
+            title = "",
             hideUntilReady = true,
         )
 
