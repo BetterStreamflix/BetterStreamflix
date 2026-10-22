@@ -995,7 +995,7 @@ class SettingsSectionFragment : PreferenceFragmentCompat() {
                     getString(R.string.settings_tmdb_api_key_success)
                 }
                 showSettingsInfo(message)
-                TmdbSettingsController.bind(this@SettingsMobileFragment, lifecycleScope) { key ->
+                TmdbSettingsController.bind(this@SettingsSectionFragment, lifecycleScope) { key ->
                     findPreference(key)
                 }
                 true
@@ -1015,7 +1015,7 @@ class SettingsSectionFragment : PreferenceFragmentCompat() {
                     getString(R.string.settings_fanart_api_key_success)
                 }
                 showSettingsInfo(message)
-                TmdbSettingsController.bind(this@SettingsMobileFragment, lifecycleScope) { key ->
+                TmdbSettingsController.bind(this@SettingsSectionFragment, lifecycleScope) { key ->
                     findPreference(key)
                 }
                 true

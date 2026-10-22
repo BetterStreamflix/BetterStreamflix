@@ -99,7 +99,23 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
+class SettingsTvSectionFragment : LeanbackPreferenceFragmentCompat() {
+
+    companion object {
+        private const val ARG_SCREEN_KEY = "arg_screen_key"
+        private const val ARG_TITLE = "arg_title"
+        private const val ARG_FLASH_KEY = "arg_flash_key"
+
+        fun newInstance(screenKey: String, title: String?, flashKey: String? = null): SettingsTvSectionFragment {
+            return SettingsTvSectionFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_SCREEN_KEY, screenKey)
+                    putString(ARG_TITLE, title)
+                    if (flashKey != null) putString(ARG_FLASH_KEY, flashKey)
+                }
+            }
+        }
+    }
     private val DEFAULT_DOMAIN_VALUE = "streamingunity.win"
     private val DEFAULT_SERIENSTREAM_DOMAIN_VALUE = "186.2.175.5"
     private val DEFAULT_MOFLIX_DOMAIN_VALUE = "moflix-stream.xyz"
@@ -857,7 +873,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     getString(R.string.settings_tmdb_api_key_success)
                 }
                 showSettingsInfo(message)
-                TmdbSettingsController.bind(this@SettingsTvFragment, lifecycleScope) { key ->
+                TmdbSettingsController.bind(this@SettingsTvSectionFragment, lifecycleScope) { key ->
                     findPreference(key)
                 }
                 true
@@ -876,7 +892,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     getString(R.string.settings_fanart_api_key_success)
                 }
                 showSettingsInfo(message)
-                TmdbSettingsController.bind(this@SettingsTvFragment, lifecycleScope) { key ->
+                TmdbSettingsController.bind(this@SettingsTvSectionFragment, lifecycleScope) { key ->
                     findPreference(key)
                 }
                 true
