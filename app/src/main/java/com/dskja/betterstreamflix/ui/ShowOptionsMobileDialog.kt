@@ -71,6 +71,7 @@ class ShowOptionsMobileDialog(
                 R.id.btn_option_show_favorite,
                 R.id.btn_option_show_watched,
                 R.id.btn_option_show_download,
+                R.id.btn_option_show_taste,
                 R.id.btn_option_episode_note,
                 R.id.btn_option_episode_mark_all_previous_watched,
                 R.id.btn_option_program_clear,
@@ -108,6 +109,7 @@ class ShowOptionsMobileDialog(
             R.id.btn_option_show_favorite,
             R.id.btn_option_show_watched,
             R.id.btn_option_show_download,
+            R.id.btn_option_show_taste,
             R.id.btn_option_episode_note,
             R.id.btn_option_episode_mark_all_previous_watched,
             R.id.btn_option_program_clear,
@@ -246,6 +248,8 @@ class ShowOptionsMobileDialog(
                 visibility = View.VISIBLE
             }
         }
+
+        binding.btnOptionShowTaste.visibility = View.GONE
 
         binding.btnOptionEpisodeNote.apply {
             text = EpisodeNotesUi.optionLabel(context, episode.id)
@@ -488,6 +492,8 @@ class ShowOptionsMobileDialog(
         binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
 
+        bindTasteOption(freshMovie)
+
         binding.btnOptionProgramClear.apply {
             setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -599,6 +605,8 @@ class ShowOptionsMobileDialog(
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
         binding.btnOptionProgramClear.visibility = View.GONE
 
+        bindTasteOption(freshTvShow)
+
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -613,6 +621,30 @@ class ShowOptionsMobileDialog(
                 dismiss()
             }
             visibility = if (recentlyWatchedAt != null) View.VISIBLE else View.GONE
+        }
+    }
+
+    /**
+     * Long-press parity with TV: opens the shared taste overflow
+     * (More like this / Not interested / Hide) for this title.
+     */
+    private fun bindTasteOption(item: AppAdapter.Item) {
+        binding.btnOptionShowTaste.apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val fragment = context.toActivity()?.getCurrentFragment()
+                if (fragment != null) {
+                    com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                        fragment = fragment,
+                        item = item,
+                        onChanged = { dismiss() },
+                        onMoreLike = { dismiss() },
+                    )
+                } else {
+                    dismiss()
+                }
+            }
         }
     }
 

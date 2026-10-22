@@ -148,6 +148,7 @@
     <string name="taste_mood_kids">Kids</string>
     <string name="taste_mood_de">DE Audio</string>
     <string name="taste_mood_chip_cd">Stimmung: %1$s</string>
+    <string name="option_show_taste">Mehr davon oder ausblenden…</string>
     <string name="taste_actions_title">Geschmack</string>
     <string name="taste_action_more_like">Mehr davon</string>
     <string name="taste_action_not_interested">Kein Interesse</string>

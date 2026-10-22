@@ -109,6 +109,7 @@
     <string name="taste_mood_kids">Kids</string>
     <string name="taste_mood_de">DE audio</string>
     <string name="taste_mood_chip_cd">Mood: %1$s</string>
+    <string name="option_show_taste">More like this or hide…</string>
     <string name="taste_actions_title">Taste</string>
     <string name="taste_action_more_like">More like this</string>
     <string name="taste_action_not_interested">Not interested</string>
