@@ -1,0 +1,95 @@
+package com.betterstreamflix.app.ui.support
+
+import android.app.Dialog
+import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.Window
+import android.view.WindowManager
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.databinding.DialogSupportStartupTvBinding
+import com.betterstreamflix.app.support.SupportLinkOpener
+import com.betterstreamflix.app.support.SupportProvider
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.UserPreferences
+
+class SupportStartupTvDialog(
+    context: Context,
+    private val onOpenSupportHub: (() -> Unit)? = null,
+) : Dialog(context, R.style.SupportDialogTheme) {
+
+    private val binding = DialogSupportStartupTvBinding.inflate(LayoutInflater.from(context))
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        setContentView(binding.root)
+        setCancelable(true)
+        setCanceledOnTouchOutside(true)
+
+        window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            val metrics = context.resources.displayMetrics
+            val width = (metrics.widthPixels * 0.92f).toInt()
+            val maxHeight = (metrics.heightPixels * 0.88f).toInt()
+            binding.root.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(maxHeight, View.MeasureSpec.AT_MOST),
+            )
+            // Cap the window so the opt-out stays reachable. A wrap-content dialog
+            // taller than the TV was clipping "Never show again on start".
+            setLayout(width, binding.root.measuredHeight.coerceIn(1, maxHeight))
+            attributes = attributes?.apply {
+                windowAnimations = R.style.SupportDialogAnimation
+            }
+        }
+
+        binding.cbSupportStartupNever.isChecked = UserPreferences.neverShowSupportOnStart
+
+        binding.btnSupportStartupClose.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            persistNeverAgainIfChecked()
+            dismiss()
+        }
+        binding.btnSupportStartupPrimary.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            persistNeverAgainIfChecked()
+            dismiss()
+            onOpenSupportHub?.invoke()
+        }
+        binding.btnSupportStartupSponsors.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.GITHUB_SPONSORS)
+        }
+        binding.btnSupportStartupBmc.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.BUY_ME_A_COFFEE)
+        }
+        binding.btnSupportStartupCommunity.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.DISCORD)
+        }
+        binding.btnSupportStartupRepo.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.GITHUB_REPOSITORY)
+        }
+
+        binding.btnSupportStartupPrimary.requestFocus()
+        setOnShowListener {
+            binding.btnSupportStartupPrimary.post {
+                binding.btnSupportStartupPrimary.requestFocus()
+            }
+        }
+
+        setOnDismissListener { persistNeverAgainIfChecked() }
+    }
+
+    private fun persistNeverAgainIfChecked() {
+        if (binding.cbSupportStartupNever.isChecked) {
+            UserPreferences.neverShowSupportOnStart = true
+        }
+    }
+}

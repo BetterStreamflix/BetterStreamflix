@@ -18,7 +18,7 @@
         android:layout_width="104dp"
         android:layout_height="104dp">
 
-        <com.dskja.betterstreamflix.profiles.ProfileAvatarView
+        <com.betterstreamflix.app.profiles.ProfileAvatarView
             android:id="@+id/pav_profile_avatar"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

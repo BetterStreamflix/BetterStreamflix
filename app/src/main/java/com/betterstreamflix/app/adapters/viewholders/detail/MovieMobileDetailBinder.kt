@@ -1,0 +1,519 @@
+package com.betterstreamflix.app.adapters.viewholders.detail
+
+import com.betterstreamflix.app.models.TrailerCatalog
+import android.content.Intent
+import android.view.View
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.findNavController
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.adapters.viewholders.MovieViewHolder
+import com.betterstreamflix.app.databinding.ContentMovieMobileBinding
+import com.betterstreamflix.app.databinding.ContentMovieTvBinding
+import com.betterstreamflix.app.download.OfflineBadgeStore
+import com.betterstreamflix.app.download.ui.DownloadOptionsController
+import com.betterstreamflix.app.fragments.movie.MovieMobileFragmentDirections
+import com.betterstreamflix.app.fragments.movie.MovieTvFragment
+import com.betterstreamflix.app.fragments.movie.MovieTvFragmentDirections
+import com.betterstreamflix.app.models.Video
+import com.betterstreamflix.app.ui.DetailTab
+import com.betterstreamflix.app.ui.FeaturedSwiperChrome
+import com.betterstreamflix.app.ui.DetailTrailerPlayHooks
+import com.betterstreamflix.app.ui.TrailerPlayPipeline
+import com.betterstreamflix.app.ui.TrailerPlaybackController
+import com.betterstreamflix.app.utils.ArtworkRepair
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.ExpPressEffects.applyExpPress
+import com.betterstreamflix.app.utils.TmdbUtils
+import com.betterstreamflix.app.utils.format
+import com.betterstreamflix.app.utils.getCurrentFragment
+import com.betterstreamflix.app.utils.loadMoviePoster
+import com.betterstreamflix.app.utils.toActivity
+import com.betterstreamflix.app.utils.UserPreferences
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.bumptech.glide.Glide
+import com.betterstreamflix.app.download.DownloadContentKey
+import com.betterstreamflix.app.fragments.movie.MovieMobileFragment
+import com.betterstreamflix.app.ui.DetailRating
+import com.betterstreamflix.app.ui.DetailWatchLabels
+
+internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBinding) {
+    DetailParentalGate.guardMovie(
+        itemView,
+        movie,
+        binding.btnMovieWatchNow,
+        binding.btnMovieDownload,
+    )
+    // Poster stub stays gone; cover lives inside this hero block.
+    binding.ivMoviePoster.visibility = View.GONE
+    Glide.with(binding.ivMoviePoster).clear(binding.ivMoviePoster)
+
+    com.betterstreamflix.app.ui.DetailCoverAtmosphere.bindMovie(
+        cover = binding.ivMovieCover,
+        soft = binding.ivMovieCoverSoft,
+        movie = movie,
+    )
+
+    val logoReady = com.betterstreamflix.app.ui.DetailHeroLogo.restore(
+        logoView = binding.ivMovieLogo,
+        titleView = binding.tvMovieTitle,
+        logoUrl = movie.logo,
+        title = movie.title,
+    )
+    if (!logoReady) {
+        val fragment = context.toActivity()?.getCurrentFragment() as? MovieMobileFragment
+        val pageRoot = fragment?.view
+        if (fragment != null && pageRoot != null && fragment.isAdded) {
+            itemView.post {
+                if (!itemView.isAttachedToWindow || !fragment.isAdded) return@post
+                com.betterstreamflix.app.ui.DetailHeaderController.bindMovie(
+                    fragment,
+                    pageRoot,
+                    movie,
+                )
+            }
+        }
+    }
+
+    val ratingText = DetailRating.format(movie.rating)
+    binding.tvMovieRating.apply {
+        text = ratingText
+        visibility = if (ratingText.isNullOrBlank()) View.GONE else View.VISIBLE
+    }
+    binding.ivMovieRatingIcon.visibility = binding.tvMovieRating.visibility
+    binding.tvMovieQuality.visibility = View.GONE
+
+    binding.tvMovieReleased.apply {
+        text = movie.released?.format("yyyy")
+        visibility = if (text.isNullOrEmpty()) View.GONE else View.VISIBLE
+    }
+
+    binding.tvMovieRuntime.apply {
+        text = movie.runtime?.let {
+            val hours = it / 60
+            val minutes = it % 60
+            when {
+                hours > 0 -> context.getString(
+                    R.string.movie_runtime_hours_minutes_short,
+                    hours,
+                    minutes,
+                )
+                else -> context.getString(R.string.movie_runtime_minutes_short, minutes)
+            }
+        }
+        visibility = if (text.isNullOrEmpty()) View.GONE else View.VISIBLE
+    }
+
+    binding.tvMovieGenres.apply {
+        if (movie.genres.isEmpty()) {
+            text = ""
+            visibility = View.GONE
+            movementMethod = null
+            isClickable = false
+            setOnClickListener(null)
+        } else {
+            text = movie.genres.joinToString(" · ") { it.name }
+            visibility = View.VISIBLE
+            movementMethod = null
+            isClickable = true
+            contentDescription = context.getString(R.string.genre_section_label)
+            setOnClickListener { view ->
+                ExpMotion.hapticTap(view)
+                val genres = movie.genres
+                fun openGenre(genre: com.betterstreamflix.app.models.Genre) {
+                    checkProviderAndRun {
+                        if (context.toActivity()?.getCurrentFragment() is MovieMobileFragment) {
+                            findNavController().navigate(
+                                MovieMobileFragmentDirections.actionMovieToGenre(
+                                    id = genre.id,
+                                    name = genre.name,
+                                ),
+                            )
+                        }
+                    }
+                }
+                if (genres.size == 1) {
+                    openGenre(genres.first())
+                } else {
+                    val labels = genres.map { it.name }.toTypedArray()
+                    AlertDialog.Builder(context)
+                        .setTitle(R.string.genre_section_label)
+                        .setItems(labels) { _, which ->
+                            genres.getOrNull(which)?.let(::openGenre)
+                        }
+                        .show()
+                }
+            }
+        }
+    }
+
+    binding.tvMovieOverview.apply {
+        val more = binding.tvMovieOverviewMore
+        val hasText = !movie.overview.isNullOrBlank()
+        if (!hasText) {
+            text = ""
+            visibility = View.GONE
+            more.visibility = View.GONE
+            setOnClickListener(null)
+            val genres = binding.tvMovieGenres
+            binding.btnMovieWatchNow.nextFocusUpId =
+                if (genres.isVisible && genres.isFocusable) genres.id else View.NO_ID
+            return@apply
+        }
+        visibility = View.VISIBLE
+        text = movie.overview
+        val collapsedLines = 2
+        maxLines = collapsedLines
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        var expanded = false
+        fun applyExpand(open: Boolean) {
+            expanded = open
+            maxLines = if (open) Integer.MAX_VALUE else collapsedLines
+            more.text = context.getString(
+                if (open) R.string.detail_overview_less else R.string.detail_overview_more,
+            )
+        }
+        val toggle = View.OnClickListener {
+            ExpMotion.hapticTap(it)
+            applyExpand(!expanded)
+        }
+        if (hasText) {
+            setOnClickListener(toggle)
+            more.setOnClickListener(toggle)
+            post {
+                val overflowing = lineCount > collapsedLines ||
+                    (text?.length ?: 0) > 120 ||
+                    (layout != null && maxLines == collapsedLines && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
+                more.visibility = if (overflowing) View.VISIBLE else View.GONE
+                if (!overflowing) setOnClickListener(null)
+            }
+        } else {
+            more.visibility = View.GONE
+            setOnClickListener(null)
+        }
+    }
+
+    binding.btnMovieWatchNow.apply {
+        // Dual CTA: Watch streams online; completed downloads use the Download button.
+        text = DetailWatchLabels.movie(context, movie)
+        FeaturedSwiperChrome.wireWatchButton(this)
+        applyExpPress()
+        setOnClickListener {
+            ExpMotion.hapticTap(it)
+            checkProviderAndRun {
+                findNavController().navigate(MovieMobileFragmentDirections.actionMovieToPlayer(
+                    id = movie.id,
+                    title = movie.title,
+                    subtitle = movie.released?.format("yyyy") ?: "",
+                    videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
+                    preferredServerName = null,
+                ))
+            }
+        }
+    }
+
+    binding.pbMovieProgress.apply {
+        val watchHistory = movie.watchHistory
+        val percent = DetailWatchLabels.progressPercent(watchHistory)
+        progress = percent
+        visibility = if (percent in 1..95) View.VISIBLE else View.GONE
+    }
+
+    binding.btnMovieTrailer.apply {
+        val year = movie.released?.format("yyyy")?.toIntOrNull()
+        val canLookup = TmdbUtils.hasTrailerLookupKeys(
+            tmdbId = movie.tmdbId,
+            imdbId = movie.imdbId,
+            title = movie.title,
+            year = year,
+        )
+        val trailerAvailable = !movie.trailer.isNullOrBlank() || canLookup
+        val trailerColumn = binding.root.findViewById<View>(R.id.ll_movie_trailer_column)
+        if (trailerColumn != null) {
+            trailerColumn.visibility = if (trailerAvailable) View.VISIBLE else View.GONE
+        } else {
+            visibility = if (trailerAvailable) View.VISIBLE else View.GONE
+        }
+        applyExpPress()
+        setOnClickListener {
+            ExpMotion.hapticTap(it)
+            fun play(url: String) {
+                val session = TrailerPlayPipeline.Session(
+                    target = DetailTrailerPlayHooks.movieSession(
+                        movie = movie,
+                        host = binding.root,
+                        leanback = false,
+                    ).target,
+                    onStreamNow = {
+                        checkProviderAndRun {
+                            DetailTrailerPlayHooks.movieSession(
+                                movie = movie,
+                                host = binding.root,
+                                leanback = false,
+                            ).onStreamNow?.invoke()
+                        }
+                    },
+                )
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                if (fragment != null) {
+                    TrailerPlaybackController.play(fragment, url, session)
+                } else {
+                    TrailerPlayPipeline.beginSession(session)
+                    handleTrailerClick(url, "MovieMobile")
+                }
+            }
+            val existing = movie.trailer
+            if (!existing.isNullOrBlank()) {
+                play(existing)
+                return@setOnClickListener
+            }
+            if (!canLookup) {
+                (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                    DetailTab.TRAILER,
+                )
+                return@setOnClickListener
+            }
+            itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                val remote = withContext(Dispatchers.IO) {
+                    TmdbUtils.listYoutubeTrailers(
+                        tmdbId = movie.tmdbId,
+                        isTv = false,
+                        title = movie.title,
+                        year = year,
+                        imdbId = movie.imdbId,
+                    )
+                }
+                val first = TrailerCatalog.preferredPlayableUrl(remote)
+                if (!first.isNullOrBlank()) {
+                    if (movie.trailer.isNullOrBlank()) movie.trailer = first
+                    play(first)
+                } else {
+                    (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                        DetailTab.TRAILER,
+                    )
+                }
+            }
+        }
+    }
+
+    binding.btnMovieDownload.apply {
+        applyExpPress()
+        val downloadColumn = binding.root.findViewById<View>(R.id.ll_movie_download_column)
+        if (isIptvProvider()) {
+            if (downloadColumn != null) {
+                downloadColumn.visibility = View.GONE
+            } else {
+                visibility = View.GONE
+            }
+            setOnClickListener(null)
+            setOnLongClickListener(null)
+        } else {
+            if (downloadColumn != null) {
+                downloadColumn.visibility = View.VISIBLE
+            }
+            visibility = View.VISIBLE
+            val contentKey = movieDownloadContentKey()
+            val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+            val label = if (playOffline) {
+                context.getString(R.string.downloads_play_offline)
+            } else {
+                com.betterstreamflix.app.download.DetailDownloadLabels.movieButton(context, movie)
+            }
+            contentDescription = label
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(this, contentDescription)
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                checkProviderAndRun {
+                    if (playOffline) {
+                        findNavController().navigate(
+                            MovieMobileFragmentDirections.actionMovieToPlayer(
+                                id = movie.id,
+                                title = movie.title,
+                                subtitle = movie.released?.format("yyyy") ?: "",
+                                videoType = Video.Type.Movie(
+                                    id = movie.id,
+                                    title = movie.title,
+                                    releaseDate = movie.released?.format("yyyy-MM-dd") ?: "",
+                                    poster = movie.poster ?: movie.banner ?: "",
+                                    imdbId = movie.imdbId,
+                                ),
+                                preferredServerName =
+                                    com.betterstreamflix.app.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME,
+                            ),
+                        )
+                    } else {
+                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                            ?: return@checkProviderAndRun
+                        DownloadOptionsController.enqueueMovie(fragment, movie)
+                    }
+                }
+            }
+            setOnLongClickListener {
+                if (!playOffline) return@setOnLongClickListener false
+                ExpMotion.hapticTap(it)
+                checkProviderAndRun {
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                        ?: return@checkProviderAndRun
+                    DownloadOptionsController.enqueueMovie(fragment, movie)
+                }
+                true
+            }
+        }
+    }
+
+    binding.tvMovieCertification.apply {
+        val cert = movie.contentRating?.trim().orEmpty()
+        val digits = cert.filter { it.isDigit() }
+        val badge = when {
+            digits.isNotEmpty() -> digits.take(2)
+            cert.isNotEmpty() -> cert.take(3).uppercase(Locale.getDefault())
+            else -> ""
+        }
+        text = badge
+        visibility = if (badge.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    binding.root.findViewById<View>(R.id.btn_movie_share)?.let { shareBtn ->
+        val shareColumn = binding.root.findViewById<View>(R.id.ll_movie_share_column)
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, movie.title)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                buildString {
+                    append(movie.title)
+                    movie.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                    movie.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
+                    movie.trailer?.let { trailer -> append("\n").append(trailer) }
+                },
+            )
+        }
+        val canShare = share.resolveActivity(context.packageManager) != null
+        shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
+        shareColumn?.visibility = if (canShare) View.VISIBLE else View.GONE
+        if (canShare || com.betterstreamflix.app.sync.CastRoomSession.isActive()) {
+            shareBtn.visibility = View.VISIBLE
+            shareColumn?.visibility = View.VISIBLE
+            shareBtn.applyExpPress()
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                val videoType = Video.Type.Movie(
+                    id = movie.id,
+                    title = movie.title,
+                    releaseDate = movie.released?.format("yyyy").orEmpty(),
+                    poster = movie.poster.orEmpty(),
+                    imdbId = movie.imdbId,
+                )
+                val doShare = {
+                    if (canShare) {
+                        context.startActivity(
+                            Intent.createChooser(share, context.getString(R.string.detail_share)),
+                        )
+                    }
+                }
+                if (fragment != null) {
+                    com.betterstreamflix.app.sync.CastRoomUi.maybeAugmentShareClick(
+                        fragment,
+                        videoType,
+                        doShare,
+                    )
+                } else {
+                    doShare()
+                }
+            }
+        } else {
+            shareBtn.setOnClickListener(null)
+        }
+    }
+
+    binding.root.findViewById<View>(R.id.btn_movie_watched)?.let { watchedBtn ->
+        fun applyWatchedUi(watched: Boolean) {
+            val description = context.getString(
+                if (watched) R.string.option_show_unwatched else R.string.option_show_watched,
+            )
+            watchedBtn.contentDescription = description
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(watchedBtn, description)
+            watchedBtn.alpha = 1f
+            (watchedBtn as? android.widget.ImageView)?.setImageDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (watched) R.drawable.ic_watched_filled else R.drawable.ic_watched,
+                ),
+            )
+            (watchedBtn as? TextView)?.text = description
+        }
+
+        watchedBtn.applyExpPress()
+        applyWatchedUi(movie.isWatched)
+        watchedBtn.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            checkProviderAndRun {
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                    val db = database ?: return@launch
+                    val dao = db.movieDao()
+                    val current = dao.getById(movie.id)
+                    val target = !(current?.isWatched ?: movie.isWatched)
+                    val updated = (current ?: movie).copy().apply {
+                        isWatched = target
+                        watchedDate = if (target) java.util.Calendar.getInstance() else null
+                    }
+                    dao.save(updated)
+                    withContext(Dispatchers.Main) {
+                        movie.isWatched = target
+                        applyWatchedUi(target)
+                        ExpMotion.softScale(watchedBtn)
+                    }
+                }
+            }
+        }
+    }
+
+    binding.btnMovieFavorite.apply {
+        fun applyState(inList: Boolean, animate: Boolean = false) {
+            FeaturedSwiperChrome.bindListButton(this, inList, animate)
+            contentDescription = context.getString(
+                if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
+            )
+        }
+
+        applyExpPress()
+        applyState(movie.isFavorite)
+        setOnClickListener {
+            ExpMotion.hapticTap(it)
+            checkProviderAndRun {
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                    val provider = UserPreferences.currentProvider ?: return@launch
+                    val db = database ?: return@launch
+                    val target = !(db.movieDao().getById(movie.id)?.isFavorite ?: movie.isFavorite)
+                    val resolved = com.betterstreamflix.app.sync.FavoriteMutations.setMovieFavorite(
+                        context = context,
+                        provider = provider,
+                        movie = movie,
+                        favorite = target,
+                        database = db,
+                    )
+                    withContext(Dispatchers.Main) {
+                        movie.poster = resolved.poster
+                        movie.banner = resolved.banner
+                        movie.isFavorite = target
+                        applyState(target, animate = true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+

@@ -141,14 +141,14 @@ Do **not** wait for CI release APKs while iterating. Use a local debug install �
 ```
 
 Debug APK output: `app/build/outputs/apk/debug/`.  
-Debug builds skip R8 minify/shrink and use application id `com.dskja.betterstreamflix.debug`.
+Debug builds skip R8 minify/shrink and use application id `com.betterstreamflix.app.debug`.
 
 ### When to use CI APKs
 
 | Workflow | When it runs | What you get | Typical wait |
 | --- | --- | --- | --- |
 | **Build APKs** | every push / PR (code changes) | 3 debug APKs (universal / mobile / TV) | ~5–10 min |
-| **PR CI** | PRs + `main` / `dskja/**` | string check, unit tests, assembleDebug | ~5–10 min |
+| **PR CI** | PRs + `main` / `wip/**` | string check, unit tests, assembleDebug | ~5–10 min |
 | **Build & Release APK** | `main`, tags `v*`, or manual dispatch | 3 signed release APKs (R8) | ~10–15 min (parallel) |
 
 Signed release builds no longer run on every feature-branch push. For a signed APK on a branch, run **Actions → Build & Release APK → Run workflow**.

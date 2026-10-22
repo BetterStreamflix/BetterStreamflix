@@ -1,0 +1,110 @@
+package com.betterstreamflix.app.extractors
+
+import okhttp3.OkHttpClient
+import com.betterstreamflix.app.utils.withExtractorTimeouts
+import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import com.betterstreamflix.app.models.Video
+import com.betterstreamflix.app.utils.JsUnpacker
+import com.betterstreamflix.app.utils.UserPreferences
+import org.jsoup.nodes.Document
+import retrofit2.Retrofit
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Url
+import java.net.URL
+
+class VidHideExtractor: Extractor() {
+    override val name = "VidHide"
+    override val mainUrl = "https://dhtpre.com"
+
+    override val aliasUrls = listOf(
+        "https://peytonepre.com",
+        "https://vidhideplus.com/",
+        // Full hosts only — bare "https://mivalyo" / "https://dinisglows"
+        // have no TLD and can yield UnknownHostException for host "_"/junk.
+        "https://mivalyo.com",
+        "https://dinisglows.com",
+        "https://dingtezuni.com",
+        "https://dintezuvio.com",
+        "https://minochinos.com",
+        "https://moflix-stream.click",
+        "https://filelions.to",
+        "https://morencius.com",
+    )
+
+    companion object {
+        private const val DEFAULT_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0"
+    }
+
+    override suspend fun extract(link: String): Video {
+        val mainLink = URL(link).protocol + "://" + URL(link).host
+        val service = Service.build(mainLink)
+        val fallback = URL(link).protocol + "://" + URL(link).host
+        val referer = try {
+            UserPreferences.currentProvider?.baseUrl ?: fallback
+        } catch (_: Throwable) {
+            fallback
+        }
+        val origin = referer
+        
+        val source = service.getSource(
+            url = link,
+            referer = referer,
+            origin = origin,
+            userAgent = DEFAULT_USER_AGENT
+        )
+        val packedJS = Regex("(eval\\(function\\(p,a,c,k,e,d\\)(.|\\n)*?)</script>")
+            .find(source.toString())?.let { it.groupValues[1] }
+            ?: throw Exception("Packed JS not found")
+
+        val unPacked = JsUnpacker(packedJS).unpack()
+            ?: throw Exception("Unpacked is null")
+
+        val links = mutableMapOf<String, String>()
+        Regex("""["'](hls\d+)["']\s*:\s*["'](.*?)["']""")
+            .findAll(unPacked)
+            .forEach {
+                links[it.groupValues[1]] = it.groupValues[2]
+            }
+
+        val finalUrl = links["hls4"] ?: links["hls2"] ?: throw Exception("No HLS link found")
+        
+        // Add domain if the URL starts with "/"
+        val completeUrl = if (finalUrl.startsWith("/")) {
+            val baseUrl = URL(link).protocol + "://" + URL(link).host
+            baseUrl + finalUrl
+        } else {
+            finalUrl
+        }
+
+        if (completeUrl.isBlank()) throw Exception("VidHide source not found")
+        return Video(
+            source = completeUrl,
+            headers = mapOf(
+                "Referer" to "$mainLink/",
+                "User-Agent" to DEFAULT_USER_AGENT,
+            ),
+        )
+    }
+
+    private interface Service {
+        @GET
+        suspend fun getSource(
+            @Url url: String,
+            @Header("Referer") referer: String,
+            @Header("Origin") origin: String,
+            @Header("User-Agent") userAgent: String = DEFAULT_USER_AGENT
+        ): Document
+
+        companion object {
+            fun build(baseUrl: String): Service {
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl)
+                    .addConverterFactory(JsoupConverterFactory.create())
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
+                return retrofit.create(Service::class.java)
+            }
+        }
+    }
+}

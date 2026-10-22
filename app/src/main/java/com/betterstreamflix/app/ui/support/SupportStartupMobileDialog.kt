@@ -1,0 +1,115 @@
+package com.betterstreamflix.app.ui.support
+
+import android.app.Dialog
+import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.Window
+import android.view.WindowManager
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.databinding.DialogSupportStartupMobileBinding
+import com.betterstreamflix.app.support.SupportLinkOpener
+import com.betterstreamflix.app.support.SupportProvider
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.ExpPressEffects.applyExpPress
+import com.betterstreamflix.app.utils.UserPreferences
+
+class SupportStartupMobileDialog(
+    context: Context,
+    private val onOpenSupportHub: (() -> Unit)? = null,
+) : Dialog(context, R.style.SupportDialogTheme) {
+
+    private val binding = DialogSupportStartupMobileBinding.inflate(LayoutInflater.from(context))
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        setContentView(binding.root)
+        setCancelable(true)
+        setCanceledOnTouchOutside(true)
+
+        window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setLayout(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+            )
+            attributes = attributes?.apply {
+                windowAnimations = R.style.SupportDialogAnimation
+            }
+        }
+
+        binding.cbSupportStartupNever.isChecked = UserPreferences.neverShowSupportOnStart
+
+        (binding.root.getChildAt(0) as? android.view.View)
+            ?.setBackgroundResource(R.drawable.bg_profile_dialog)
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.revealHeader(
+            binding.tvSupportStartupTitle,
+            binding.vSupportStartupAccentRule,
+            binding.tvSupportStartupBody,
+        )
+        ExpMotion.pulseAccentRule(binding.vSupportStartupAccentRule)
+        binding.btnSupportStartupClose.setBackgroundResource(
+            R.drawable.bg_detail_icon_chip,
+        )
+        binding.btnSupportStartupClose.alpha = 1f
+        binding.btnSupportStartupPrimary.setBackgroundResource(
+            R.drawable.bg_button_mobile,
+        )
+        listOf(
+            binding.btnSupportStartupSponsors,
+            binding.btnSupportStartupBmc,
+            binding.btnSupportStartupCommunity,
+        ).forEach { btn ->
+            btn.setBackgroundResource(R.drawable.bg_outlined_chip)
+        }
+        val ctas = listOf(
+            binding.btnSupportStartupClose,
+            binding.btnSupportStartupPrimary,
+            binding.btnSupportStartupSponsors,
+            binding.btnSupportStartupBmc,
+            binding.btnSupportStartupCommunity,
+        )
+        ctas.forEach { it.applyExpPress() }
+        binding.cbSupportStartupNever.applyExpPress()
+        (ctas + binding.cbSupportStartupNever).forEachIndexed { index, btn ->
+            btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
+        }
+
+        binding.btnSupportStartupClose.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            persistNeverAgainIfChecked()
+            dismiss()
+        }
+        binding.btnSupportStartupPrimary.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            persistNeverAgainIfChecked()
+            dismiss()
+            onOpenSupportHub?.invoke()
+        }
+        binding.btnSupportStartupSponsors.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.GITHUB_SPONSORS)
+        }
+        binding.btnSupportStartupBmc.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.BUY_ME_A_COFFEE)
+        }
+        binding.btnSupportStartupCommunity.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SupportLinkOpener.openProvider(context, SupportProvider.DISCORD)
+        }
+        setOnDismissListener {
+            persistNeverAgainIfChecked()
+        }
+    }
+
+    private fun persistNeverAgainIfChecked() {
+        if (binding.cbSupportStartupNever.isChecked) {
+            UserPreferences.neverShowSupportOnStart = true
+        }
+    }
+}

@@ -1,0 +1,226 @@
+package com.betterstreamflix.app.utils
+
+import android.app.Application
+import androidx.navigation.NavController
+import com.betterstreamflix.app.BetterStreamflixApp
+import com.betterstreamflix.app.BuildConfig
+import com.betterstreamflix.app.R
+import io.sentry.Breadcrumb
+import io.sentry.Hint
+import io.sentry.Sentry
+import io.sentry.SentryEvent
+import io.sentry.SentryLevel
+import io.sentry.SentryOptions
+import io.sentry.android.core.SentryAndroid
+import io.sentry.protocol.Feedback
+import io.sentry.protocol.User
+import io.sentry.ProfileLifecycle
+
+/**
+ * Central Sentry wiring for BetterStreamflix: init, release/environment,
+ * scrubbing, navigation breadcrumbs, and cloud-user identity.
+ *
+ * Capture policy: debug builds send everything (100% sample rates).
+ * Production dials traces/profiles/replay down to control cost/noise;
+ * errors and error-triggered replays stay fully sampled. Sensitive
+ * headers/cookies are scrubbed — no error-type filtering.
+ */
+object SentryBootstrap {
+
+    const val DSN =
+        "https://a725644155c0150523b89069e26ec38c@o4512107753177088.ingest.de.sentry.io/4512107833655376"
+
+    private val sensitiveHeaderNames = setOf(
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "proxy-authorization",
+    )
+
+    fun init(application: Application) {
+        SentryAndroid.init(application) { options ->
+            options.dsn = DSN
+            options.isForceInit = true
+            options.release =
+                "${BuildConfig.APPLICATION_ID}@${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}"
+            options.environment = if (BuildConfig.DEBUG) "debug" else "production"
+            options.dist = BuildConfig.VERSION_CODE.toString()
+            options.isDebug = BuildConfig.DEBUG
+            options.isSendDefaultPii = false
+            options.isEnableUserInteractionTracing = true
+            options.isAttachScreenshot = true
+            options.isAttachViewHierarchy = true
+            options.isEnableAutoSessionTracking = true
+            options.isAnrEnabled = true
+            options.isCollectAdditionalContext = true
+            // Production: balanced capture. Debug: errors still 100% (always sent),
+            // but traces/profiles/replay are throttled — full-rate debug telemetry
+            // exhausts the project quota, after which Sentry drops everything
+            // (including real crash reports) and floods logcat.
+            if (BuildConfig.DEBUG) {
+                options.tracesSampleRate = 0.2
+                options.profileSessionSampleRate = 0.1
+                options.sessionReplay.sessionSampleRate = 0.0
+                options.sessionReplay.onErrorSampleRate = 1.0
+            } else {
+                options.tracesSampleRate = 0.2
+                options.profileSessionSampleRate = 0.1
+                options.sessionReplay.sessionSampleRate = 0.05
+                options.sessionReplay.onErrorSampleRate = 1.0
+            }
+            options.profileLifecycle = ProfileLifecycle.TRACE
+            options.logs.isEnabled = true
+
+            options.beforeSend =
+                SentryOptions.BeforeSendCallback { event: SentryEvent, _: Hint ->
+                    // Drop coroutine cancellation noise (JobCancellationException).
+                    val values = event.exceptions.orEmpty()
+                    if (values.any { ex ->
+                            val type = ex.type.orEmpty()
+                            val value = ex.value.orEmpty()
+                            type.contains("CancellationException", ignoreCase = true) ||
+                                type.contains("TimeoutException", ignoreCase = true) ||
+                                value.contains("Job was cancelled", ignoreCase = true) ||
+                                value.contains("StandaloneCoroutine was cancelled", ignoreCase = true) ||
+                                value.contains("timed out after", ignoreCase = true) ||
+                                value.contains("Timed out waiting for", ignoreCase = true)
+                        }
+                    ) {
+                        return@BeforeSendCallback null
+                    }
+                    // Drop expected stream / CDN / hoster failures (Sentry noise).
+                    if (values.any { ex ->
+                            val type = ex.type.orEmpty()
+                            val value = ex.value.orEmpty()
+                            val tmdbShelfCast = type.contains("ClassCastException", ignoreCase = true) &&
+                                values.any { peer ->
+                                    val v = peer.value.orEmpty()
+                                    v.contains("TMDb", ignoreCase = true) ||
+                                        v.contains("TMDB", ignoreCase = true)
+                                }
+                            type.contains("SentryHttpClientException", ignoreCase = true) ||
+                                type.contains("ExoPlaybackException", ignoreCase = true) ||
+                                type.contains("ParserException", ignoreCase = true) ||
+                                type.contains("HttpException", ignoreCase = true) ||
+                                tmdbShelfCast ||
+                                value.contains("TMDb request failed: ClassCastException", ignoreCase = true) ||
+                                value.contains("No source found", ignoreCase = true) ||
+                                value.contains("No servers found", ignoreCase = true) ||
+                                runCatching {
+                                    val app = BetterStreamflixApp.instance
+                                    value.contains(
+                                        app.getString(R.string.error_no_source_found),
+                                        ignoreCase = true,
+                                    ) ||
+                                        value.contains(
+                                            app.getString(R.string.error_no_servers_found),
+                                            ignoreCase = true,
+                                        )
+                                }.getOrDefault(false) ||
+                                value.contains("status code: 503", ignoreCase = true) ||
+                                value.contains("status code: 502", ignoreCase = true) ||
+                                value.contains("status code: 504", ignoreCase = true) ||
+                                value.contains("HTTP 403", ignoreCase = true) ||
+                                value.contains("HTTP 500", ignoreCase = true) ||
+                                value.contains("Cloudflare", ignoreCase = true) ||
+                                value.contains("bloqueado", ignoreCase = true) ||
+                                value.contains("#EXTM3U", ignoreCase = true) ||
+                                value.contains("contentIsMalformed", ignoreCase = true) ||
+                                value.contains("Large HTTP payload", ignoreCase = true) ||
+                                value.contains("File IO on Main Thread", ignoreCase = true)
+                        }
+                    ) {
+                        return@BeforeSendCallback null
+                    }
+                    // Drop performance/info breadcrumbs promoted as issues.
+                    val message = event.message?.formatted.orEmpty()
+                    if (message.contains("Large HTTP payload", ignoreCase = true) ||
+                        message.contains("File IO on Main Thread", ignoreCase = true)
+                    ) {
+                        return@BeforeSendCallback null
+                    }
+                    scrubEvent(event)
+                    event
+                }
+
+            options.beforeBreadcrumb =
+                SentryOptions.BeforeBreadcrumbCallback { breadcrumb, _ ->
+                    scrubBreadcrumb(breadcrumb)
+                    breadcrumb
+                }
+        }
+
+        Sentry.configureScope { scope ->
+            scope.setTag("app_layout", BuildConfig.APP_LAYOUT)
+            scope.setTag("debug_build", BuildConfig.DEBUG.toString())
+            scope.setTag("version_name", BuildConfig.VERSION_NAME)
+            scope.setTag("version_code", BuildConfig.VERSION_CODE.toString())
+        }
+    }
+
+    fun setCloudUser(userId: String?, email: String?) {
+        if (userId.isNullOrBlank()) {
+            clearUser()
+            return
+        }
+        Sentry.setUser(
+            User().apply {
+                id = userId
+                this.email = email?.takeIf { it.isNotBlank() }
+            },
+        )
+    }
+
+    fun clearUser() {
+        Sentry.setUser(null)
+    }
+
+    fun trackNavigation(navController: NavController) {
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            val label = destination.label?.toString()
+                ?.takeIf { it.isNotBlank() }
+                ?: destination.route
+                ?: destination.id.toString()
+            val crumb = Breadcrumb.navigation(label, "navigate").apply {
+                category = "navigation"
+                level = SentryLevel.INFO
+                setData("destination_id", destination.id)
+            }
+            Sentry.addBreadcrumb(crumb)
+            Sentry.configureScope { scope ->
+                scope.setTag("screen", label.take(64))
+            }
+        }
+    }
+
+    fun captureFeedback(message: String, name: String? = null, email: String? = null) {
+        val trimmed = message.trim()
+        if (trimmed.isEmpty()) return
+        val feedback = Feedback(trimmed).apply {
+            name?.takeIf { it.isNotBlank() }?.let { setName(it) }
+            email?.takeIf { it.isNotBlank() }?.let { setContactEmail(it) }
+        }
+        Sentry.feedback().capture(feedback)
+    }
+
+    private fun scrubEvent(event: SentryEvent) {
+        event.request?.headers?.keys
+            ?.filter { sensitiveHeaderNames.contains(it.lowercase()) }
+            ?.forEach { key -> event.request?.headers?.put(key, "[Filtered]") }
+        event.request?.cookies = event.request?.cookies?.let { "[Filtered]" }
+    }
+
+    private fun scrubBreadcrumb(breadcrumb: Breadcrumb) {
+        val data = breadcrumb.data ?: return
+        data.keys
+            .filter { key ->
+                val lower = key.lowercase()
+                lower.contains("cookie") ||
+                    lower.contains("authorization") ||
+                    lower.contains("token") ||
+                    lower.contains("password")
+            }
+            .forEach { key -> data[key] = "[Filtered]" }
+    }
+}

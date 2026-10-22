@@ -1,0 +1,231 @@
+package com.betterstreamflix.app.fragments.genre
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.betterstreamflix.app.database.AppDatabase
+import com.betterstreamflix.app.home.SeriesFastForward
+import com.betterstreamflix.app.models.Genre
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.providers.Provider
+import com.betterstreamflix.app.providers.ProviderSmoke
+import com.betterstreamflix.app.providers.TmdbProvider
+import com.betterstreamflix.app.utils.ParentalControlUtils
+import com.betterstreamflix.app.utils.UserPreferences
+import com.betterstreamflix.app.utils.ProviderChangeNotifier
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
+
+class GenreViewModel(
+    private val id: String,
+    private val database: AppDatabase?,
+    private val name: String? = null,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow<State>(State.Loading)
+
+    /** Parental gate + taste hard-hidden removal, in that order. */
+    private suspend fun cleanShows(shows: List<com.betterstreamflix.app.models.Show>): List<com.betterstreamflix.app.models.Show> =
+        SeriesFastForward.filterTasteHidden(
+            com.betterstreamflix.app.BetterStreamflixApp.instance.applicationContext,
+            ParentalControlUtils.filterShows(shows),
+        )
+
+    init {
+        // Listen for provider changes and reload data
+        viewModelScope.launch {
+            ProviderChangeNotifier.providerChangeFlow.collect {
+                getGenre(id)
+            }
+        }
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state: Flow<State> = combine(
+        _state,
+        _state.transformLatest { state ->
+            when (state) {
+                is State.SuccessLoading -> {
+                    val movies = state.genre.shows
+                        .filterIsInstance<Movie>()
+                    if (movies.isEmpty()) {
+                        emit(emptyList())
+                    } else if (database == null || !database.isOpen) {
+                        emit(emptyList())
+                    } else {
+                        emitAll(
+                            database.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("GenreViewModel", "moviesDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
+                    }
+                }
+                else -> emit(emptyList<Movie>())
+            }
+        },
+        _state.transformLatest { state ->
+            when (state) {
+                is State.SuccessLoading -> {
+                    val tvShows = state.genre.shows
+                        .filterIsInstance<TvShow>()
+                    if (tvShows.isEmpty()) {
+                        emit(emptyList())
+                    } else if (database == null || !database.isOpen) {
+                        emit(emptyList())
+                    } else {
+                        emitAll(
+                            database.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("GenreViewModel", "tvShowsDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
+                    }
+                }
+                else -> emit(emptyList<TvShow>())
+            }
+        },
+    ) { state, moviesDb, tvShowsDb ->
+        when (state) {
+            is State.SuccessLoading -> {
+                val moviesById = moviesDb.associateBy { it.id }
+                val tvShowsById = tvShowsDb.associateBy { it.id }
+                State.SuccessLoading(
+                    genre = state.genre.copy(
+                        shows = state.genre.shows.map { item ->
+                            when (item) {
+                                is Movie -> moviesById[item.id]
+                                    ?.takeIf { !item.isSame(it) }
+                                    ?.let { item.copy().merge(it) }
+                                    ?: item
+                                is TvShow -> tvShowsById[item.id]
+                                    ?.takeIf { !item.isSame(it) }
+                                    ?.let { item.copy().merge(it) }
+                                    ?: item
+                            }
+                        }
+                    ),
+                    hasMore = state.hasMore
+                )
+            }
+            else -> state
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private var page = 1
+
+    sealed class State {
+        data object Loading : State()
+        data object LoadingMore : State()
+        data class SuccessLoading(val genre: Genre, val hasMore: Boolean) : State()
+        data class FailedLoading(val error: Exception) : State()
+    }
+
+    init {
+        getGenre(id)
+    }
+
+
+    fun getGenre(id: String) = viewModelScope.launch(Dispatchers.IO) {
+        _state.emit(State.Loading)
+
+        try {
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception(com.betterstreamflix.app.BetterStreamflixApp.instance.getString(com.betterstreamflix.app.R.string.error_no_provider_selected))
+
+            var genre = ProviderSmoke.withProviderTimeout(
+                timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                label = "getGenre(${provider.name})",
+            ) {
+                provider.getGenre(id)
+            }.let {
+                it.copy(shows = cleanShows(it.shows))
+            }
+
+            // Providers keyed by slug often ignore a numeric TMDb id, and vice versa.
+            if (genre.shows.isEmpty() && !name.isNullOrBlank() && !name.equals(id, true)) {
+                genre = tryFetchGenre(provider, name) ?: genre
+            }
+
+            if (genre.shows.isEmpty() && id.toIntOrNull() != null && provider !is TmdbProvider) {
+                genre = tryFetchGenre(TmdbProvider(provider.language), id) ?: genre
+            }
+
+            if (genre.name.isBlank() && !name.isNullOrBlank()) {
+                genre = genre.copy(name = name)
+            }
+
+            page = 1
+
+            _state.emit(State.SuccessLoading(genre, true))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e("GenreViewModel", "getGenre: ", e)
+            _state.emit(State.FailedLoading(e))
+        }
+    }
+
+    /** Fallback lookup; a failing alternative must not replace the primary result. */
+    private suspend fun tryFetchGenre(provider: Provider, genreId: String): Genre? =
+        runCatching {
+            ProviderSmoke.withProviderTimeout(
+                timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                label = "getGenre(${provider.name}, fallback)",
+            ) {
+                provider.getGenre(genreId)
+            }.let {
+                it.copy(shows = cleanShows(it.shows))
+            }
+        }.getOrNull()?.takeIf { it.shows.isNotEmpty() }
+
+    fun loadMoreGenreShows() = viewModelScope.launch(Dispatchers.IO) {
+        val currentState = _state.value
+        if (currentState is State.SuccessLoading) {
+            _state.emit(State.LoadingMore)
+
+            try {
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception(com.betterstreamflix.app.BetterStreamflixApp.instance.getString(com.betterstreamflix.app.R.string.error_no_provider_selected))
+                val genre = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                    label = "getGenre(${provider.name}, page=${page + 1})",
+                ) {
+                    provider.getGenre(id, page + 1)
+                }.let {
+                    it.copy(shows = cleanShows(it.shows))
+                }
+
+                page += 1
+
+                _state.emit(
+                    State.SuccessLoading(
+                        genre = Genre(
+                            id = genre.id,
+                            name = genre.name,
+
+                            shows = currentState.genre.shows + genre.shows,
+                        ),
+                        hasMore = genre.shows.isNotEmpty(),
+                    )
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("GenreViewModel", "loadMoreGenreShows: ", e)
+                _state.emit(State.FailedLoading(e))
+            }
+        }
+    }
+}

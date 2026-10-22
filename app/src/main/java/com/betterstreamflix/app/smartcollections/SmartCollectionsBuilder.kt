@@ -1,0 +1,118 @@
+package com.betterstreamflix.app.smartcollections
+
+import android.content.Context
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.models.Category
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.fragments.search.searchIdentityKey
+import com.betterstreamflix.app.platform.ContinueWatchingMerger
+import com.betterstreamflix.app.profiles.ProfileManager
+import com.betterstreamflix.app.taste.TasteGraph
+import com.betterstreamflix.app.taste.TasteSnapshot
+import com.betterstreamflix.app.utils.UserPreferences
+
+/**
+ * Builds dynamic Home shelves from Watchlist + Continue Watching.
+ */
+object SmartCollectionsBuilder {
+
+    /**
+     * @return ordered Category shelves ready for Home (English stable names).
+     */
+    suspend fun build(
+        context: Context,
+        favorites: List<AppAdapter.Item>,
+        continueWatching: List<AppAdapter.Item>,
+    ): List<Category> {
+        if (!UserPreferences.showSmartCollections) return emptyList()
+        val appContext = context.applicationContext
+        val pool = SmartCollectionEnricher.preparePool(
+            context = appContext,
+            favorites = favorites,
+            continueWatching = continueWatching,
+        )
+        if (pool.size < SmartCollectionRules.MIN_SHELF_SIZE) return emptyList()
+
+        val taste = TasteGraph.snapshot(appContext)
+        val poolClean = if (taste.hardHidden.isEmpty()) {
+            pool
+        } else {
+            pool.filterNot { item ->
+                val key = item.searchIdentityKey()
+                val tmdb = when (item) {
+                    is Movie -> TasteSnapshot.tmdbKey(item.tmdbId, isTv = false)
+                    is TvShow -> TasteSnapshot.tmdbKey(item.tmdbId, isTv = true)
+                    else -> null
+                }
+                taste.isHardHidden(key, tmdb)
+            }
+        }
+        if (poolClean.size < SmartCollectionRules.MIN_SHELF_SIZE) return emptyList()
+
+        val audioLookup = SmartCollectionEnricher.preferredAudioLookup(appContext)
+        val scored = poolClean.mapNotNull { item ->
+            val signals = SmartCollectionRules.signalsFor(item, audioLookup) ?: return@mapNotNull null
+            ScoredTitle(
+                item = item,
+                chill = SmartCollectionRules.matchesChill(signals),
+                kids = SmartCollectionRules.matchesKids(signals),
+                deAudio = SmartCollectionRules.matchesDeAudio(signals),
+                rank = engagementRank(item),
+            )
+        }
+
+        val chill = scored.filter { it.chill }.sortedByDescending { it.rank }.map { it.item }
+        val kids = scored.filter { it.kids }.sortedByDescending { it.rank }.map { it.item }
+        val deAudio = scored.filter { it.deAudio }.sortedByDescending { it.rank }.map { it.item }
+
+        val shelves = mutableListOf<Category>()
+        fun add(name: String, items: List<AppAdapter.Item>) {
+            val capped = items
+                .distinctBy { ContinueWatchingMerger.identityKey(it) ?: poolKeyFallback(it) }
+                .take(SmartCollectionRules.SHELF_CAP)
+            if (capped.size >= SmartCollectionRules.MIN_SHELF_SIZE) {
+                shelves += Category(name = name, list = capped)
+            }
+        }
+
+        // Kids profile: surface family-safe rail first.
+        if (ProfileManager.isKidsActive()) {
+            add(Category.SMART_WITH_KIDS, kids)
+            add(Category.SMART_CHILL_EVENING, chill)
+            add(Category.SMART_DE_AUDIO, deAudio)
+        } else {
+            add(Category.SMART_CHILL_EVENING, chill)
+            add(Category.SMART_WITH_KIDS, kids)
+            add(Category.SMART_DE_AUDIO, deAudio)
+        }
+        return shelves
+    }
+
+    private data class ScoredTitle(
+        val item: AppAdapter.Item,
+        val chill: Boolean,
+        val kids: Boolean,
+        val deAudio: Boolean,
+        val rank: Long,
+    )
+
+    private fun engagementRank(item: AppAdapter.Item): Long = when (item) {
+        is Movie -> maxOf(
+            item.lastPlayedAtMillis ?: 0L,
+            item.favoritedAtMillis ?: 0L,
+            item.watchHistory?.lastEngagementTimeUtcMillis ?: 0L,
+        )
+        is TvShow -> maxOf(
+            item.lastPlayedAtMillis ?: 0L,
+            item.favoritedAtMillis ?: 0L,
+        )
+        else -> 0L
+    }
+
+    private fun poolKeyFallback(item: AppAdapter.Item): String = when (item) {
+        is Movie -> "movie:${item.id}"
+        is TvShow -> "show:${item.id}"
+        else -> item.hashCode().toString()
+    }
+}

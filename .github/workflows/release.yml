@@ -13,7 +13,7 @@ name: Build & Release APK
 # SIGNING_STORE_PASSWORD, SIGNING_KEY_PASSWORD (legacy KEYSTORE also accepted).
 # Tags fail without them; main / manual runs upload unsigned APKs instead.
 #
-# Feature branches (dskja/**) intentionally do NOT run this workflow.
+# Feature branches (wip/**) intentionally do NOT run this workflow.
 # Use "Build APKs" (debug, ~5–10 min) for day-to-day testing, or dispatch
 # this workflow manually when you need signed release APKs.
 

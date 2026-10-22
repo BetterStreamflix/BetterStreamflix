@@ -1,0 +1,64 @@
+package com.betterstreamflix.app.logo
+
+import android.view.ViewGroup
+import android.widget.ImageView
+import com.betterstreamflix.app.R
+
+/**
+ * Presentation rules for TMDb title logos across Featured, Detail, Player.
+ *
+ * Hard contrast backgrounds on the ImageView itself crush transparent wordmarks.
+ * Soft plates belong on the parent slot (XML) or on the art vignette — never on the logo pixels.
+ */
+object TitleLogoPresentation {
+
+    fun clearImagePlate(imageView: ImageView) {
+        imageView.background = null
+    }
+
+    /**
+     * Wordmark-friendly ImageView defaults. Preserves XML fitStart (Detail) / fitCenter
+     * (Featured) so header/hero/Featured alignment stay intentional.
+     */
+    fun polishLogoImage(imageView: ImageView) {
+        clearImagePlate(imageView)
+        clearSlotPlate(imageView)
+        when (imageView.scaleType) {
+            ImageView.ScaleType.FIT_CENTER,
+            ImageView.ScaleType.FIT_START,
+            ImageView.ScaleType.CENTER_INSIDE,
+            -> Unit
+            else -> imageView.scaleType = ImageView.ScaleType.FIT_START
+        }
+        imageView.adjustViewBounds = true
+        imageView.cropToPadding = false
+        // Soft horizontal inset so wide logos breathe without a hard plate.
+        val density = imageView.resources.displayMetrics.density
+        val padH = (2 * density).toInt()
+        val padV = (4 * density).toInt()
+        if (imageView.paddingLeft < padH || imageView.paddingTop < padV) {
+            imageView.setPadding(padH, padV, padH, padV)
+        }
+    }
+
+    /**
+     * Optional soft plate on the logo slot parent when showing fallback title text
+     * on surfaces that do not already ship a vignette (rare). Featured/Detail rely on art scrims.
+     */
+    fun applySlotPlate(imageView: ImageView, showPlate: Boolean) {
+        if (!showPlate) {
+            clearSlotPlate(imageView)
+            return
+        }
+        val parent = imageView.parent as? ViewGroup ?: return
+        if (parent.background == null) {
+            parent.setBackgroundResource(R.drawable.bg_title_logo_contrast)
+        }
+    }
+
+    /** Drop any soft slot plate so logo pixels never sit on an empty dark card. */
+    fun clearSlotPlate(imageView: ImageView) {
+        val parent = imageView.parent as? ViewGroup ?: return
+        parent.background = null
+    }
+}

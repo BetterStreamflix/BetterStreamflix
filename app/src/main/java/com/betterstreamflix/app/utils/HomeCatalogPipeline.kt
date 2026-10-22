@@ -1,0 +1,423 @@
+package com.betterstreamflix.app.utils
+
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.models.Category
+import com.betterstreamflix.app.models.Episode
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.providers.Provider
+import java.net.URI
+
+/**
+ * Shared post-process for every provider's [Provider.getHome] result.
+ *
+ * Ensures FEATURED exists, stamps [Movie.providerName] / [TvShow.providerName],
+ * drops empty shelves, absolute-izes relative artwork URLs (poster/banner/logo),
+ * and dedupes items. Applied once in
+ * [com.betterstreamflix.app.fragments.home.HomeViewModel] so all ~80 scrapers
+ * benefit without per-provider rewrites.
+ *
+ * Featured contract:
+ * - [Category.FEATURED] is the stable shelf id (`"Featured"`); blank / "Featured*"
+ *   names normalize here.
+ * - FEATURED rows are always identity-cloned ([cloneShowItems]) so Mobile
+ *   ViewPager2 itemType stamps cannot crash shelf posters (BETTERSTREAMFLIX-13).
+ * - Cap: [MAX_FEATURED_ITEMS] (aligned with
+ *   [com.betterstreamflix.app.ui.FeaturedHeroController.MAX_FEATURED_BITMAP_BUDGET]).
+ * - Demo addon tip ids never promote into FEATURED.
+ * - Kids / parental: when filtering is active, donor synthesis only uses already
+ *   filtered shelves (callers must filter before [ensureFeaturedShelf]).
+ */
+object HomeCatalogPipeline {
+
+    const val MAX_ITEMS_PER_CATEGORY = 40
+    const val MAX_FEATURED_ITEMS = 12
+
+    data class Result(
+        val categories: List<Category>,
+        val warnings: List<String> = emptyList(),
+    ) {
+        val warningText: String?
+            get() = warnings.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+    }
+
+    private fun appString(resId: Int, vararg args: Any): String =
+        runCatching {
+            com.betterstreamflix.app.BetterStreamflixApp.instance.getString(resId, *args)
+        }.getOrElse {
+            // Unit tests / pre-Application boot — English fallbacks match values/strings.xml.
+            when (resId) {
+                com.betterstreamflix.app.R.string.home_catalog_empty_from_provider ->
+                    "Empty catalog from ${args.getOrNull(0)}"
+                com.betterstreamflix.app.R.string.home_catalog_no_usable_rows ->
+                    "No usable rows from ${args.getOrNull(0)}"
+                com.betterstreamflix.app.R.string.home_featured_restored_from ->
+                    "Featured shelf restored from “${args.getOrNull(0)}”"
+                else -> args.joinToString(" ")
+            }
+        }
+
+    fun process(
+        provider: Provider,
+        categories: List<Category>,
+        addonRows: List<Category> = emptyList(),
+    ): Result {
+        val warnings = mutableListOf<String>()
+        val merged = categories + addonRows
+        if (merged.isEmpty()) {
+            return Result(
+                emptyList(),
+                listOf(
+                    appString(
+                        com.betterstreamflix.app.R.string.home_catalog_empty_from_provider,
+                        provider.name,
+                    ),
+                ),
+            )
+        }
+
+        val stamped = merged.mapNotNull { category ->
+            normalizeCategory(provider, category)
+        }
+
+        if (stamped.isEmpty()) {
+            return Result(
+                emptyList(),
+                listOf(
+                    appString(
+                        com.betterstreamflix.app.R.string.home_catalog_no_usable_rows,
+                        provider.name,
+                    ),
+                ),
+            )
+        }
+
+        val withFeatured = ensureFeatured(stamped, warnings)
+        val dedupedShelves = mergeDuplicateShelfNames(withFeatured)
+
+        return Result(dedupedShelves, warnings)
+    }
+
+    private fun normalizeCategory(provider: Provider, category: Category): Category? {
+        val rawName = category.name.trim()
+        val name = when {
+            rawName.isEmpty() -> Category.FEATURED
+            Category.isFeaturedName(rawName) -> Category.FEATURED
+            // Exact-ish Featured labels only — avoid collapsing "Featured Hits 2024".
+            rawName.contains("Featured", ignoreCase = true) &&
+                rawName.length <= 16 &&
+                rawName.split(Regex("\\s+")).size <= 2 -> Category.FEATURED
+            else -> rawName
+        }
+        val cap = if (name == Category.FEATURED) MAX_FEATURED_ITEMS else MAX_ITEMS_PER_CATEGORY
+        val seen = LinkedHashSet<String>()
+        val items = category.list.mapNotNull { item ->
+            stampAndNormalize(provider, item)
+        }.filter { item ->
+            val key = itemKey(item) ?: return@filter true
+            seen.add(key)
+        }.take(cap)
+
+        if (items.isEmpty()) return null
+        return Category(name = name, list = items)
+    }
+
+    private fun stampAndNormalize(provider: Provider, item: AppAdapter.Item): AppAdapter.Item? {
+        return when (item) {
+            is Movie -> {
+                if (item.id.isBlank() && item.title.isBlank()) return null
+                item.apply {
+                    if (providerName.isNullOrBlank()) providerName = provider.name
+                    poster = absoluteUrl(provider.baseUrl, poster)
+                    banner = absoluteUrl(provider.baseUrl, banner)
+                    logo = absoluteUrl(provider.baseUrl, logo)
+                }
+            }
+
+            is TvShow -> {
+                if (item.id.isBlank() && item.title.isBlank()) return null
+                item.apply {
+                    if (providerName.isNullOrBlank()) providerName = provider.name
+                    poster = absoluteUrl(provider.baseUrl, poster)
+                    banner = absoluteUrl(provider.baseUrl, banner)
+                    logo = absoluteUrl(provider.baseUrl, logo)
+                }
+            }
+
+            is Episode -> {
+                item.apply {
+                    tvShow?.let { show ->
+                        if (show.providerName.isNullOrBlank()) show.providerName = provider.name
+                        show.poster = absoluteUrl(provider.baseUrl, show.poster)
+                        show.banner = absoluteUrl(provider.baseUrl, show.banner)
+                    }
+                    poster = absoluteUrl(provider.baseUrl, poster)
+                }
+            }
+
+            else -> item
+        }
+    }
+
+    private fun ensureFeatured(
+        categories: List<Category>,
+        warnings: MutableList<String>,
+    ): List<Category> {
+        val featured = categories.firstOrNull { Category.isFeaturedName(it.name) }
+        if (featured != null && featured.list.isNotEmpty()) {
+            // Always clone FEATURED rows even when the provider already sent the
+            // shelf — shared Movie/TvShow refs with other shelves mutate itemType
+            // (poster ↔ swiper) and crash ViewPager2 (BETTERSTREAMFLIX-13).
+            val cloned = cloneShowItems(featured.list)
+            return categories.map { cat ->
+                if (Category.isFeaturedName(cat.name)) {
+                    cat.copy(
+                        name = Category.FEATURED,
+                        list = cloned,
+                        selectedIndex = cat.selectedIndex
+                            .coerceIn(0, (cloned.size - 1).coerceAtLeast(0)),
+                    )
+                } else {
+                    cat
+                }
+            }
+        }
+
+        val donor = categories.firstOrNull { category ->
+            !Category.isFeaturedName(category.name) &&
+                !category.name.equals("BetterStreamflix Addons", ignoreCase = true) &&
+                category.list.any { item ->
+                    (item is Movie || item is TvShow) && !isPluginTipItem(item)
+                }
+        } ?: return categories
+
+        warnings.add(
+            appString(
+                com.betterstreamflix.app.R.string.home_featured_restored_from,
+                donor.name.ifBlank { "catalog" },
+            ),
+        )
+        val featuredItems = cloneShowItems(
+            donor.list.filter { item ->
+                (item is Movie || item is TvShow) && !isPluginTipItem(item)
+            }.take(MAX_FEATURED_ITEMS),
+        )
+        val rest = categories.filterNot { it === donor }
+            .filter { !Category.isFeaturedName(it.name) }
+        // Do not keep a blank-named donor (legacy Featured sentinel) as a shelf.
+        val keepDonor = donor.name.isNotBlank() && !Category.isFeaturedName(donor.name)
+        return buildList {
+            add(Category(name = Category.FEATURED, list = featuredItems))
+            if (keepDonor) add(donor)
+            addAll(rest)
+        }
+    }
+
+    /** Never let built-in tip / onboarding tiles get promoted into FEATURED. */
+    private fun isPluginTipItem(item: AppAdapter.Item): Boolean {
+        if (item !is Movie) return false
+        val id = item.id.lowercase()
+        return id == "demo-addon-tip" ||
+            id.endsWith("-tip") ||
+            id.startsWith("tip-") ||
+            id.contains("onboarding") ||
+            item.title.contains("plugin system", ignoreCase = true)
+    }
+
+    fun cloneShowItems(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
+        items.map { item ->
+            when (item) {
+                // Movie/TvShow.copy() preserves itemType when initialized — required for
+                // Featured infinite-loop head/tail clones (BETTERSTREAMFLIX-1P).
+                is Movie -> item.copy()
+                is TvShow -> item.copy()
+                else -> item
+            }
+        }
+
+    /** Ensure Featured swiper pages always have a bindable itemType. */
+    fun stampFeaturedSwiperTypes(
+        items: List<AppAdapter.Item>,
+        movieType: AppAdapter.Type,
+        tvShowType: AppAdapter.Type,
+    ) {
+        items.forEach { show ->
+            when (show) {
+                is Movie -> show.itemType = movieType
+                is TvShow -> show.itemType = tvShowType
+            }
+        }
+    }
+
+    /**
+     * Identity of a home submit that should rebuild shelves.
+     * Title logos are omitted: Room logo merges must not rebind every row.
+     */
+    fun homeBindSignature(categories: List<Category>): String = buildString {
+        append(categories.size)
+        categories.forEach { category ->
+            append('\n')
+            append(category.name)
+            append('#')
+            append(category.list.size)
+            category.list.forEach { item ->
+                append('|')
+                append(homeItemSignature(item))
+            }
+        }
+    }
+
+    /** Drop scraped cards that would render as an empty black shelf tile. */
+    private fun itemHasLabelOrArt(item: AppAdapter.Item): Boolean = when (item) {
+        is Movie -> item.title.isNotBlank() ||
+            !item.poster.isNullOrBlank() ||
+            !item.banner.isNullOrBlank()
+        is TvShow -> item.title.isNotBlank() ||
+            !item.poster.isNullOrBlank() ||
+            !item.banner.isNullOrBlank()
+        is Episode -> !item.title.isNullOrBlank() ||
+            !item.poster.isNullOrBlank() ||
+            !item.tvShow?.title.isNullOrBlank()
+        else -> true
+    }
+
+    private fun homeItemSignature(item: AppAdapter.Item): String = when (item) {
+        is Movie -> listOf(
+            "m",
+            item.id,
+            item.title,
+            item.poster,
+            item.banner,
+            item.isFavorite,
+            item.isWatched,
+            item.watchHistory?.lastPlaybackPositionMillis,
+            item.watchHistory?.durationMillis,
+            item.overview?.length,
+        ).joinToString(",")
+        is TvShow -> listOf(
+            "t",
+            item.id,
+            item.title,
+            item.poster,
+            item.banner,
+            item.isFavorite,
+            item.episodeToWatch?.id,
+            item.episodeToWatch?.watchHistory?.lastPlaybackPositionMillis,
+            item.episodeToWatch?.watchHistory?.durationMillis,
+            item.overview?.length,
+        ).joinToString(",")
+        is Episode -> listOf(
+            "e",
+            item.id,
+            item.title,
+            item.poster,
+            item.number,
+            item.tvShow?.id,
+            item.isWatched,
+            item.watchHistory?.lastPlaybackPositionMillis,
+            item.watchHistory?.durationMillis,
+        ).joinToString(",")
+        else -> item.javaClass.simpleName
+    }
+
+    /**
+     * Home bind helper: restore FEATURED if filters dropped it, then clone
+     * every featured Movie/TvShow so shelf rows can mutate [AppAdapter.Item.itemType]
+     * without crashing the ViewPager2 hero (BETTERSTREAMFLIX-13).
+     */
+    fun isolateFeatured(categories: List<Category>): List<Category> {
+        val visible = categories.map { category ->
+            if (Category.isFeaturedName(category.name)) {
+                category
+            } else {
+                category.copy(list = category.list.filter(::itemHasLabelOrArt))
+            }
+        }.filter { keepAfterIsolate(it) }
+        val ensured = ensureFeatured(visible, mutableListOf())
+        return ensured.map { cat ->
+            if (!Category.isFeaturedName(cat.name)) {
+                cat
+            } else {
+                val featuredList = cloneShowItems(
+                    cat.list.filter { it is Movie || it is TvShow }
+                        .take(MAX_FEATURED_ITEMS),
+                )
+                // Preserve rotation index — callers often set selectedIndex before isolate.
+                cat.copy(
+                    name = Category.FEATURED,
+                    list = featuredList,
+                    selectedIndex = cat.selectedIndex
+                        .coerceIn(0, (featuredList.size - 1).coerceAtLeast(0)),
+                )
+            }
+        }.filter { keepAfterIsolate(it) }
+    }
+
+    /** Drop empty rows (Fast-Forward empty-shelf keep was removed with the chip). */
+    private fun keepAfterIsolate(category: Category): Boolean = category.list.isNotEmpty()
+
+    /** Public: restore FEATURED after parental / live-DB filters drop it. */
+    fun ensureFeaturedShelf(categories: List<Category>): List<Category> =
+        ensureFeatured(categories, mutableListOf())
+
+    private fun mergeDuplicateShelfNames(categories: List<Category>): List<Category> {
+        val order = LinkedHashMap<String, MutableList<AppAdapter.Item>>()
+        categories.forEach { category ->
+            val key = if (Category.isFeaturedName(category.name)) {
+                Category.FEATURED
+            } else {
+                category.name
+            }
+            val bucket = order.getOrPut(key) { mutableListOf() }
+            val seen = bucket.mapNotNullTo(mutableSetOf()) { itemKey(it) }
+            category.list.forEach { item ->
+                val itemKey = itemKey(item)
+                if (itemKey == null || seen.add(itemKey)) {
+                    bucket.add(item)
+                }
+            }
+        }
+        return order.map { (name, items) ->
+            val canonical = if (Category.isFeaturedName(name)) Category.FEATURED else name
+            val cap = if (canonical == Category.FEATURED) {
+                MAX_FEATURED_ITEMS
+            } else {
+                MAX_ITEMS_PER_CATEGORY
+            }
+            Category(name = canonical, list = items.take(cap))
+        }
+    }
+
+    private fun itemKey(item: AppAdapter.Item): String? = when (item) {
+        is Movie -> "m:${item.id}"
+        is TvShow -> "t:${item.id}"
+        is Episode -> "e:${item.id}"
+        else -> null
+    }
+
+    /**
+     * Turn protocol-relative / site-relative artwork into an absolute URL.
+     * Leaves data:, blob:, and already-absolute http(s) URLs alone.
+     */
+    fun absoluteUrl(baseUrl: String, raw: String?): String? {
+        val value = raw?.trim().orEmpty()
+        if (value.isEmpty()) return null
+        if (value.startsWith("data:", ignoreCase = true) ||
+            value.startsWith("blob:", ignoreCase = true)
+        ) {
+            return value
+        }
+        if (value.startsWith("//")) {
+            val scheme = runCatching { URI(baseUrl).scheme }.getOrNull()?.ifBlank { null } ?: "https"
+            return "$scheme:$value"
+        }
+        if (value.startsWith("http://", ignoreCase = true) ||
+            value.startsWith("https://", ignoreCase = true)
+        ) {
+            return value
+        }
+        val base = baseUrl.trim().trimEnd('/')
+        if (base.isEmpty()) return value
+        return if (value.startsWith("/")) "$base$value" else "$base/$value"
+    }
+}

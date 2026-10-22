@@ -1,0 +1,293 @@
+package com.betterstreamflix.app.utils
+
+import android.graphics.drawable.Drawable
+import android.widget.ImageView
+import com.bumptech.glide.Glide
+import com.bumptech.glide.RequestBuilder
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.DecodeFormat
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.request.target.Target
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.database.AppDatabase
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.models.TvShow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
+
+private object ArtworkRepairCoordinator {
+    private val repairScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val inFlightRepairs = ConcurrentHashMap.newKeySet<String>()
+
+    fun shouldRepair(url: String?, error: GlideException?): Boolean {
+        return ArtworkRepair.shouldRepair(url, error)
+    }
+
+    fun repairMovieArtwork(
+        imageView: ImageView,
+        movie: Movie,
+        staleUrl: String,
+        onUpdated: (Movie) -> Unit,
+    ) {
+        val provider = UserPreferences.currentProvider ?: return
+        val repairKey = "${provider.name}|movie|${movie.id}|$staleUrl"
+        if (!inFlightRepairs.add(repairKey)) return
+
+        repairScope.launch {
+            try {
+                val database = AppDatabase.getInstanceOrNull(imageView.context) ?: return@launch
+                val refreshedMovie = ArtworkRepair.repairMovie(
+                    context = imageView.context,
+                    provider = provider,
+                    database = database,
+                    movie = movie,
+                ) ?: return@launch
+
+                imageView.post {
+                    movie.poster = refreshedMovie.poster
+                    movie.banner = refreshedMovie.banner
+                    onUpdated(refreshedMovie)
+                }
+            } finally {
+                inFlightRepairs.remove(repairKey)
+            }
+        }
+    }
+
+    fun repairTvShowArtwork(
+        imageView: ImageView,
+        tvShow: TvShow,
+        staleUrl: String,
+        onUpdated: (TvShow) -> Unit,
+    ) {
+        val provider = UserPreferences.currentProvider ?: return
+        val repairKey = "${provider.name}|tv|${tvShow.id}|$staleUrl"
+        if (!inFlightRepairs.add(repairKey)) return
+
+        repairScope.launch {
+            try {
+                val database = AppDatabase.getInstanceOrNull(imageView.context) ?: return@launch
+                val refreshedTvShow = ArtworkRepair.repairTvShow(
+                    context = imageView.context,
+                    provider = provider,
+                    database = database,
+                    tvShow = tvShow,
+                ) ?: return@launch
+
+                imageView.post {
+                    tvShow.poster = refreshedTvShow.poster
+                    tvShow.banner = refreshedTvShow.banner
+                    onUpdated(refreshedTvShow)
+                }
+            } finally {
+                inFlightRepairs.remove(repairKey)
+            }
+        }
+    }
+}
+
+private fun ImageView.bumpArtworkTicket(): Int {
+    val next = ((getTag(R.id.artwork_load_generation) as? Int) ?: 0) + 1
+    setTag(R.id.artwork_load_generation, next)
+    return next
+}
+
+private fun ImageView.loadRecoverableArtwork(
+    initialUrl: String?,
+    configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable>,
+    onReady: (Drawable) -> Unit = {},
+    onRepair: (staleUrl: String, onUpdated: (String) -> Unit) -> Unit,
+) {
+    val ticket = bumpArtworkTicket()
+    var hasRequestedRepairForBlankUrl = false
+
+    fun stillCurrent(): Boolean {
+        // Do NOT gate on isAttachedToWindow: RecyclerView prefetch binds views
+        // before attach, and skipping submit() here meant nothing ever loaded
+        // (blank covers). The generation ticket alone guards recycling — a
+        // stale callback after rebind sees a different ticket and is dropped.
+        // Glide's into() is safe on detached views and resolves on attach.
+        return getTag(R.id.artwork_load_generation) == ticket
+    }
+
+    fun submit(url: String?) {
+        if (!stillCurrent()) return
+        val requestedUrl = url
+        if (requestedUrl.isNullOrBlank() && !hasRequestedRepairForBlankUrl) {
+            hasRequestedRepairForBlankUrl = true
+            onRepair("") { refreshedUrl ->
+                if (!stillCurrent() || refreshedUrl.isBlank()) return@onRepair
+                submit(refreshedUrl)
+            }
+        }
+
+        configure(Glide.with(this).load(requestedUrl))
+            .let { builder ->
+                if (UserPreferences.dataSaverMode) {
+                    builder.apply(RequestOptions().format(DecodeFormat.PREFER_RGB_565))
+                } else {
+                    builder
+                }
+            }
+            .listener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Drawable>,
+                    isFirstResource: Boolean,
+                ): Boolean {
+                    if (!stillCurrent()) return false
+                    if (!ArtworkRepairCoordinator.shouldRepair(requestedUrl, e)) {
+                        return false
+                    }
+
+                    onRepair(requestedUrl.orEmpty()) { refreshedUrl ->
+                        if (!stillCurrent()) return@onRepair
+                        submit(refreshedUrl)
+                    }
+                    return false
+                }
+
+                override fun onResourceReady(
+                    resource: Drawable,
+                    model: Any,
+                    target: Target<Drawable>?,
+                    dataSource: DataSource,
+                    isFirstResource: Boolean,
+                ): Boolean {
+                    if (!stillCurrent()) return false
+                    onReady(resource)
+                    return false
+                }
+            })
+            .into(this)
+    }
+
+    submit(initialUrl)
+}
+
+fun ImageView.loadMoviePoster(
+    movie: Movie,
+    onReady: (Drawable) -> Unit = {},
+    configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
+) {
+    val url = ArtworkUrls.preferPoster(movie.poster) ?: movie.poster
+    loadRecoverableArtwork(url, configure, onReady) { staleUrl, onUpdated ->
+        ArtworkRepairCoordinator.repairMovieArtwork(this, movie, staleUrl) { refreshedMovie ->
+            val refreshedUrl = ArtworkUrls.preferPoster(refreshedMovie.poster)
+                ?: refreshedMovie.poster
+            if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
+                onUpdated(refreshedUrl)
+            }
+        }
+    }
+}
+
+/**
+ * [hero] true → w1280 (soft washes / cheap layers).
+ * [hero] false → original (Featured, detail covers, TV full-bleed banners).
+ */
+fun ImageView.loadMovieBanner(
+    movie: Movie,
+    hero: Boolean = true,
+    configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
+) {
+    val url = if (hero) {
+        ArtworkUrls.bannerOrPoster(movie.banner, movie.poster, hero = true)
+    } else {
+        ArtworkUrls.featuredBannerOrPoster(movie.banner, movie.poster)
+    }
+    loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
+        ArtworkRepairCoordinator.repairMovieArtwork(this, movie, staleUrl) { refreshedMovie ->
+            val refreshedUrl = if (hero) {
+                ArtworkUrls.bannerOrPoster(
+                    refreshedMovie.banner,
+                    refreshedMovie.poster,
+                    hero = true,
+                )
+            } else {
+                ArtworkUrls.featuredBannerOrPoster(
+                    refreshedMovie.banner,
+                    refreshedMovie.poster,
+                )
+            }
+            if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
+                onUpdated(refreshedUrl)
+            }
+        }
+    }
+}
+
+fun ImageView.loadTvShowPoster(
+    tvShow: TvShow,
+    onReady: (Drawable) -> Unit = {},
+    configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
+) {
+    val url = ArtworkUrls.preferPoster(tvShow.poster) ?: tvShow.poster
+    loadRecoverableArtwork(url, configure, onReady) { staleUrl, onUpdated ->
+        ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
+            val refreshedUrl = ArtworkUrls.preferPoster(refreshedTvShow.poster)
+                ?: refreshedTvShow.poster
+            if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
+                onUpdated(refreshedUrl)
+            }
+        }
+    }
+}
+
+fun ImageView.loadTvShowBanner(
+    tvShow: TvShow,
+    hero: Boolean = true,
+    configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
+) {
+    val url = if (hero) {
+        ArtworkUrls.bannerOrPoster(tvShow.banner, tvShow.poster, hero = true)
+    } else {
+        ArtworkUrls.featuredBannerOrPoster(tvShow.banner, tvShow.poster)
+    }
+    loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
+        ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
+            val refreshedUrl = if (hero) {
+                ArtworkUrls.bannerOrPoster(
+                    refreshedTvShow.banner,
+                    refreshedTvShow.poster,
+                    hero = true,
+                )
+            } else {
+                ArtworkUrls.featuredBannerOrPoster(
+                    refreshedTvShow.banner,
+                    refreshedTvShow.poster,
+                )
+            }
+            if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
+                onUpdated(refreshedUrl)
+            }
+        }
+    }
+}
+
+fun ImageView.loadTvShowCardArtwork(
+    tvShow: TvShow,
+    configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
+) {
+    val url = ArtworkUrls.preferPoster(tvShow.poster)
+        ?: ArtworkUrls.preferPoster(tvShow.banner)
+        ?: tvShow.poster
+        ?: tvShow.banner
+    loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
+        ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
+            val refreshedUrl = ArtworkUrls.preferPoster(refreshedTvShow.poster)
+                ?: ArtworkUrls.preferPoster(refreshedTvShow.banner)
+                ?: refreshedTvShow.poster
+                ?: refreshedTvShow.banner
+            if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
+                onUpdated(refreshedUrl)
+            }
+        }
+    }
+}

@@ -1,0 +1,300 @@
+package com.betterstreamflix.app.fragments.season
+
+import com.betterstreamflix.app.models.TrailerCatalog
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.database.AppDatabase
+import com.betterstreamflix.app.databinding.FragmentSeasonMobileBinding
+import com.betterstreamflix.app.download.ui.DownloadOptionsController
+import com.betterstreamflix.app.models.Episode
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.ui.DetailLoadingErrorChrome
+import com.betterstreamflix.app.ui.SpacingItemDecoration
+import com.betterstreamflix.app.utils.Http409CacheGuard
+import com.betterstreamflix.app.utils.ExpEmptyChrome
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.TmdbUtils
+import com.betterstreamflix.app.utils.dp
+import com.betterstreamflix.app.utils.format
+import com.betterstreamflix.app.utils.viewModelsFactory
+import com.betterstreamflix.app.ui.TrailerPlaybackController
+import com.betterstreamflix.app.utils.ArtworkUrls
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class SeasonMobileFragment : Fragment() {
+
+    private val http409Guard = Http409CacheGuard()
+
+    private var _binding: FragmentSeasonMobileBinding? = null
+    private val binding get() = _binding!!
+
+    private val args by navArgs<SeasonMobileFragmentArgs>()
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
+    private val viewModel by viewModelsFactory {
+        SeasonViewModel(
+            args.seasonId,
+            args.tvShowId,
+            database,
+            args.seasonNumber,
+        )
+    }
+
+    private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (episode → back). */
+    private var seasonListState: android.os.Parcelable? = null
+    private var loadedEpisodes: List<Episode> = emptyList()
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentSeasonMobileBinding.bind(
+            inflater.inflate(
+                R.layout.fragment_season_mobile,
+                container,
+                false,
+            )
+        )
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        ExpMotion.enterScreen(binding.root)
+        binding.root.findViewById<View>(com.betterstreamflix.app.R.id.iv_detail_back)
+            ?.also { back ->
+                androidx.appcompat.widget.TooltipCompat.setTooltipText(
+                    back, back.context.getString(com.betterstreamflix.app.R.string.exp_back))
+            }
+            ?.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                androidx.navigation.Navigation.findNavController(binding.root).navigateUp()
+            }
+        ExpMotion.staggerFirstFill(binding.rvEpisodes)
+        initializeSeason()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
+                when (state) {
+                    SeasonViewModel.State.LoadingEpisodes -> binding.isLoading.apply {
+                        ExpMotion.fadeInAndShow(root)
+                        com.betterstreamflix.app.utils.ExpPressEffects.showLoadingSkeleton(root, true)
+                        gIsLoadingRetry.visibility = View.GONE
+                    }
+                    is SeasonViewModel.State.SuccessLoadingEpisodes -> {
+                        displaySeason(state.episodes)
+                        ExpMotion.fadeOutAndHide(binding.isLoading.root)
+                    }
+                    is SeasonViewModel.State.FailedLoadingEpisodes -> {
+                        if (http409Guard.handle(requireContext(), state.error) { viewModel.getSeasonEpisodes(args.seasonId) }) {
+                                return@collect
+                            }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            showToast = true,
+                            onRetry = { viewModel.getSeasonEpisodes(args.seasonId) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        seasonListState = _binding?.rvEpisodes?.layoutManager?.onSaveInstanceState()
+        super.onDestroyView()
+        _binding = null
+    }
+
+
+    private fun initializeSeason() {
+        binding.tvSeasonTitle.text = args.seasonTitle
+        binding.root.findViewById<android.widget.TextView>(R.id.tv_season_eyebrow)?.apply {
+            text = args.tvShowTitle.ifBlank { getString(R.string.exp_season_eyebrow) }
+        }
+        bindSeasonBanner()
+
+        val db = database
+        if (db == null) {
+            runCatching {
+                findNavController().navigate(R.id.providers)
+            }
+            return
+        }
+        SeasonSwitcher.bind(
+            fragment = this,
+            spinner = binding.spSeasonPicker,
+            database = db,
+            tvShowId = args.tvShowId,
+            tvShowTitle = args.tvShowTitle,
+            tvShowPoster = args.tvShowPoster,
+            tvShowBanner = args.tvShowBanner,
+            currentSeasonId = args.seasonId,
+            currentSeasonNumber = args.seasonNumber,
+            currentSeasonTitle = args.seasonTitle,
+        )
+
+        wireSeasonTrailerButton()
+
+        binding.btnSeasonDownload.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val episodes = loadedEpisodes
+            if (episodes.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            // One-tap season → Smart-Download queue (quota checked inside enqueueSeason).
+            viewLifecycleOwner.lifecycleScope.launch {
+                val tvShow = withContext(Dispatchers.IO) {
+                    database?.tvShowDao()?.getById(args.tvShowId)
+                } ?: TvShow(
+                    id = args.tvShowId,
+                    title = viewModel.tvShowTitle.ifBlank {
+                        episodes.firstOrNull()?.tvShow?.title.orEmpty()
+                    },
+                )
+                DownloadOptionsController.enqueueSeason(
+                    this@SeasonMobileFragment,
+                    tvShow,
+                    viewModel.seasonNumber,
+                    episodes,
+                )
+            }
+        }
+
+        binding.rvEpisodes.apply {
+            adapter = appAdapter.apply {
+                stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+            }
+            addItemDecoration(
+                SpacingItemDecoration(20.dp(requireContext()))
+            )
+        }
+    }
+
+    private fun bindSeasonBanner() {
+        val banner = binding.root.findViewById<android.widget.ImageView>(R.id.iv_season_banner)
+            ?: return
+        val url = ArtworkUrls.bannerOrPoster(args.tvShowBanner, args.tvShowPoster, hero = false)
+        if (url.isNullOrBlank()) {
+            banner.setImageDrawable(null)
+            return
+        }
+        Glide.with(banner)
+            .load(url)
+            .centerCrop()
+            .transition(DrawableTransitionOptions.withCrossFade(280))
+            .into(banner)
+    }
+
+    private fun wireSeasonTrailerButton() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val tvShow = withContext(Dispatchers.IO) {
+                database?.tvShowDao()?.getById(args.tvShowId)
+            }
+            val year = tvShow?.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = tvShow?.tmdbId,
+                imdbId = tvShow?.imdbId,
+                title = tvShow?.title ?: args.tvShowTitle,
+                year = year,
+            )
+            if (!isAdded || _binding == null) return@launch
+            // Hide until a playable URL is ready (parity with detail hero CTAs).
+            binding.btnSeasonTrailer.visibility = View.GONE
+            if (!canLookup) return@launch
+
+            val remote = withContext(Dispatchers.IO) {
+                TmdbUtils.listYoutubeTrailers(
+                    tmdbId = tvShow?.tmdbId,
+                    isTv = true,
+                    title = tvShow?.title ?: args.tvShowTitle,
+                    year = year,
+                    imdbId = tvShow?.imdbId,
+                    seasonNumber = args.seasonNumber.takeIf { it > 0 }
+                        ?: viewModel.seasonNumber.takeIf { it > 0 },
+                )
+            }
+            if (!isAdded || _binding == null) return@launch
+            val url = TrailerCatalog.preferredPlayableUrl(remote)
+            if (url.isNullOrBlank()) return@launch
+
+            binding.btnSeasonTrailer.visibility = View.VISIBLE
+            binding.btnSeasonTrailer.setOnClickListener { view ->
+                ExpMotion.hapticTap(view)
+                TrailerPlaybackController.play(this@SeasonMobileFragment, url)
+            }
+        }
+    }
+
+    private fun displaySeason(episodes: List<Episode>) {
+        loadedEpisodes = episodes
+        appAdapter.submitList(episodes.onEach { episode ->
+            episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
+        })
+        seasonListState?.let { state ->
+            binding.rvEpisodes.post {
+                _binding?.rvEpisodes?.layoutManager?.onRestoreInstanceState(state)
+            }
+            seasonListState = null
+        }
+        if (episodes.isNotEmpty()) {
+            binding.btnSeasonDownload.text = getString(
+                R.string.detail_download_season_count,
+                args.seasonNumber.coerceAtLeast(1),
+                episodes.size,
+            )
+        } else {
+            binding.btnSeasonDownload.setText(R.string.season_download)
+        }
+
+        val empty = episodes.isEmpty()
+        ExpEmptyChrome.bind(
+            emptyView = binding.root.findViewById(R.id.tv_season_empty),
+            emptyRule = binding.root.findViewById(R.id.v_season_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_season_empty_cta),
+            visible = empty,
+            tintOnSurfaceVariant = false,
+            onCtaClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
+        )
+        binding.rvEpisodes.visibility = if (empty) View.GONE else View.VISIBLE
+        binding.btnSeasonDownload.isEnabled = !empty
+        binding.btnSeasonDownload.alpha = if (empty) 0.4f else 1f
+        val episodeIndex = episodes
+            .sortedByDescending { it.watchHistory?.lastEngagementTimeUtcMillis }
+            .firstOrNull { it.watchHistory != null }
+            ?.let { episodes.indexOf(it) }
+            ?: episodes.indexOfLast { it.isWatched }
+                .takeIf { it != -1 && it + 1 < episodes.size }
+                ?.let { it + 1 }
+
+        if (episodeIndex != null) {
+            val layoutManager = binding.rvEpisodes.layoutManager as? LinearLayoutManager
+            layoutManager?.scrollToPositionWithOffset(
+                episodeIndex,
+                binding.rvEpisodes.height / 2 - 100.dp(requireContext())
+            )
+        }
+    }
+}

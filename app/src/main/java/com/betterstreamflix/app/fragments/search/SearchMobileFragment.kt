@@ -1,0 +1,645 @@
+package com.betterstreamflix.app.fragments.search
+
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.view.isVisible
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
+import android.view.inputmethod.EditorInfo
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.database.AppDatabase
+import com.betterstreamflix.app.databinding.FragmentSearchMobileBinding
+import com.betterstreamflix.app.ui.SpacingItemDecoration
+import com.betterstreamflix.app.utils.CacheUtils
+import com.betterstreamflix.app.utils.Http409CacheGuard
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.LoggingUtils
+import com.betterstreamflix.app.utils.UserPreferences
+import com.betterstreamflix.app.utils.VoiceRecognitionHelper
+import com.betterstreamflix.app.utils.dp
+import com.betterstreamflix.app.utils.hideKeyboard
+import com.betterstreamflix.app.utils.viewModelsFactory
+import kotlinx.coroutines.launch
+import com.betterstreamflix.app.providers.IptvProvider
+
+class SearchMobileFragment : Fragment() {
+
+    private val http409Guard = Http409CacheGuard()
+
+    private var _binding: FragmentSearchMobileBinding? = null
+    private val binding get() = _binding!!
+
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
+    private val viewModel by viewModelsFactory {
+        SearchViewModel(database)
+    }
+
+    private var appAdapter = AppAdapter()
+
+    /** Scroll state + owning query kept across view recreation (detail → back). */
+    private var searchListState: android.os.Parcelable? = null
+    private var searchListStateQuery: String? = null
+
+    private lateinit var voiceHelper: VoiceRecognitionHelper
+
+    private val voicePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (::voiceHelper.isInitialized) voiceHelper.onPermissionResult(granted)
+        }
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentSearchMobileBinding.bind(
+            inflater.inflate(
+                R.layout.fragment_search_mobile,
+                container,
+                false,
+            )
+        )
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.staggerFirstFill(binding.rvSearch)
+        initializeSearch()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.state.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED).collect { state ->
+                val ui = _binding ?: return@collect
+                try {
+                when (state) {
+                    is State.Searching, is State.GlobalSearching -> {
+                        binding.isLoading.apply {
+                            ExpMotion.fadeInAndShow(root)
+                            com.betterstreamflix.app.utils.ExpPressEffects.showLoadingSkeleton(root, true)
+                            gIsLoadingRetry.visibility = View.GONE
+                        }
+                        binding.root.findViewById<View>(R.id.tv_search_empty)?.isVisible = false
+                        binding.root.findViewById<View>(R.id.v_search_empty_rule)?.isVisible = false
+                        binding.root.findViewById<View>(R.id.btn_search_empty_cta)?.isVisible = false
+                        appAdapter.isLoading = false
+                        appAdapter.setOnLoadMoreListener(null)
+                    }
+                    is State.SearchingMore -> appAdapter.isLoading = true
+                    is State.SuccessSearching -> {
+                        displaySearch(state.results, state.hasMore)
+                        appAdapter.isLoading = false
+                        ExpMotion.fadeOutAndHide(ui.isLoading.root)
+                        refreshRecentSearches()
+                    }
+                    is State.SuccessGlobalSearching -> {
+                        val keepLoader = displayGlobalSearch(state.providerResults)
+                        if (keepLoader) {
+                            ui.isLoading.root.isVisible = true
+                        } else {
+                            ExpMotion.fadeOutAndHide(ui.isLoading.root)
+                        }
+                        refreshRecentSearches()
+                    }
+                    is State.FailedSearching -> {
+                        refreshRecentSearches()
+                        if (http409Guard.handle(requireContext(), state.error) { retryLastSearch() }) {
+                                return@collect
+                            }
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        if (appAdapter.isLoading) {
+                            appAdapter.isLoading = false
+                        } else {
+                            ui.isLoading.apply {
+                                com.betterstreamflix.app.utils.ExpPressEffects.showLoadingSkeleton(root, false)
+                                gIsLoadingRetry.visibility = View.VISIBLE
+                                val doRetry = { retryLastSearch() }
+                                btnIsLoadingRetry.setOnClickListener { doRetry() }
+                                btnIsLoadingClearCache.setOnClickListener {
+                                    CacheUtils.clearAppCache(requireContext())
+                                    com.betterstreamflix.app.utils.ExpDialogChrome.notify(requireContext(), getString(com.betterstreamflix.app.R.string.clear_cache_done), com.betterstreamflix.app.R.string.loading_error_clear_cache)
+                                    doRetry()
+                                }
+                                btnIsLoadingErrorDetails.setOnClickListener {
+                                    LoggingUtils.showErrorDialog(requireContext(), state.error)
+                                }
+                            }
+                        }
+                    }
+                }
+                } catch (t: Throwable) {
+                    android.util.Log.e("SearchMobileFragment", "search render failed", t)
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshSortChips()
+    }
+
+    /** Cast Room / TV Sidekick keyboard — fill Search and run. */
+    fun applySidekickQuery(query: String) {
+        if (!isAdded || _binding == null) return
+        val cleaned = query.trim()
+        if (cleaned.isEmpty()) return
+        binding.etSearch.setText(cleaned)
+        binding.etSearch.setSelection(cleaned.length)
+        hideKeyboard()
+        SearchMemories.rememberAttempt(requireContext(), cleaned, global = binding.swGlobalSearch.isChecked)
+        if (binding.swGlobalSearch.isChecked) {
+            viewModel.searchGlobal(cleaned, resolveSearchLanguage())
+        } else {
+            viewModel.search(cleaned)
+        }
+        refreshRecentSearches()
+    }
+
+    override fun onDestroyView() {
+        if (::voiceHelper.isInitialized) {
+            runCatching { voiceHelper.stopRecognition() }
+        }
+        _binding?.let {
+            searchListState = it.rvSearch.layoutManager?.onSaveInstanceState()
+            searchListStateQuery = viewModel.query
+        }
+        super.onDestroyView()
+        _binding = null
+    }
+
+    /** Restores the result scroll position once, only while the same query owns the list. */
+    private fun restoreSearchListIfPending() {
+        val state = searchListState ?: return
+        if (viewModel.query != searchListStateQuery) {
+            searchListState = null
+            return
+        }
+        binding.rvSearch.post {
+            _binding?.rvSearch?.layoutManager?.onRestoreInstanceState(state)
+        }
+        searchListState = null
+    }
+
+    private fun retryLastSearch() {
+        val query = viewModel.query
+        if (binding.swGlobalSearch.isChecked) {
+            viewModel.searchGlobal(query, resolveSearchLanguage())
+        } else {
+            viewModel.search(query)
+        }
+    }
+
+    private fun resolveSearchLanguage(): String =
+        UserPreferences.currentProvider?.language?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.providerLanguage?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.currentLanguage?.takeIf { it.isNotBlank() }
+            ?: java.util.Locale.getDefault().language.takeIf { it.isNotBlank() }
+            ?: "en"
+
+    private fun initializeSearch() {
+        val isIptv = UserPreferences.currentProvider is IptvProvider
+        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+        binding.etSearch.hint = getString(hintStringRes)
+
+        binding.etSearch.apply {
+            // ========= LÓGICA DE BÚSQUEDA MODIFICADA =========
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                    val query = binding.etSearch.text.toString()
+                    hideKeyboard()
+
+                    if (query.isBlank()) {
+                        Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
+                        return@setOnEditorActionListener true
+                    }
+
+                    if (binding.swGlobalSearch.isChecked) {
+                        val currentLanguage = resolveSearchLanguage()
+                        SearchMemories.rememberAttempt(requireContext(), query, global = true)
+                        viewModel.searchGlobal(query, currentLanguage)
+                    } else {
+                        SearchMemories.rememberAttempt(requireContext(), query, global = false)
+                        viewModel.search(query)
+                    }
+                    refreshRecentSearches()
+                    return@setOnEditorActionListener true
+                }
+                return@setOnEditorActionListener false
+            }
+            // =================================================
+
+            addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {
+                    if(s.isNullOrBlank()){
+                                val isIptv = UserPreferences.currentProvider is IptvProvider
+        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+        binding.etSearch.hint = getString(hintStringRes)
+                    }
+                }
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            })
+        }
+
+        val blink = AlphaAnimation(1f, 0.3f).apply {
+            duration = 500
+            repeatCount = Animation.INFINITE
+            repeatMode = Animation.REVERSE
+        }
+
+        voiceHelper = VoiceRecognitionHelper(
+            fragment = this,
+            permissionLauncher = voicePermissionLauncher,
+            onResult = { query ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                ui.btnSearchVoice.clearAnimation()
+                ui.etSearch.setText(query)
+                val global = ui.swGlobalSearch.isChecked
+                SearchMemories.rememberAttempt(requireContext(), query, global = global)
+                if (global) {
+                    viewModel.searchGlobal(query, resolveSearchLanguage())
+                } else {
+                    viewModel.search(query)
+                }
+                refreshRecentSearches()
+            },
+            onError = { msg ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                com.betterstreamflix.app.utils.ExpDialogChrome.notify(
+                    requireContext(),
+                    msg,
+                    R.string.voice_search,
+                )
+                ui.btnSearchVoice.clearAnimation()
+                val isIptv = UserPreferences.currentProvider is IptvProvider
+                val hintStringRes =
+                    if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                ui.etSearch.hint = getString(hintStringRes)
+            },
+            onListeningStateChanged = { isListening ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                if (isListening) {
+                    ui.btnSearchVoice.startAnimation(blink)
+                    ui.etSearch.hint = getString(R.string.voice_prompt)
+                } else {
+                    ui.btnSearchVoice.clearAnimation()
+                    val isIptv = UserPreferences.currentProvider is IptvProvider
+                    val hintStringRes =
+                        if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                    ui.etSearch.hint = getString(hintStringRes)
+                }
+            },
+            onPartial = { partial ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                ui.etSearch.setText(partial)
+                ui.etSearch.setSelection(partial.length)
+            },
+        )
+
+        binding.btnSearchVoice.apply {
+            val showVoice = voiceHelper.isAvailable()
+            visibility = if (showVoice) View.VISIBLE else View.GONE
+
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                voiceHelper.startWithPermissionCheck()
+            }
+        }
+
+        binding.btnSearchClear.apply {
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                binding.etSearch.setText("")
+                val isIptv = UserPreferences.currentProvider is IptvProvider
+                val hintStringRes =
+                    if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                binding.etSearch.hint = getString(hintStringRes)
+                viewModel.search("")
+            }
+        }
+
+        binding.rvSearch.apply {
+            adapter = appAdapter.apply {
+                stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+                onMovieLongClickListener = { movie ->
+                    com.betterstreamflix.app.taste.TasteSignalsUi.showFor(
+                        fragment = this@SearchMobileFragment,
+                        item = movie,
+                        onChanged = { viewModel.reapplyOrdering() },
+                        onMoreLike = { item ->
+                            val title = when (item) {
+                                is com.betterstreamflix.app.models.Movie -> item.title
+                                is com.betterstreamflix.app.models.TvShow -> item.title
+                                else -> ""
+                            }
+                            binding.etSearch.setText(
+                                getString(R.string.search_query_more_like, title),
+                            )
+                            viewModel.searchMoreLike(item)
+                        },
+                    )
+                }
+                onTvShowLongClickListener = { show ->
+                    com.betterstreamflix.app.taste.TasteSignalsUi.showFor(
+                        fragment = this@SearchMobileFragment,
+                        item = show,
+                        onChanged = { viewModel.reapplyOrdering() },
+                        onMoreLike = { item ->
+                            val title = when (item) {
+                                is com.betterstreamflix.app.models.Movie -> item.title
+                                is com.betterstreamflix.app.models.TvShow -> item.title
+                                else -> ""
+                            }
+                            binding.etSearch.setText(
+                                getString(R.string.search_query_more_like, title),
+                            )
+                            viewModel.searchMoreLike(item)
+                        },
+                    )
+                }
+            }
+            val columns = (layoutManager as? GridLayoutManager)?.spanCount ?: SearchMobileRows.GRID_SPAN
+            (layoutManager as? GridLayoutManager)?.spanSizeLookup =
+                object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int {
+                        val type = runCatching { appAdapter.getItemViewType(position) }
+                            .getOrDefault(AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM.ordinal)
+                        return SearchMobileRows.spanSize(type, columns)
+                    }
+                }
+            addItemDecoration(
+                SpacingItemDecoration(10.dp(requireContext()))
+            )
+        }
+        initializeSearchSortControls()
+        refreshMoodChips()
+        refreshRecentSearches()
+    }
+
+    private fun initializeSearchSortControls() {
+        val chipDefault = binding.root.findViewById<TextView>(R.id.chip_search_sort_default) ?: return
+        val chipForYou = binding.root.findViewById<TextView>(R.id.chip_search_sort_for_you)
+        val chipNewest = binding.root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
+        val chipYear = binding.root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
+
+        refreshSortChips()
+
+        chipDefault.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setSortMode(com.betterstreamflix.app.utils.SearchSortMode.PROVIDER_DEFAULT)
+            refreshSortChips()
+        }
+        chipForYou?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setSortMode(com.betterstreamflix.app.utils.SearchSortMode.FOR_YOU)
+            refreshSortChips()
+        }
+        chipNewest.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setSortMode(com.betterstreamflix.app.utils.SearchSortMode.NEWEST_FIRST)
+            refreshSortChips()
+        }
+        chipYear.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SearchSortUi.showYearPicker(
+                context = requireContext(),
+                currentYear = viewModel.currentYearFilter(),
+                resultYears = viewModel.yearsInCurrentResults(),
+            ) { year ->
+                viewModel.setYearFilter(year)
+                refreshSortChips()
+            }
+        }
+    }
+
+    private fun refreshMoodChips() {
+        val row = binding.root.findViewById<LinearLayout>(R.id.ll_search_mood) ?: return
+        val padH = 12.dp(requireContext())
+        val padV = 8.dp(requireContext())
+        val gap = 8.dp(requireContext())
+        com.betterstreamflix.app.taste.TasteMoodUi.bind(
+            context = requireContext(),
+            row = row,
+            selected = viewModel.currentMood(),
+            padH = padH,
+            padV = padV,
+            gap = gap,
+            tvFocusable = false,
+            onSelect = { mood ->
+                viewModel.setMood(mood)
+                refreshMoodChips()
+            },
+            applyPress = { view ->
+                with(com.betterstreamflix.app.utils.ExpPressEffects) { view.applyExpPress() }
+            },
+        )
+    }
+
+    private fun refreshRecentSearches() {
+        val strip = binding.root.findViewById<View>(R.id.hsv_search_recent) ?: return
+        val row = binding.root.findViewById<LinearLayout>(R.id.ll_search_recent) ?: return
+        val memories = SearchMemories.list(requireContext())
+        if (memories.isEmpty()) {
+            strip.isVisible = false
+            strip.setTag(R.id.exp_enter_animated_tag, null)
+            row.removeAllViews()
+            binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.isVisible = false
+            binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.isVisible = false
+            return
+        }
+        strip.isVisible = true
+        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.isVisible = true
+        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.isVisible = true
+        @Suppress("UNCHECKED_CAST")
+        val previousQueries = (strip.getTag(R.id.exp_search_recent_queries_tag) as? Set<String>) ?: emptySet()
+        val padH = 12.dp(requireContext())
+        val padV = 8.dp(requireContext())
+        val gap = 8.dp(requireContext())
+        val bound = SearchMemoriesUi.bind(
+            context = requireContext(),
+            row = row,
+            memories = memories,
+            padH = padH,
+            padV = padV,
+            gap = gap,
+            tvFocusable = false,
+            chipBackground = { outcome ->
+                when (outcome) {
+                    SearchMemories.Outcome.FAILED -> R.drawable.bg_search_memory_chip_failed
+                    SearchMemories.Outcome.EMPTY -> R.drawable.bg_search_memory_chip_empty
+                    SearchMemories.Outcome.SUCCESS -> R.drawable.bg_search_sort_chip
+                }
+            },
+            onRetry = { entry ->
+                binding.etSearch.setText(entry.query)
+                val global = binding.swGlobalSearch.isChecked || entry.global
+                SearchMemories.rememberAttempt(requireContext(), entry.query, global = global)
+                if (global) {
+                    viewModel.searchGlobal(entry.query, resolveSearchLanguage())
+                } else {
+                    viewModel.search(entry.query)
+                }
+                refreshRecentSearches()
+            },
+            onClear = {
+                SearchMemories.clear(requireContext())
+                refreshRecentSearches()
+            },
+            onLongPressMoreLike = { entry ->
+                val seed = unwrapMoreLikeQuery(entry.query)
+                val q = getString(R.string.search_query_more_like, seed)
+                binding.etSearch.setText(q)
+                runCatching {
+                    val fake = com.betterstreamflix.app.models.Movie(id = "memory:$seed", title = seed)
+                    com.betterstreamflix.app.taste.TasteFeedback.moreLike(requireContext(), fake)
+                }
+                viewModel.search(q)
+            },
+            previousQueries = previousQueries,
+            animateNew = null,
+            applyPress = { view ->
+                with(com.betterstreamflix.app.utils.ExpPressEffects) { view.applyExpPress() }
+            },
+        )
+        strip.setTag(R.id.exp_search_recent_queries_tag, bound.queries)
+    }
+
+    private fun refreshSortChips() {
+        val root = _binding?.root ?: return
+        val chipDefault = root.findViewById<TextView>(R.id.chip_search_sort_default) ?: return
+        val chipNewest = root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
+        val chipYear = root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
+        val chipForYou = root.findViewById<TextView>(R.id.chip_search_sort_for_you)
+        SearchSortUi.bindChips(
+            chipDefault = chipDefault,
+            chipNewest = chipNewest,
+            chipYear = chipYear,
+            mode = viewModel.currentSortMode(),
+            year = viewModel.currentYearFilter(),
+            chipForYou = chipForYou,
+        )
+    }
+
+    private fun clearSearchField() {
+        val ui = _binding ?: return
+        ui.etSearch.setText("")
+        ui.etSearch.requestFocus()
+        viewModel.search("")
+    }
+
+    /** Strip a stacked “more like …” prefix so long-press does not wrap forever. */
+    private fun unwrapMoreLikeQuery(raw: String): String {
+        var q = raw.trim()
+        val marker = getString(R.string.search_query_more_like, "\u0000")
+            .substringBefore("\u0000")
+            .trim()
+            .lowercase()
+        while (marker.isNotEmpty() && q.lowercase().startsWith(marker)) {
+            q = q.drop(marker.length).trim()
+        }
+        return q.ifBlank { raw.trim() }
+    }
+
+    private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
+        val rows = SearchMobileRows.local(list)
+        binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
+            val cta = binding.root.findViewById<View>(R.id.btn_search_empty_cta)
+            val emptyRule = binding.root.findViewById<View>(R.id.v_search_empty_rule)
+            val showEmpty = rows.isEmpty() && viewModel.query.isNotBlank()
+            if (showEmpty) {
+                emptyView.visibility = View.VISIBLE
+                emptyRule?.isVisible = false
+                cta?.let { chip ->
+                    chip.isVisible = true
+                    if (chip is android.widget.TextView) {
+                        chip.setText(
+                            if (UserPreferences.currentProvider is IptvProvider) {
+                                R.string.exp_empty_try_channel
+                            } else {
+                                R.string.exp_empty_clear_search
+                            },
+                        )
+                    }
+                    chip.setOnClickListener {
+                        ExpMotion.hapticTap(it)
+                        clearSearchField()
+                    }
+                }
+            } else {
+                emptyView.isVisible = false
+                emptyRule?.isVisible = false
+                cta?.isVisible = false
+            }
+        }
+        appAdapter.submitList(rows)
+        restoreSearchListIfPending()
+
+        if (hasMore && viewModel.query.isNotBlank() && rows.size < SearchMobileRows.MAX_LOCAL) {
+            appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
+        } else {
+            appAdapter.setOnLoadMoreListener(null)
+        }
+    }
+
+    /** @return true while Global Search is still working and has nothing to show yet. */
+    private fun displayGlobalSearch(providerResults: List<ProviderResult>): Boolean {
+        val plan = SearchMobileRows.global(providerResults) { name, count ->
+            val resultText = if (count == 1) getString(R.string.result) else getString(R.string.results)
+            "$name - $count $resultText"
+        }
+        appAdapter.submitList(plan.items)
+        restoreSearchListIfPending()
+        appAdapter.setOnLoadMoreListener(null)
+
+        val isEmpty = !plan.stillLoading && !plan.hasHits && viewModel.query.isNotBlank()
+        binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
+            val cta = binding.root.findViewById<View>(R.id.btn_search_empty_cta)
+            val emptyRule = binding.root.findViewById<View>(R.id.v_search_empty_rule)
+            if (isEmpty) {
+                emptyView.visibility = View.VISIBLE
+                emptyRule?.isVisible = false
+                cta?.let { chip ->
+                    chip.isVisible = true
+                    if (chip is android.widget.TextView) {
+                        chip.setText(
+                            if (UserPreferences.currentProvider is IptvProvider) {
+                                R.string.exp_empty_try_channel
+                            } else {
+                                R.string.exp_empty_clear_search
+                            },
+                        )
+                    }
+                    chip.setOnClickListener {
+                        ExpMotion.hapticTap(it)
+                        clearSearchField()
+                    }
+                }
+            } else {
+                emptyView.isVisible = false
+                emptyRule?.isVisible = false
+                cta?.isVisible = false
+            }
+        }
+        return plan.stillLoading && !plan.hasHits
+    }
+}

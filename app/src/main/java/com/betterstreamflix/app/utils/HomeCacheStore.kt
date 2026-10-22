@@ -1,0 +1,305 @@
+package com.betterstreamflix.app.utils
+
+import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.models.Category
+import com.betterstreamflix.app.models.Episode
+import com.betterstreamflix.app.models.Movie
+import com.betterstreamflix.app.models.Season
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.models.WatchItem
+import com.betterstreamflix.app.profiles.ProfileManager
+import com.betterstreamflix.app.providers.Provider
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+
+object HomeCacheStore {
+    private val gson = Gson()
+    private val memoryCache = ConcurrentHashMap<String, List<CachedCategory>>()
+    private val writtenAtMs = ConcurrentHashMap<String, Long>()
+
+    /** Soft TTL for stale-while-revalidate (show cache immediately, refresh in background). */
+    const val STALE_AFTER_MS = 30L * 60L * 1000L
+
+    fun read(context: Context, provider: Provider): List<Category>? {
+        val cacheKey = cacheKey(provider)
+        memoryCache[cacheKey]?.let { payload ->
+            return payload.toCategories()
+        }
+
+        val file = cacheFile(context, cacheKey)
+        if (!file.exists()) return null
+
+        return runCatching {
+            val payload = gson.fromJson(file.readText(), Array<CachedCategory>::class.java)
+                ?.toList()
+                ?: emptyList()
+            memoryCache[cacheKey] = payload
+            if (!writtenAtMs.containsKey(cacheKey)) {
+                writtenAtMs[cacheKey] = file.lastModified()
+            }
+            payload.toCategories()
+        }.recoverCatching {
+            if (it is JsonSyntaxException) {
+                memoryCache.remove(cacheKey)
+                writtenAtMs.remove(cacheKey)
+                file.delete()
+            }
+            null
+        }.getOrNull()
+    }
+
+    fun ageMs(context: Context, provider: Provider): Long? {
+        val cacheKey = cacheKey(provider)
+        val at = writtenAtMs[cacheKey]
+            ?: cacheFile(context, cacheKey).takeIf { it.exists() }?.lastModified()
+            ?: return null
+        return (System.currentTimeMillis() - at).coerceAtLeast(0L)
+    }
+
+    fun isStale(context: Context, provider: Provider, maxAgeMs: Long = STALE_AFTER_MS): Boolean {
+        val age = ageMs(context, provider) ?: return true
+        return age > maxAgeMs
+    }
+
+    fun write(context: Context, provider: Provider, categories: List<Category>) {
+        runCatching {
+            val cacheKey = cacheKey(provider)
+            // Refuse empty overwrite of a non-empty cache (transient scrape / CF miss).
+            if (categories.isEmpty()) {
+                val existing = memoryCache[cacheKey]
+                    ?: cacheFile(context, cacheKey).takeIf { it.exists() }?.let { file ->
+                        runCatching {
+                            gson.fromJson(file.readText(), Array<CachedCategory>::class.java)?.toList()
+                        }.getOrNull()
+                    }
+                if (!existing.isNullOrEmpty()) return@runCatching
+            }
+            val payload = categories.map { CachedCategory.from(it) }
+            memoryCache[cacheKey] = payload
+            writtenAtMs[cacheKey] = System.currentTimeMillis()
+            cacheFile(context, cacheKey).apply {
+                parentFile?.mkdirs()
+                writeText(gson.toJson(payload))
+            }
+        }
+    }
+
+    fun clear(context: Context, provider: Provider) {
+        val cacheKey = cacheKey(provider)
+        memoryCache.remove(cacheKey)
+        writtenAtMs.remove(cacheKey)
+        cacheFile(context, cacheKey).delete()
+    }
+
+    private fun cacheFile(context: Context, cacheKey: String): File {
+        val safeName = cacheKey.replace(Regex("[^a-zA-Z0-9._-]+"), "_")
+        return File(context.filesDir, "home-cache/$safeName.json")
+    }
+
+    private fun cacheKey(provider: Provider): String {
+        val baseUrlKey = provider.baseUrl.trim().trimEnd('/')
+        val profileId = runCatching { ProfileManager.activeProfileId }
+            .getOrDefault(ProfileManager.DEFAULT_PROFILE_ID)
+            .ifBlank { ProfileManager.DEFAULT_PROFILE_ID }
+        return buildList {
+            add(provider.name)
+            if (baseUrlKey.isNotEmpty()) {
+                add(baseUrlKey)
+            }
+            add(profileId)
+        }.joinToString("__")
+    }
+
+    private fun List<CachedCategory>.toCategories(): List<Category> {
+        return mapNotNull { it.toCategoryOrNull() }
+    }
+
+    private data class CachedCategory(
+        val name: String,
+        val list: List<CachedItem>,
+    ) {
+        fun toCategoryOrNull(): Category? {
+            val items = list.mapNotNull { it.toItemOrNull() }
+            return Category(name = name, list = items)
+        }
+
+        companion object {
+            fun from(category: Category): CachedCategory {
+                return CachedCategory(
+                    name = category.name,
+                    list = category.list.mapNotNull(CachedItem::from)
+                )
+            }
+        }
+    }
+
+    private data class CachedItem(
+        val type: String,
+        val id: String,
+        val title: String? = null,
+        val overview: String? = null,
+        val released: String? = null,
+        val runtime: Int? = null,
+        val trailer: String? = null,
+        val quality: String? = null,
+        val rating: Double? = null,
+        val poster: String? = null,
+        val banner: String? = null,
+        val providerName: String? = null,
+        val episodeNumber: Int? = null,
+        val tvShowId: String? = null,
+        val tvShowTitle: String? = null,
+        val tvShowPoster: String? = null,
+        val tvShowBanner: String? = null,
+        val seasonId: String? = null,
+        val seasonNumber: Int? = null,
+        val seasonTitle: String? = null,
+        val seasonPoster: String? = null,
+        val lastPlaybackPositionMillis: Long? = null,
+        val durationMillis: Long? = null,
+        val lastEngagementTimeUtcMillis: Long? = null,
+    ) {
+        fun toItemOrNull(): AppAdapter.Item? {
+            val watchHistory =
+                if (
+                    lastPlaybackPositionMillis != null &&
+                    durationMillis != null &&
+                    durationMillis > 0 &&
+                    lastEngagementTimeUtcMillis != null
+                ) {
+                    WatchItem.WatchHistory(
+                        lastEngagementTimeUtcMillis = lastEngagementTimeUtcMillis,
+                        lastPlaybackPositionMillis = lastPlaybackPositionMillis,
+                        durationMillis = durationMillis,
+                    )
+                } else null
+            return when (type) {
+                "movie" -> Movie(
+                    id = id,
+                    title = title.orEmpty(),
+                    overview = overview,
+                    released = released,
+                    runtime = runtime,
+                    trailer = trailer,
+                    quality = quality,
+                    rating = rating,
+                    poster = poster,
+                    banner = banner,
+                    providerName = providerName,
+                ).apply {
+                    this.watchHistory = watchHistory
+                }
+
+                "tv" -> TvShow(
+                    id = id,
+                    title = title.orEmpty(),
+                    overview = overview,
+                    released = released,
+                    runtime = runtime,
+                    trailer = trailer,
+                    quality = quality,
+                    rating = rating,
+                    poster = poster,
+                    banner = banner,
+                    providerName = providerName,
+                )
+
+                "episode" -> Episode(
+                    id = id,
+                    number = episodeNumber ?: 0,
+                    title = title,
+                    released = released,
+                    poster = poster,
+                    overview = overview,
+                    tvShow = tvShowId?.let {
+                        TvShow(
+                            id = it,
+                            title = tvShowTitle.orEmpty(),
+                            poster = tvShowPoster,
+                            banner = tvShowBanner,
+                            providerName = providerName,
+                        )
+                    },
+                    season = seasonId?.let {
+                        Season(
+                            id = it,
+                            number = seasonNumber ?: 0,
+                            title = seasonTitle.orEmpty(),
+                            poster = seasonPoster,
+                        )
+                    }
+                ).apply {
+                    this.watchHistory = watchHistory
+                }
+
+                else -> null
+            }
+        }
+
+        companion object {
+            fun from(item: AppAdapter.Item): CachedItem? {
+                return when (item) {
+                    is Movie -> CachedItem(
+                        type = "movie",
+                        id = item.id,
+                        title = item.title,
+                        overview = item.overview,
+                        released = item.released?.format("yyyy-MM-dd"),
+                        runtime = item.runtime,
+                        trailer = item.trailer,
+                        quality = item.quality,
+                        rating = item.rating,
+                        poster = item.poster,
+                        banner = item.banner,
+                        providerName = item.providerName,
+                        lastPlaybackPositionMillis = item.watchHistory?.lastPlaybackPositionMillis,
+                        durationMillis = item.watchHistory?.durationMillis,
+                        lastEngagementTimeUtcMillis = item.watchHistory?.lastEngagementTimeUtcMillis,
+                    )
+
+                    is TvShow -> CachedItem(
+                        type = "tv",
+                        id = item.id,
+                        title = item.title,
+                        overview = item.overview,
+                        released = item.released?.format("yyyy-MM-dd"),
+                        runtime = item.runtime,
+                        trailer = item.trailer,
+                        quality = item.quality,
+                        rating = item.rating,
+                        poster = item.poster,
+                        banner = item.banner,
+                        providerName = item.providerName,
+                    )
+
+                    is Episode -> CachedItem(
+                        type = "episode",
+                        id = item.id,
+                        title = item.title,
+                        overview = item.overview,
+                        released = item.released?.format("yyyy-MM-dd"),
+                        poster = item.poster,
+                        providerName = item.tvShow?.providerName,
+                        episodeNumber = item.number,
+                        tvShowId = item.tvShow?.id,
+                        tvShowTitle = item.tvShow?.title,
+                        tvShowPoster = item.tvShow?.poster,
+                        tvShowBanner = item.tvShow?.banner,
+                        seasonId = item.season?.id,
+                        seasonNumber = item.season?.number,
+                        seasonTitle = item.season?.title,
+                        seasonPoster = item.season?.poster,
+                        lastPlaybackPositionMillis = item.watchHistory?.lastPlaybackPositionMillis,
+                        durationMillis = item.watchHistory?.durationMillis,
+                        lastEngagementTimeUtcMillis = item.watchHistory?.lastEngagementTimeUtcMillis,
+                    )
+
+                    else -> null
+                }
+            }
+        }
+    }
+}

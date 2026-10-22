@@ -1,0 +1,313 @@
+package com.betterstreamflix.app.fragments.tv_show
+
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.navArgs
+import androidx.recyclerview.widget.RecyclerView
+import com.betterstreamflix.app.R
+import com.betterstreamflix.app.adapters.AppAdapter
+import com.betterstreamflix.app.database.AppDatabase
+import com.betterstreamflix.app.databinding.FragmentTvShowMobileBinding
+import com.betterstreamflix.app.models.Season
+import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.ui.DetailContentSignatures
+import com.betterstreamflix.app.ui.DetailHeaderController
+import com.betterstreamflix.app.ui.DetailLoadingErrorChrome
+import com.betterstreamflix.app.ui.DetailTab
+import com.betterstreamflix.app.ui.SpacingItemDecoration
+import com.betterstreamflix.app.utils.Http409CacheGuard
+import com.betterstreamflix.app.utils.ExpMotion
+import com.betterstreamflix.app.utils.viewModelsFactory
+import kotlinx.coroutines.launch
+
+class TvShowMobileFragment : Fragment() {
+
+    private val http409Guard = Http409CacheGuard()
+
+    private var _binding: FragmentTvShowMobileBinding? = null
+    private val binding get() = _binding!!
+
+    private val args by navArgs<TvShowMobileFragmentArgs>()
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
+    private val viewModel by viewModelsFactory {
+        TvShowViewModel(
+            id = args.id,
+            database = database,
+            fallbackPoster = args.poster,
+            fallbackBanner = args.banner,
+        )
+    }
+
+    private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (people/genre → back). */
+    private var detailListState: android.os.Parcelable? = null
+
+    private companion object {
+        const val KEY_DETAIL_LIST_STATE = "detail_list_state"
+    }
+    private var currentTvShow: TvShow? = null
+    // Must not touch navArgs during field init — Fragment ctor runs before
+    // arguments are attached (BETTERSTREAMFLIX-46 InstantiationException).
+    private var selectedTab: DetailTab = DetailTab.EPISODES
+
+    /** Season episode load UI state for the in-page Episodes tab. */
+    fun seasonEpisodeUi(): TvShowViewModel = viewModel
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val layoutId = R.layout.fragment_tv_show_mobile
+        val view = inflater.inflate(layoutId, container, false)
+        _binding = FragmentTvShowMobileBinding.bind(view)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        detailListState = detailListState ?: savedInstanceState?.let {
+            androidx.core.os.BundleCompat.getParcelable(
+                it, KEY_DETAIL_LIST_STATE, android.os.Parcelable::class.java,
+            )
+        }
+        if (args.openTab.equals("similar", ignoreCase = true)) {
+            selectedTab = DetailTab.SIMILAR
+        }
+        ExpMotion.enterScreen(binding.root)
+        DetailHeaderController.wireBack(binding.root)
+        DetailHeaderController.wireCast(this, binding.root)
+        appAdapter.onDetailTabSelectedListener = { tab ->
+            if (selectedTab != tab) {
+                selectedTab = tab
+                appAdapter.selectedDetailTab = tab
+                rebuildBody(scrollTabsToTop = true)
+            }
+        }
+        appAdapter.selectedDetailTab = selectedTab
+
+        initializeTvShow()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
+                when (state) {
+                    TvShowViewModel.State.Loading -> binding.isLoading.apply {
+                        ExpMotion.fadeInAndShow(root)
+                        com.betterstreamflix.app.utils.ExpPressEffects.showLoadingSkeleton(root, true)
+                        gIsLoadingRetry.visibility = View.GONE
+                    }
+                    is TvShowViewModel.State.SuccessLoading -> {
+                        displayTvShow(state.tvShow)
+                        ExpMotion.fadeOutAndHide(binding.isLoading.root)
+                    }
+                    is TvShowViewModel.State.FailedLoading -> {
+                        if (http409Guard.handle(requireContext(), state.error) { viewModel.getTvShow(args.id) }) {
+                                return@collect
+                            }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            showToast = true,
+                            onRetry = { viewModel.getTvShow(args.id) },
+                        )
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.seasonState.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { seasonState ->
+                when (seasonState) {
+                    is TvShowViewModel.SeasonState.SuccessLoading -> {
+                        val tvShow = currentTvShow ?: return@collect
+                        tvShow.seasons.firstOrNull { it.id == seasonState.season.id }
+                            ?.episodes = seasonState.episodes
+                        seasonState.season.episodes = seasonState.episodes
+                        // DiffUtil treats an unchanged show as the same row, so an empty
+                        // or failed fetch would leave the spinner up. Rebind the section.
+                        if (selectedTab == DetailTab.EPISODES) {
+                            refreshSeasonsRow()
+                        }
+                    }
+                    is TvShowViewModel.SeasonState.FailedLoading -> {
+                        if (selectedTab == DetailTab.EPISODES) {
+                            refreshSeasonsRow()
+                        }
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    override fun onPause() {
+        com.betterstreamflix.app.ui.TrailerPlaybackController.silenceAllActive()
+        super.onPause()
+    }
+
+    override fun onDestroyView() {
+        com.betterstreamflix.app.ui.TrailerPlaybackController.silenceAllActive()
+        com.betterstreamflix.app.ui.TrailerPlayPipeline.endSession()
+        com.betterstreamflix.app.ui.TrailerStreamCrossfade.clear()
+        com.betterstreamflix.app.player.PlayerCleanExit.clearHomeRestore()
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.rvTvShow)
+            detailListState = it.rvTvShow.layoutManager?.onSaveInstanceState()
+        }
+        _binding = null
+        super.onDestroyView()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = detailListState ?: _binding?.rvTvShow?.layoutManager?.onSaveInstanceState()
+        if (state != null) outState.putParcelable(KEY_DETAIL_LIST_STATE, state)
+    }
+
+
+    private var detailScrollOffset = 0
+
+    private fun initializeTvShow() {
+        detailScrollOffset = 0
+        DetailHeaderController.onScrolled(binding.root, 0)
+        binding.rvTvShow.apply {
+            adapter = appAdapter.apply {
+                stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+            }
+            addItemDecoration(
+                SpacingItemDecoration(0),
+            )
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    detailScrollOffset = (detailScrollOffset + dy).coerceAtLeast(0)
+                    DetailHeaderController.onScrolled(binding.root, detailScrollOffset)
+                }
+            })
+        }
+    }
+
+    /**
+     * Everything the detail list renders, except the list/favorite state. When only that
+     * changes we refresh the header icon instead of re-submitting and jumping the page.
+     */
+    private fun contentSignature(tvShow: TvShow) = DetailContentSignatures.tvShow(tvShow)
+
+    private var lastContentSignature: List<Any?>? = null
+
+    private fun displayTvShow(tvShow: TvShow) {
+        currentTvShow = tvShow
+        prefetchLogo(tvShow.logo)
+        DetailHeaderController.wireCast(this, binding.root)
+        restoreDetailScrollIfPending()
+
+        val signature = contentSignature(tvShow)
+        if (lastContentSignature == signature) {
+            // Favorite-only / list-state refresh: keep the current list to avoid scroll jump.
+            binding.rvTvShow.post {
+                if (!isAdded) return@post
+                DetailHeaderController.bindTvShow(this, binding.root, tvShow)
+            }
+            return
+        }
+        lastContentSignature = signature
+        // Preserve the user's tab across signature-driven rebuilds (e.g. episode fills).
+        selectedTab = when {
+            selectedTab == DetailTab.EPISODES && tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
+            selectedTab == DetailTab.SIMILAR && tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+            selectedTab == DetailTab.TRAILER -> DetailTab.TRAILER
+            selectedTab == DetailTab.ABOUT -> DetailTab.ABOUT
+            tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
+            tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+            else -> DetailTab.ABOUT
+        }
+        appAdapter.selectedDetailTab = selectedTab
+        rebuildBody(scrollTabsToTop = false)
+        // Bind after body submit so the hero ImageView exists in the RecyclerView item.
+        binding.rvTvShow.post {
+            if (!isAdded) return@post
+            DetailHeaderController.bindTvShow(this, binding.root, tvShow)
+        }
+    }
+
+    private fun prefetchLogo(logoUrl: String?) {
+        com.betterstreamflix.app.logo.TmdbLogoGlide.prefetch(
+            context = requireContext(),
+            logoUrl = logoUrl,
+            wifiOnly = true,
+        )
+    }
+
+    fun loadSeasonEpisodes(season: Season) {
+        val tvShow = currentTvShow ?: return
+        viewModel.loadSeasonEpisodes(tvShow, season)
+    }
+
+    private fun refreshSeasonsRow() {
+        val index = appAdapter.items.indexOfFirst { item ->
+            item is TvShow &&
+                runCatching { item.itemType }.getOrNull() == AppAdapter.Type.TV_SHOW_SEASONS_MOBILE
+        }
+        if (index >= 0) appAdapter.notifyItemChanged(index)
+    }
+
+    private fun rebuildBody(scrollTabsToTop: Boolean) {
+        val tvShow = currentTvShow ?: return
+        if (selectedTab != DetailTab.TRAILER) {
+            com.betterstreamflix.app.ui.TrailerPlaybackController.silenceAllActive()
+        }
+        val body: List<AppAdapter.Item> = when (selectedTab) {
+            DetailTab.EPISODES -> listOfNotNull(
+                tvShow.takeIf { it.seasons.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
+            )
+            DetailTab.SIMILAR -> listOf(
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
+            )
+            DetailTab.TRAILER -> listOf(
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
+            )
+            DetailTab.ABOUT -> aboutBody(tvShow)
+        }
+        appAdapter.submitList(
+            listOfNotNull(
+                tvShow.apply { itemType = AppAdapter.Type.TV_SHOW_MOBILE },
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TABS_MOBILE },
+            ) + body,
+        )
+        if (scrollTabsToTop) {
+            binding.rvTvShow.post { binding.rvTvShow.smoothScrollToPosition(1) }
+        }
+    }
+
+    /**
+     * Restores the pre-navigation scroll offset once. Runs before the content
+     * signature check — the adapter survives view recreation with its items, so
+     * the offset applies even when displayTvShow skips the rebind.
+     */
+    private fun restoreDetailScrollIfPending() {
+        val state = detailListState ?: return
+        detailListState = null
+        binding.rvTvShow.post {
+            _binding?.rvTvShow?.layoutManager?.onRestoreInstanceState(state)
+        }
+    }
+
+    private fun aboutBody(tvShow: TvShow): List<AppAdapter.Item> = buildList {
+        add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE })
+        if (tvShow.directors.isNotEmpty()) {
+            add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_DIRECTORS_MOBILE })
+        }
+        if (tvShow.cast.isNotEmpty()) {
+            add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_CAST_MOBILE })
+        }
+    }
+}

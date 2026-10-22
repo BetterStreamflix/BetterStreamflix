@@ -114,7 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pluto TV (all regions), MAGISTV/CineCity, and LatAm sports mirrors: fast `listLiveChannels` from M3U/HTML cache (no slow page walk)
 - SportsBite home rails: “Live now” + “Upcoming / popular”; guide rows carry EPG-lite now/next from schedule metadata
 - LatAm sports extractors: broader core.php / ksdjug / nested-embed + clappr/`<source>` m3u8 matching
-- CI: signed release APKs only on `main` / tags / manual dispatch (not every `dskja/**` push); parallel matrix + Gradle cache; debug APK workflow skips markdown-only changes
+- CI: signed release APKs only on `main` / tags / manual dispatch (not every `wip/**` push); parallel matrix + Gradle cache; debug APK workflow skips markdown-only changes
 - Docs: README Development section explains fast local debug loop vs CI APKs; add `scripts/build-debug.sh`
 
 ### Added
@@ -292,7 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.2] - 2026-10-11
 
 ### Fixed
-- In-app updater now checks `BetterStreamflix/BetterStreamflix` (was dead `dskja/BetterStreamflix` 404)
+- In-app updater now checks `BetterStreamflix/BetterStreamflix` (was dead `BetterStreamflix/BetterStreamflix` 404)
 - DoodStream / Playmogo playback: cookie jar + browser/pass_md5 headers + iOS-style playback headers/token expiry (upstream `2825486c`; fork extractor timeouts kept)
 - Vidzee: try direct stream API (`core.vidzee.wtf`) first with multi-backend failover, fall back to legacy encrypted `/api/server` path (upstream `8a7119ce`; fork timeouts kept)
 
@@ -312,7 +312,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Patreon support link: https://www.patreon.com/BetterStreamflix (Settings, About, README, GitHub FUNDING.yml)
 - Configurable download storage location (internal / app-external / public Movies)
 - Chromecast queue, subtitle toggle, keep-screen-awake option, richer cast metadata
-- APK CI artifacts on every push to `main` / `dskja/**` (no GitHub Release unless tagged)
+- APK CI artifacts on every push to `main` / `wip/**` (no GitHub Release unless tagged)
 - Re-enabled five previously unregistered providers whose sites are live again: StreamingIta (it), AnyMovie (en), HiAnime (en), 1Jour1Film (fr), AfterDark (fr)
 - Experimental mobile design rebuilt on Material 3: `Theme.Material3.Dark` shell with dynamic wallpaper color on Android 12+ (static M3 dark scheme below) covering the entire mobile surface — home, details, seasons/episodes, genres, people, downloads, player, dialogs and loading states
 - Poster-derived ambient glow behind home hero and detail posters (Palette API), floating tonal nav pill, shimmer skeleton loading, hero scroll parallax, press-scale and ripple feedback on cards (still off-by-default behind the experimental toggle)
@@ -393,8 +393,8 @@ covers everything done on top of that upstream baseline.
 
 ### Changed
 - App version set to **1.1.0** (`versionCode` 10100)
-- Public rebrand to **BetterStreamflix** (maintainer **dskja**): app name, deep links `betterstreamflix://`, in-app updater repo, Telegram `@BetterStreamflix`, About / README credits (`#77`)
-- Mass-rename package / namespace to `com.dskja.betterstreamflix` (`StreamFlixApp` → `BetterStreamflixApp`), BS / brand icons (`#78`)
+- Public rebrand to **BetterStreamflix** (maintainer **BetterStreamflix**): app name, deep links `betterstreamflix://`, in-app updater repo, Telegram `@BetterStreamflix`, About / README credits (`#77`)
+- Mass-rename package / namespace to `com.betterstreamflix.app` (`StreamFlixApp` → `BetterStreamflixApp`), BS / brand icons (`#78`)
 - SerienStream default domain: dead `s.to` → `serienstream.to` ([serien.domains](https://serien.domains))
 - SerienStream bypass Continue gated on clearance cookies (or resolved hoster URL); TV captcha QR usable from phones (`#32`)
 - TV/mobile playback: decoder fallback + software-decoder retry; safer mid-play failover on TV

@@ -1,0 +1,41 @@
+package com.betterstreamflix.app.download
+
+/**
+ * Where offline Media3 downloads and sidecar files are stored.
+ *
+ * Changing location does not migrate existing cache bytes. When downloads already
+ * exist, [StreamflixDownloadManager.relocate] must be called with
+ * `wipeAndRebuild = true` after user confirmation — otherwise the manager refuses
+ * to switch and leave orphaned Media3/Room state. Wiping marks completed/active
+ * Room rows as [DownloadErrorCode.STORAGE_RELOCATED] so the user can re-download.
+ */
+enum class DownloadStorageLocation {
+    /** App-private internal storage (default, most secure). */
+    INTERNAL,
+
+    /** App-specific external storage (Android/data/… — visible in Files on many devices). */
+    APP_EXTERNAL,
+
+    /** Shared Movies/BetterStreamflix folder (easier to find; may need legacy permission on old APIs). */
+    PUBLIC_MOVIES,
+
+    /**
+     * Removable / SD card app-specific folder via [android.content.Context.getExternalFilesDirs].
+     * Preferred path for Media3 [androidx.media3.datasource.cache.SimpleCache] on SD.
+     */
+    REMOVABLE,
+
+    /**
+     * User-picked folder via Storage Access Framework (tree URI).
+     * Media3 cache uses the matching removable app dir when available; the tree URI is
+     * persisted for display, progressive exports, and permission continuity.
+     */
+    CUSTOM_FOLDER;
+
+    companion object {
+        fun fromKey(raw: String?): DownloadStorageLocation {
+            val key = raw?.trim()?.uppercase().orEmpty()
+            return entries.firstOrNull { it.name == key } ?: INTERNAL
+        }
+    }
+}
