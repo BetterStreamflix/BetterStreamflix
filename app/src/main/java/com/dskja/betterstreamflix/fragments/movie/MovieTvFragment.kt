@@ -39,6 +39,15 @@ class MovieTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var watchFocusedOnce = false
+
+    /** Vertical scroll state kept across view recreation (back-nav). */
+    private var detailListState: android.os.Parcelable? = null
+    /** True after a back-nav restore — suppresses the pos-0 watch-focus jump. */
+    private var detailScrollRestored = false
+
+    private companion object {
+        const val KEY_DETAIL_LIST_STATE = "detail_list_state"
+    }
     private var lastContentSignature: List<Any?>? = null
     private var lastBannerKey: String? = null
 
@@ -53,6 +62,11 @@ class MovieTvFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        detailListState = detailListState ?: savedInstanceState?.let {
+            androidx.core.os.BundleCompat.getParcelable(
+                it, KEY_DETAIL_LIST_STATE, android.os.Parcelable::class.java,
+            )
+        }
 
         initializeMovie()
 
@@ -99,11 +113,30 @@ class MovieTvFragment : Fragment() {
         com.dskja.betterstreamflix.ui.TrailerPlayPipeline.endSession()
         com.dskja.betterstreamflix.ui.TrailerStreamCrossfade.clear()
         com.dskja.betterstreamflix.player.PlayerCleanExit.clearHomeRestore()
-        _binding?.let { appAdapter.onSaveInstanceState(it.vgvMovie) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.vgvMovie)
+            detailListState = it.vgvMovie.layoutManager?.onSaveInstanceState()
+        }
         lastContentSignature = null
         lastBannerKey = null
         _binding = null
         super.onDestroyView()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = detailListState ?: _binding?.vgvMovie?.layoutManager?.onSaveInstanceState()
+        if (state != null) outState.putParcelable(KEY_DETAIL_LIST_STATE, state)
+    }
+
+    /** Restores the pre-navigation scroll offset once and parks the pos-0 focus jump. */
+    private fun restoreDetailScrollIfPending() {
+        val state = detailListState ?: return
+        detailListState = null
+        detailScrollRestored = true
+        binding.vgvMovie.post {
+            _binding?.vgvMovie?.layoutManager?.onRestoreInstanceState(state)
+        }
     }
 
     private fun initializeMovie() {
@@ -133,6 +166,7 @@ class MovieTvFragment : Fragment() {
                 ?: return@post
             // After a progress refresh the list is rebuilt and focus is gone.
             // Keep an existing focus (cast row, overview) where the user left it.
+            if (!force && detailScrollRestored) return@post
             if (!force && watchFocusedOnce && binding.vgvMovie.findFocus() != null) return@post
             watch.requestFocus()
             watchFocusedOnce = true
@@ -140,6 +174,7 @@ class MovieTvFragment : Fragment() {
     }
 
     private fun displayMovie(movie: Movie) {
+        restoreDetailScrollIfPending()
         val signature = DetailContentSignatures.movie(movie)
         if (lastContentSignature == signature) {
             // Favorite-only / list-state refresh: hero CTA already updated in place.

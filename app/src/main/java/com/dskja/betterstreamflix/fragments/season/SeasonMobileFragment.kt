@@ -59,6 +59,9 @@ class SeasonMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (episode → back). */
+    private var seasonListState: android.os.Parcelable? = null
     private var loadedEpisodes: List<Episode> = emptyList()
 
     override fun onCreateView(
@@ -136,6 +139,7 @@ class SeasonMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        seasonListState = _binding?.rvEpisodes?.layoutManager?.onSaveInstanceState()
         super.onDestroyView()
         _binding = null
     }
@@ -290,6 +294,12 @@ class SeasonMobileFragment : Fragment() {
         appAdapter.submitList(episodes.onEach { episode ->
             episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
         })
+        seasonListState?.let { state ->
+            binding.rvEpisodes.post {
+                _binding?.rvEpisodes?.layoutManager?.onRestoreInstanceState(state)
+            }
+            seasonListState = null
+        }
         if (episodes.isNotEmpty()) {
             binding.btnSeasonDownload.text = getString(
                 R.string.detail_download_season_count,

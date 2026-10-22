@@ -53,6 +53,10 @@ class SearchMobileFragment : Fragment() {
 
     private var appAdapter = AppAdapter()
 
+    /** Scroll state + owning query kept across view recreation (detail → back). */
+    private var searchListState: android.os.Parcelable? = null
+    private var searchListStateQuery: String? = null
+
     private lateinit var voiceHelper: VoiceRecognitionHelper
 
     private val voicePermissionLauncher =
@@ -198,8 +202,25 @@ class SearchMobileFragment : Fragment() {
         if (::voiceHelper.isInitialized) {
             runCatching { voiceHelper.stopRecognition() }
         }
+        _binding?.let {
+            searchListState = it.rvSearch.layoutManager?.onSaveInstanceState()
+            searchListStateQuery = viewModel.query
+        }
         super.onDestroyView()
         _binding = null
+    }
+
+    /** Restores the result scroll position once, only while the same query owns the list. */
+    private fun restoreSearchListIfPending() {
+        val state = searchListState ?: return
+        if (viewModel.query != searchListStateQuery) {
+            searchListState = null
+            return
+        }
+        binding.rvSearch.post {
+            _binding?.rvSearch?.layoutManager?.onRestoreInstanceState(state)
+        }
+        searchListState = null
     }
 
     private fun retryLastSearch() {
@@ -714,6 +735,7 @@ class SearchMobileFragment : Fragment() {
             }
         }
         appAdapter.submitList(rows)
+        restoreSearchListIfPending()
 
         if (hasMore && viewModel.query.isNotBlank() && rows.size < SearchMobileRows.MAX_LOCAL) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
@@ -729,6 +751,7 @@ class SearchMobileFragment : Fragment() {
             "$name - $count $resultText"
         }
         appAdapter.submitList(plan.items)
+        restoreSearchListIfPending()
         appAdapter.setOnLoadMoreListener(null)
 
         val isEmpty = !plan.stillLoading && !plan.hasHits && viewModel.query.isNotBlank()

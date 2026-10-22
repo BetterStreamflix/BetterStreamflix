@@ -49,6 +49,15 @@ class TvShowTvFragment : Fragment() {
     private var lastContentSignature: List<Any?>? = null
     private var lastBannerKey: String? = null
 
+    /** Vertical scroll state kept across view recreation (back-nav). */
+    private var detailListState: android.os.Parcelable? = null
+    /** True after a back-nav restore — suppresses the pos-0 watch-focus jump. */
+    private var detailScrollRestored = false
+
+    private companion object {
+        const val KEY_DETAIL_LIST_STATE = "detail_list_state"
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -60,6 +69,11 @@ class TvShowTvFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        detailListState = detailListState ?: savedInstanceState?.let {
+            androidx.core.os.BundleCompat.getParcelable(
+                it, KEY_DETAIL_LIST_STATE, android.os.Parcelable::class.java,
+            )
+        }
 
         initializeTvShow()
 
@@ -104,11 +118,30 @@ class TvShowTvFragment : Fragment() {
         com.dskja.betterstreamflix.ui.TrailerPlayPipeline.endSession()
         com.dskja.betterstreamflix.ui.TrailerStreamCrossfade.clear()
         com.dskja.betterstreamflix.player.PlayerCleanExit.clearHomeRestore()
-        _binding?.let { appAdapter.onSaveInstanceState(it.vgvTvShow) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.vgvTvShow)
+            detailListState = it.vgvTvShow.layoutManager?.onSaveInstanceState()
+        }
         lastContentSignature = null
         lastBannerKey = null
         _binding = null
         super.onDestroyView()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = detailListState ?: _binding?.vgvTvShow?.layoutManager?.onSaveInstanceState()
+        if (state != null) outState.putParcelable(KEY_DETAIL_LIST_STATE, state)
+    }
+
+    /** Restores the pre-navigation scroll offset once and parks the pos-0 focus jump. */
+    private fun restoreDetailScrollIfPending() {
+        val state = detailListState ?: return
+        detailListState = null
+        detailScrollRestored = true
+        binding.vgvTvShow.post {
+            _binding?.vgvTvShow?.layoutManager?.onRestoreInstanceState(state)
+        }
     }
 
     private fun initializeTvShow() {
@@ -138,6 +171,7 @@ class TvShowTvFragment : Fragment() {
                 ?: return@post
             // After a progress refresh the list is rebuilt and focus is gone.
             // Keep an existing focus (seasons, cast) where the user left it.
+            if (!force && detailScrollRestored) return@post
             if (!force && watchFocusedOnce && binding.vgvTvShow.findFocus() != null) return@post
             watch.requestFocus()
             watchFocusedOnce = true
@@ -145,6 +179,7 @@ class TvShowTvFragment : Fragment() {
     }
 
     private fun displayTvShow(tvShow: TvShow) {
+        restoreDetailScrollIfPending()
         val signature = DetailContentSignatures.tvShow(tvShow)
         if (lastContentSignature == signature) {
             // Favorite / watching-only refresh: hero CTA already updated in place.

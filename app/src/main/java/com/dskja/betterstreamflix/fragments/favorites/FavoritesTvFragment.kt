@@ -37,6 +37,9 @@ class FavoritesTvFragment : Fragment() {
     private var _binding: FragmentFavoritesTvBinding? = null
     private val binding get() = _binding!!
     private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (detail → back). */
+    private var favoritesListState: android.os.Parcelable? = null
     private var rearrangeMode = false
     private val selectedItems = mutableSetOf<String>()
     private var moveSelectionMode = false
@@ -388,6 +391,12 @@ class FavoritesTvFragment : Fragment() {
             onCtaClick = { runCatching { findNavController().navigate(R.id.search) } },
         )
         appAdapter.submitList(gridItems)
+        favoritesListState?.let { state ->
+            binding.rvFavorites.post {
+                _binding?.rvFavorites?.layoutManager?.onRestoreInstanceState(state)
+            }
+            favoritesListState = null
+        }
     }
 
     private fun showSortDialog() {
@@ -425,6 +434,7 @@ class FavoritesTvFragment : Fragment() {
         cancelPendingLongPress()
         setRearrangeMode(false)
         appAdapter.onSaveInstanceState(binding.rvFavorites)
+        favoritesListState = binding.rvFavorites.layoutManager?.onSaveInstanceState()
         _binding = null
         super.onDestroyView()
     }

@@ -46,6 +46,9 @@ class GenreMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
 
+    /** Vertical scroll state kept across view recreation (detail → back). */
+    private var gridListState: android.os.Parcelable? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -126,6 +129,7 @@ class GenreMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        gridListState = _binding?.rvGenre?.layoutManager?.onSaveInstanceState()
         super.onDestroyView()
         _binding = null
     }
@@ -218,6 +222,12 @@ class GenreMobileFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
             }
         })
+        gridListState?.let { state ->
+            binding.rvGenre.post {
+                _binding?.rvGenre?.layoutManager?.onRestoreInstanceState(state)
+            }
+            gridListState = null
+        }
 
         val isEmpty = genre.shows.isEmpty()
         ExpEmptyChrome.bind(

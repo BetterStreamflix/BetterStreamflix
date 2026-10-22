@@ -62,6 +62,10 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
             if (::voiceHelper.isInitialized) voiceHelper.onPermissionResult(granted)
         }
 
+    /** Scroll state + owning query kept across view recreation (detail → back). */
+    private var searchListState: android.os.Parcelable? = null
+    private var searchListStateQuery: String? = null
+
     private val appAdapter by lazy {
         AppAdapter().apply {
             onMovieClickListener = { movie ->
@@ -207,8 +211,25 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         if (::voiceHelper.isInitialized) {
             runCatching { voiceHelper.stopRecognition() }
         }
+        _binding?.let {
+            searchListState = it.vgvSearch.layoutManager?.onSaveInstanceState()
+            searchListStateQuery = viewModel.query
+        }
         super.onDestroyView()
         _binding = null
+    }
+
+    /** Restores the result scroll position once, only while the same query owns the list. */
+    private fun restoreSearchListIfPending() {
+        val state = searchListState ?: return
+        if (viewModel.query != searchListStateQuery) {
+            searchListState = null
+            return
+        }
+        _binding?.vgvSearch?.post {
+            _binding?.vgvSearch?.layoutManager?.onRestoreInstanceState(state)
+        }
+        searchListState = null
     }
 
     /** TV Sidekick Phone keyboard — fill Search and run. */
@@ -809,6 +830,7 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
             if (applied) gridConfiguredForColumns = columns
         }
         appAdapter.submitList(items)
+        restoreSearchListIfPending()
         grid.visibility = View.VISIBLE
     }
 

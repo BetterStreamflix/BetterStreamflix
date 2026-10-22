@@ -53,6 +53,9 @@ class PeopleMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
 
+    /** Vertical scroll state kept across view recreation (detail → back). */
+    private var gridListState: android.os.Parcelable? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -141,6 +144,7 @@ class PeopleMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        gridListState = _binding?.rvPeople?.layoutManager?.onSaveInstanceState()
         super.onDestroyView()
         _binding = null
     }
@@ -324,6 +328,12 @@ class PeopleMobileFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
             }
         })
+        gridListState?.let { state ->
+            binding.rvPeople.post {
+                _binding?.rvPeople?.layoutManager?.onRestoreInstanceState(state)
+            }
+            gridListState = null
+        }
 
         ExpEmptyChrome.bind(
             emptyView = binding.root.findViewById(R.id.tv_people_filmography_empty),

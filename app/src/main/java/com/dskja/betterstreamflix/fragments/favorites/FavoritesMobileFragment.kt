@@ -41,6 +41,9 @@ class FavoritesMobileFragment : Fragment() {
     private var _binding: FragmentFavoritesMobileBinding? = null
     private val binding get() = _binding!!
     private val appAdapter = AppAdapter()
+
+    /** Vertical scroll state kept across view recreation (detail → back). */
+    private var favoritesListState: android.os.Parcelable? = null
     private var rearrangeMode = false
     private val selectedItems = mutableSetOf<String>()
     private val providerName get() = UserPreferences.currentProvider?.name.orEmpty()
@@ -428,6 +431,12 @@ class FavoritesMobileFragment : Fragment() {
         binding.btnFavoritesSort.isVisible = !empty && !rearrangeMode
         if (empty && rearrangeMode) setRearrangeMode(false)
         appAdapter.submitList(gridItems)
+        favoritesListState?.let { state ->
+            binding.rvFavorites.post {
+                _binding?.rvFavorites?.layoutManager?.onRestoreInstanceState(state)
+            }
+            favoritesListState = null
+        }
     }
 
     private fun showSortDialog() {
@@ -462,6 +471,7 @@ class FavoritesMobileFragment : Fragment() {
         rearrangeBackCallback.isEnabled = false
         setRearrangeMode(false)
         appAdapter.onSaveInstanceState(binding.rvFavorites)
+        favoritesListState = binding.rvFavorites.layoutManager?.onSaveInstanceState()
         _binding = null
         super.onDestroyView()
     }

@@ -49,6 +49,11 @@ class HomeMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+
+    /** Vertical rv_home scroll state, kept across view recreation (back-nav). */
+    private var homeListState: android.os.Parcelable? = null
+    /** Provider+profile owning [homeListState]; a swap discards the stale offset. */
+    private var homeListStateOwner: String? = null
     private var homeBindSignature: String? = null
 
     val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
@@ -72,6 +77,15 @@ class HomeMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        savedInstanceState?.let {
+            homeListState = homeListState ?: androidx.core.os.BundleCompat.getParcelable(
+                it,
+                KEY_HOME_LIST_STATE,
+                android.os.Parcelable::class.java,
+            )
+            homeListStateOwner = homeListStateOwner ?: it.getString(KEY_HOME_LIST_OWNER)
+        }
 
         initializeHome()
 
@@ -183,9 +197,41 @@ class HomeMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        _binding?.let { appAdapter.onSaveInstanceState(it.rvHome) }
+        _binding?.let {
+            appAdapter.onSaveInstanceState(it.rvHome)
+            homeListState = it.rvHome.layoutManager?.onSaveInstanceState()
+            homeListStateOwner = homeDataOwner()
+        }
         _binding = null
         super.onDestroyView()
+    }
+
+    private fun homeDataOwner(): String =
+        (UserPreferences.currentProvider?.name ?: "") +
+            "|" + com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Keep the offset through process death — onSaveInstanceState precedes
+        // onDestroyView, so read the live LayoutManager state with the field fallback.
+        val state = homeListState ?: _binding?.rvHome?.layoutManager?.onSaveInstanceState()
+        if (state != null) {
+            outState.putParcelable(KEY_HOME_LIST_STATE, state)
+            outState.putString(KEY_HOME_LIST_OWNER, homeListStateOwner ?: homeDataOwner())
+        }
+    }
+
+    /**
+     * Restores the pre-navigation scroll offset once, only while the same
+     * provider/profile owns the catalog — a dataset swap falls back to top.
+     */
+    private fun restoreHomeScrollIfPending() {
+        val state = homeListState ?: return
+        homeListState = null
+        if (homeListStateOwner != homeDataOwner()) return
+        binding.rvHome.post {
+            _binding?.rvHome?.layoutManager?.onRestoreInstanceState(state)
+        }
     }
 
     private fun initializeHome() {
@@ -540,6 +586,10 @@ class HomeMobileFragment : Fragment() {
                 else -> AppAdapter.Type.CATEGORY_MOBILE_ITEM
             }
         }
+        // Restore before the unchanged-check: the adapter keeps its items across
+        // view recreation, so the offset can be re-applied even when the dataset
+        // signature skips the rebind below.
+        restoreHomeScrollIfPending()
         if (homeUnchanged(visibleCategories, watchlistDigestEpisodes)) return
 
         // Stamp SWIPER types only on the isolated FEATURED clones — never on
@@ -833,5 +883,10 @@ class HomeMobileFragment : Fragment() {
                 ExpAmbientGlow.applyColor(primary, glow)
             }
         }
+    }
+
+    private companion object {
+        const val KEY_HOME_LIST_STATE = "home_list_state"
+        const val KEY_HOME_LIST_OWNER = "home_list_owner"
     }
 }
