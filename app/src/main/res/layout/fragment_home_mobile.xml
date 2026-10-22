@@ -18,20 +18,26 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_home"
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/srl_home"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:clipToPadding="false"
-        android:orientation="vertical"
-        android:paddingTop="0dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:itemCount="1"
-        tools:listitem="@layout/content_category_swiper_mobile" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_home"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:orientation="vertical"
+            android:paddingTop="0dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:itemCount="1"
+            tools:listitem="@layout/content_category_swiper_mobile" />
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <include
         android:id="@+id/is_loading"

@@ -75,6 +75,20 @@ class HomeMobileFragment : Fragment() {
 
         initializeHome()
 
+        binding.srlHome.apply {
+            setColorSchemeColors(
+                androidx.core.content.ContextCompat.getColor(
+                    requireContext(), R.color.profile_accent,
+                ),
+            )
+            setProgressBackgroundColorSchemeColor(
+                androidx.core.content.ContextCompat.getColor(
+                    requireContext(), R.color.cinema_elevated,
+                ),
+            )
+            setOnRefreshListener { viewModel.getHome() }
+        }
+
         // Provider changes: ViewModel.getHome is the single caller; fragment only refreshes chrome.
         viewLifecycleOwner.lifecycleScope.launch {
             ProviderChangeNotifier.providerChangeFlow.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect {
@@ -92,11 +106,13 @@ class HomeMobileFragment : Fragment() {
                         hideCatalogWarning()
                     }
                     is HomeViewModel.State.SuccessLoading -> {
+                        binding.srlHome.isRefreshing = false
                         displayHome(state.categories, state.watchlistDigestEpisodes)
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                         showCatalogWarning(state.providerWarning)
                     }
                     is HomeViewModel.State.FailedLoading -> {
+                        binding.srlHome.isRefreshing = false
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
                                 return@collect
                             }
