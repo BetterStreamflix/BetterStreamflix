@@ -184,18 +184,23 @@ class TvShowViewModel(
                             }
                             ?: state.tvShow.seasons)
                             .sortedWith(::compareSeasonsForDisplay),
-                        recommendations = state.tvShow.recommendations.map { show ->
-                            when (show) {
-                                is Movie -> moviesById[show.id]
-                                    ?.takeIf { !show.isSame(it) }
-                                    ?.let { show.copy().merge(it) }
-                                    ?: show
-                                is TvShow -> tvShowsById[show.id]
-                                    ?.takeIf { !show.isSame(it) }
-                                    ?.let { show.copy().merge(it) }
-                                    ?: show
-                            }
-                        },
+                        recommendations = com.dskja.betterstreamflix.home.SeriesFastForward
+                            .filterTasteHidden(
+                                com.dskja.betterstreamflix.BetterStreamflixApp.instance
+                                    .applicationContext,
+                                state.tvShow.recommendations.map { show ->
+                                    when (show) {
+                                        is Movie -> moviesById[show.id]
+                                            ?.takeIf { !show.isSame(it) }
+                                            ?.let { show.copy().merge(it) }
+                                            ?: show
+                                        is TvShow -> tvShowsById[show.id]
+                                            ?.takeIf { !show.isSame(it) }
+                                            ?.let { show.copy().merge(it) }
+                                            ?: show
+                                    }
+                                },
+                            ),
                     ).also { tvShow ->
                         tvShowDb?.let { tvShow.merge(it) }
                     }
