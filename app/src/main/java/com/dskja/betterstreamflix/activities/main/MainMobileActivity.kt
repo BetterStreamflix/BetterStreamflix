@@ -268,6 +268,17 @@ class MainMobileActivity : FragmentActivity() {
         viewModel.checkUpdate()
 
         binding.bnvMain.setupWithNavController(navController)
+        // Downloads tab badge: live count of queued/active downloads.
+        lifecycleScope.launch {
+            com.dskja.betterstreamflix.download.OfflineBadgeStore
+                .activeKeys(this@MainMobileActivity)
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { keys ->
+                    val badge = binding.bnvMain.getOrCreateBadge(R.id.downloads)
+                    badge.isVisible = keys.isNotEmpty()
+                    if (keys.isNotEmpty()) badge.number = keys.size.coerceAtMost(99)
+                }
+        }
         if (ExperimentalMobileDesign.enabled()) {
             with(ExpPressEffects) { binding.btnMainSearch.applyExpPress() }
             binding.bnvMain.setOnItemReselectedListener {
