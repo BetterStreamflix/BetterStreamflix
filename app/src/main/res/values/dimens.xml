@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="providers_spacing">20dp</dimen>
-    <dimen name="search_spacing">16dp</dimen>
-    <dimen name="home_spacing">10dp</dimen>
     <dimen name="movies_spacing">10dp</dimen>
     <dimen name="tv_shows_spacing">10dp</dimen>
-    <dimen name="genre_spacing">16dp</dimen>
     <dimen name="detail_tv_item_spacing">80dp</dimen>
 
     <!-- Mobile detail hero — logo in the fade; primary body enters first viewport. -->
@@ -20,14 +17,11 @@
 
     <dimen name="season_episodes_spacing">30dp</dimen>
     <!-- Leanback season HGV fixed row height (poster + capped overview + download). -->
-    <dimen name="season_episode_row_height">460dp</dimen>
 
     <!-- Featured full-bleed hero height (phone default). -->
     <dimen name="home_featured_card_height">580dp</dimen>
 
     <!-- TV DPAD focus ring — thickened under high-contrast overlay via theme styles. -->
-    <dimen name="tv_focus_stroke_width">4dp</dimen>
-    <dimen name="tv_focus_stroke_width_hc">6dp</dimen>
 
     <!-- Shared Cinema Ink corner radii (Featured / Detail high-traffic drawables). -->
     <dimen name="cinema_radius_sm">10dp</dimen>
@@ -44,7 +38,6 @@
     <!-- TV shelf alias; values-tv overrides. Mobile layouts should not reference this. -->
     <dimen name="tv_shelf_poster_height">240dp</dimen>
     <dimen name="tv_ambient_continue_strip_height">304dp</dimen>
-    <dimen name="tv_focus_stroke_width_compact">3dp</dimen>
     <dimen name="tv_activated_stroke_width">5dp</dimen>
     <dimen name="player_settings_mobile_max_width">2000dp</dimen>
 </resources>
