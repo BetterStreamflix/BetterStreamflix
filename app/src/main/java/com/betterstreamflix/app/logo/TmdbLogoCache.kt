@@ -14,6 +14,7 @@ import kotlinx.coroutines.CompletableDeferred
 object TmdbLogoCache {
 
     private const val DISK_PREFIX = "logo|"
+    private const val BLACKLIST_PREFIX = "bl|"
     private const val META_VERSION = "meta_version"
 
     private val memory = object : LinkedHashMap<String, TmdbLogoPicker.CacheEntry>(
@@ -49,6 +50,23 @@ object TmdbLogoCache {
         if (stored != LogoConstants.DISK_CACHE_VERSION) {
             p.edit().clear().putInt(META_VERSION, LogoConstants.DISK_CACHE_VERSION).apply()
         }
+        // Hydrate persisted decode-fail blacklist so trusted-broken logo URLs stay
+        // suppressed across restarts; prune anything past its TTL on the way in.
+        val now = System.currentTimeMillis()
+        val prune = mutableListOf<String>()
+        p.all.forEach { (k, v) ->
+            if (!k.startsWith(BLACKLIST_PREFIX) || v !is Long) return@forEach
+            if (now - v > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
+                prune.add(k)
+            } else {
+                failBlacklist[k.removePrefix(BLACKLIST_PREFIX)] = v
+            }
+        }
+        if (prune.isNotEmpty()) {
+            val edits = p.edit()
+            prune.forEach { edits.remove(it) }
+            edits.apply()
+        }
     }
 
     fun configureTtls(missTtlMs: Long? = null, hitTtlMs: Long? = null) {
@@ -70,6 +88,7 @@ object TmdbLogoCache {
         val identity = ArtworkUrls.logoFileIdentity(url)
         if (identity.isEmpty()) return
         failBlacklist[identity] = nowMs
+        prefs?.edit()?.putLong(BLACKLIST_PREFIX + identity, nowMs)?.apply()
         TmdbLogoTelemetry.recordFailBlacklist()
     }
 
@@ -78,7 +97,7 @@ object TmdbLogoCache {
         if (identity.isEmpty()) return false
         val at = failBlacklist[identity] ?: return false
         if (nowMs - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
-            failBlacklist.remove(identity)
+            evictBlacklist(identity)
             return false
         }
         return true
@@ -92,15 +111,22 @@ object TmdbLogoCache {
         if (basename.isEmpty()) return false
         val needle = "/$basename"
         val iterator = failBlacklist.entries.iterator()
+        val expired = mutableListOf<String>()
         while (iterator.hasNext()) {
             val (id, at) = iterator.next()
             if (nowMs - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
-                iterator.remove()
+                expired.add(id)
                 continue
             }
             if (id.endsWith(needle)) return true
         }
+        expired.forEach { evictBlacklist(it) }
         return false
+    }
+
+    private fun evictBlacklist(identity: String) {
+        failBlacklist.remove(identity)
+        prefs?.edit()?.remove(BLACKLIST_PREFIX + identity)?.apply()
     }
 
     fun invalidateKey(cacheKey: String) {
