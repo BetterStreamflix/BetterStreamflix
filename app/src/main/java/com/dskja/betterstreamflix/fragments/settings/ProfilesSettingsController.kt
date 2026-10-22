@@ -519,8 +519,7 @@ object ProfilesSettingsController {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    else ExpDialogChrome.polishButtons(dialog)
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }
@@ -561,13 +560,10 @@ object ProfilesSettingsController {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        with(ExpPressEffects) { input.applyExpPress() }
-                        ExpMotion.popIn(input)
-                    } else {
-                        ExpDialogChrome.polishButtons(dialog)
-                    }
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                    with(ExpPressEffects) { input.applyExpPress() }
+                    ExpMotion.popIn(input)
+
                 }
                 dialog.show()
             }
@@ -647,8 +643,7 @@ object ProfilesSettingsController {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    else ExpDialogChrome.polishButtons(dialog)
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }

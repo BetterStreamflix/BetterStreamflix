@@ -95,8 +95,7 @@ object GuardaFlixAuthSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
@@ -142,7 +141,7 @@ object GuardaFlixAuthSettingsController {
                 context,
                 context.getString(R.string.guardaflix_username_hint),
             )
-        val contentView = if (glass != null) {
+        val contentView = run {
             fun addField(field: EditText) {
                 glass.root.addView(
                     field,
@@ -156,14 +155,6 @@ object GuardaFlixAuthSettingsController {
             addField(password)
             addField(confirm)
             glass.root
-        } else {
-            LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(padding, padding / 2, padding, 0)
-                addView(username, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                addView(confirm, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
         }
         val dialog = alertBuilder(context)
             .setTitle(titleRes)
@@ -172,21 +163,18 @@ object GuardaFlixAuthSettingsController {
             .setPositiveButton(titleRes, null)
             .create()
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                with(ExpPressEffects) {
-                    username.applyExpPress()
-                    password.applyExpPress()
-                    if (confirmPassword) confirm.applyExpPress()
-                }
-                ExpMotion.popIn(username)
-                username.postDelayed({ ExpMotion.popIn(password) }, 36L)
-                if (confirmPassword) {
-                    confirm.postDelayed({ ExpMotion.popIn(confirm) }, 72L)
-                }
-            } else {
-                ExpDialogChrome.polishShown(dialog)
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+            with(ExpPressEffects) {
+                username.applyExpPress()
+                password.applyExpPress()
+                if (confirmPassword) confirm.applyExpPress()
             }
+            ExpMotion.popIn(username)
+            username.postDelayed({ ExpMotion.popIn(password) }, 36L)
+            if (confirmPassword) {
+                confirm.postDelayed({ ExpMotion.popIn(confirm) }, 72L)
+            }
+
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val usernameValue = username.text.toString().trim()
                 val passwordValue = password.text.toString()
@@ -228,8 +216,7 @@ object GuardaFlixAuthSettingsController {
         builder.setView(glass.root)
         val progress = builder.create()
         progress.setOnShowListener {
-            if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
-            else ExpDialogChrome.polishButtons(progress)
+            ExpDialogChrome.polishGlassMessageShown(progress, glass)
         }
         progress.show()
         scope.launch {

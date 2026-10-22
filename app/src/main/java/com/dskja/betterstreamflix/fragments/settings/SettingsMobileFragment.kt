@@ -1522,8 +1522,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
             val builder = alertBuilder()
                 .setTitle(R.string.settings_send_sentry_feedback_title)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setView(input)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     val text = input.text?.toString().orEmpty()
@@ -1541,13 +1540,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) {
-                            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { input.applyExpPress() }
-                            ExpMotion.popIn(input)
-                        } else {
-                            ExpDialogChrome.polishButtons(dialog)
-                        }
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { input.applyExpPress() }
+                        ExpMotion.popIn(input)
                     }
                     dialog.show()
                 }
@@ -1702,8 +1697,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
@@ -1756,8 +1750,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }

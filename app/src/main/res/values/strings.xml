@@ -1146,6 +1146,8 @@
     <string name="connection_diag_fail">Connection issues detected</string>
     <string name="platform_test_all_title">Test all integrations</string>
     <string name="platform_test_all_summary">Live-probes every configured service and reports ✓/✗ per service</string>
+    <string name="platform_test_all_configured_summary">%1$d of %2$d services configured (%3$s) — tap to live-probe</string>
+    <string name="platform_test_all_none_summary">Nothing configured yet — tap to live-probe core connectivity anyway</string>
     <string name="settings_scan_resolver_qr_title">Scan TV bypass QR</string>
     <string name="qr_scanner_torch_cd">Toggle flashlight</string>
     <string name="settings_scan_resolver_qr_summary">Use this BetterStreamflix scanner for the QR on TV — a normal phone camera often opens Google instead of the app</string>

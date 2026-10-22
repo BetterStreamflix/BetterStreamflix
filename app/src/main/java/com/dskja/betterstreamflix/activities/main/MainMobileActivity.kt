@@ -1205,11 +1205,7 @@ class MainMobileActivity : FragmentActivity() {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                    }
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }
@@ -1234,11 +1230,7 @@ class MainMobileActivity : FragmentActivity() {
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                    }
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                 }
                 dialog.show()
             }

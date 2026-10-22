@@ -44,7 +44,6 @@ object AniWorldAuthSettingsController {
         findPreference("ANIWORLD_SESSION_COOKIES")?.isVisible = false
     }
 
-
     fun bind(
         fragment: Fragment,
         scope: LifecycleCoroutineScope,
@@ -89,8 +88,7 @@ object AniWorldAuthSettingsController {
             builder.setView(glass.root)
             val progress = builder.create()
             progress.setOnShowListener {
-                if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
-                else ExpDialogChrome.polishButtons(progress)
+                ExpDialogChrome.polishGlassMessageShown(progress, glass)
             }
             progress.show()
             scope.launch {
@@ -180,8 +178,7 @@ object AniWorldAuthSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
@@ -241,7 +238,7 @@ object AniWorldAuthSettingsController {
                 context,
                 context.getString(R.string.aniworld_auth_credentials_message),
             )
-        val contentView = if (glass != null) {
+        val contentView = run {
             glass.root.addView(
                 email,
                 android.widget.LinearLayout.LayoutParams(
@@ -257,13 +254,6 @@ object AniWorldAuthSettingsController {
                 ).also { it.topMargin = fieldGap },
             )
             glass.root
-        } else {
-            android.widget.LinearLayout(context).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                setPadding(padding, padding / 2, padding, 0)
-                addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
         }
         val dialog = alertBuilder(context)
             .setTitle(R.string.settings_aniworld_session_login)
@@ -273,11 +263,8 @@ object AniWorldAuthSettingsController {
             .setPositiveButton(R.string.settings_aniworld_session_login, null)
             .create()
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-            } else {
-                ExpDialogChrome.polishShown(dialog)
-            }
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 dialog.dismiss()
                 openBrowserLogin(fragment)
@@ -314,8 +301,7 @@ object AniWorldAuthSettingsController {
         builder.setView(glass.root)
         val progress = builder.create()
         progress.setOnShowListener {
-            if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
-            else ExpDialogChrome.polishButtons(progress)
+            ExpDialogChrome.polishGlassMessageShown(progress, glass)
         }
         progress.show()
         scope.launch {

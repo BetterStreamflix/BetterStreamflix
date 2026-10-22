@@ -2289,6 +2289,8 @@
     <string name="platform_settings_saved">Plattform-Einstellung gespeichert</string>
     <string name="platform_test_all_title">Alle Integrationen testen</string>
     <string name="platform_test_all_summary">Prüft jeden konfigurierten Dienst live und meldet ✓/✗ pro Dienst</string>
+    <string name="platform_test_all_configured_summary">%1$d von %2$d Diensten konfiguriert (%3$s) — zum Live-Test tippen</string>
+    <string name="platform_test_all_none_summary">Noch nichts konfiguriert — tippen testet trotzdem Kern-Verbindung</string>
     <string name="platform_test_debrid_title">Debrid-Konto testen</string>
     <string name="platform_test_debrid_summary">Gegen den aktiven Debrid-Anbieter authentifizieren</string>
     <string name="platform_test_simkl_title">Simkl-Verbindung testen</string>

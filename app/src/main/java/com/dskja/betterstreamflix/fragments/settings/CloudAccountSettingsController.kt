@@ -177,8 +177,7 @@ object CloudAccountSettingsController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
@@ -250,7 +249,7 @@ object CloudAccountSettingsController {
                 context,
                 context.getString(R.string.cloud_sync_email_hint),
             )
-        val contentView = if (glass != null) {
+        val contentView = run {
             glass.root.addView(
                 email,
                 LinearLayout.LayoutParams(
@@ -266,13 +265,6 @@ object CloudAccountSettingsController {
                 ).also { it.topMargin = fieldGap },
             )
             glass.root
-        } else {
-            LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(padding, padding / 2, padding, 0)
-                addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
         }
         val dialog = alertBuilder(context)
             .setTitle(titleRes)
@@ -281,17 +273,14 @@ object CloudAccountSettingsController {
             .setPositiveButton(titleRes, null)
             .create()
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                with(ExpPressEffects) {
-                    email.applyExpPress()
-                    password.applyExpPress()
-                }
-                ExpMotion.popIn(email)
-                email.postDelayed({ ExpMotion.popIn(password) }, 40L)
-            } else {
-                ExpDialogChrome.polishShown(dialog)
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+            with(ExpPressEffects) {
+                email.applyExpPress()
+                password.applyExpPress()
             }
+            ExpMotion.popIn(email)
+            email.postDelayed({ ExpMotion.popIn(password) }, 40L)
+
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val emailValue = email.text.toString().trim()
                 val passwordValue = password.text.toString()
@@ -380,8 +369,7 @@ object CloudAccountSettingsController {
             .create()
         dialog.setCanceledOnTouchOutside(false)
         dialog.setOnShowListener {
-            if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-            else ExpDialogChrome.polishButtons(dialog)
+            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
         }
         dialog.show()
 

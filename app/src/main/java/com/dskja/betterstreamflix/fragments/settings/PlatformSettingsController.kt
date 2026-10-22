@@ -690,6 +690,33 @@ object PlatformSettingsController {
         findPreference("screen_platform_player")?.summary = IntegrationStatus.label(context, player)
         findPreference("screen_platform")?.summary = hubOverview(context)
 
+        val configuredNames = listOf(
+            "Trakt" to trakt,
+            "Jellyfin" to jellyfin,
+            "Plex" to plex,
+            "Debrid" to debrid,
+            "Simkl" to simkl,
+            "OpenSubtitles" to os,
+            "TMDb" to IntegrationStatus.tmdb(),
+        ).filter { it.second.level != IntegrationStatus.Level.NOT_CONFIGURED }
+            .map { it.first }
+        val lastReport = com.dskja.betterstreamflix.platform.ConnectionDiagnostics.lastReport()
+        findPreference("platform_test_all")?.summary = when {
+            configuredNames.isEmpty() ->
+                context.getString(R.string.platform_test_all_none_summary)
+            lastReport != null ->
+                context.getString(
+                    R.string.platform_test_all_configured_summary,
+                    configuredNames.size, 7,
+                    configuredNames.joinToString(", "),
+                ) + " · " + lastReport.title
+            else -> context.getString(
+                R.string.platform_test_all_configured_summary,
+                configuredNames.size, 7,
+                configuredNames.joinToString(", "),
+            )
+        }
+
         findPreference("platform_mpv_status")?.summary = when (PlayerBackendSelector.preferredKind()) {
             PlayerBackendKind.EXO -> context.getString(R.string.platform_mpv_status_summary)
             PlayerBackendKind.EXTERNAL_MPV -> {

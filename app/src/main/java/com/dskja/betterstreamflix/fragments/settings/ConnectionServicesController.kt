@@ -31,8 +31,6 @@ object ConnectionServicesController {
     private fun alertBuilder(context: android.content.Context) =
         androidx.appcompat.app.AlertDialog.Builder(context)
 
-
-
     fun bind(
         fragment: Fragment,
         scope: LifecycleCoroutineScope,
@@ -166,8 +164,7 @@ object ConnectionServicesController {
                     .create()
                     .also { dialog ->
                         dialog.setOnShowListener {
-                            if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                            else ExpDialogChrome.polishButtons(dialog)
+                            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                         }
                         dialog.show()
                     }
@@ -254,8 +251,7 @@ object ConnectionServicesController {
                     .create()
                     .also { dialog ->
                         dialog.setOnShowListener {
-                            if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                            else ExpDialogChrome.polishButtons(dialog)
+                            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                         }
                         dialog.show()
                     }
@@ -301,8 +297,7 @@ object ConnectionServicesController {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
                     dialog.show()
                 }
