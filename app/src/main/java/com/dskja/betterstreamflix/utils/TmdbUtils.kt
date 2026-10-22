@@ -216,8 +216,17 @@ object TmdbUtils {
     ): String? {
         if (!tmdbAllowed()) return null
         if (!UserPreferences.enableTmdbLogos) return null
-        return try {
-            withTimeout(LogoConstants.RESOLVE_TIMEOUT_MS) {
+        // Single-flight: the same title bound on Featured + shelf + detail at once
+        // must share one search→id→logo chain, not launch three.
+        val flightKey = "resolve|" + listOf(
+            title.trim().lowercase(), isTv, year, tmdbId.orEmpty(), imdbId.orEmpty(), language.orEmpty(),
+        ).joinToString("|")
+        TmdbLogoCache.getInflight(flightKey)?.let { return it.await() }
+        val deferred = CompletableDeferred<String?>()
+        val winner = TmdbLogoCache.putInflight(flightKey, deferred)
+        if (winner !== deferred) return winner.await()
+        try {
+            val result = withTimeout(LogoConstants.RESOLVE_TIMEOUT_MS) {
                 resolveTitleLogoUncapped(
                     title = title,
                     year = year,
@@ -227,12 +236,19 @@ object TmdbUtils {
                     language = language,
                 )
             }
+            deferred.complete(result)
+            return result
         } catch (e: TimeoutCancellationException) {
-            null
+            deferred.complete(null)
+            return null
         } catch (e: CancellationException) {
+            deferred.complete(null)
             throw e
         } catch (_: Exception) {
-            null
+            deferred.complete(null)
+            return null
+        } finally {
+            TmdbLogoCache.removeInflight(flightKey, deferred)
         }
     }
 
