@@ -75,7 +75,6 @@
     <string name="live_command_reminder_starts_in_hours">Starts in %1$d h</string>
     <string name="live_command_reminder_starts_in_minutes">Starts in %1$d min</string>
     <string name="live_command_reminder_started_ago">Started %1$d min ago</string>
-    <string name="main_menu_theme_change">Zmien motyw</string>
 
     <string name="search_input_hint">Szukaj filmow i seriali</string>
     <string name="search_input_hint_iptv">Szukaj kanałów</string>

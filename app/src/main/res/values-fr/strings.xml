@@ -81,14 +81,7 @@
     <string name="live_command_reminder_starts_in_hours">Starts in %1$d h</string>
     <string name="live_command_reminder_starts_in_minutes">Starts in %1$d min</string>
     <string name="live_command_reminder_started_ago">Started %1$d min ago</string>
-    <string name="main_menu_theme_change">Changer de thème</string>
-    <string name="theme_default">Par défaut</string>
-    <string name="theme_cinema_ink">Cinema-Ink Dark</string>
-    <string name="theme_cinema_ink_light">Cinema-Ink Light</string>
-    <string name="theme_kids_bright">Cinema-Ink Kids</string>
-    <string name="settings_looks_locked_summary">Trois Looks fixes — Dark, Light ou Kids. Pas d’accents mélangés.</string>
     <string name="downloads_profile_folder_label">Dossier du profil : %1$s</string>
-    <string name="theme_nero_amoled_oled">Noir Amoled/Oled</string>
 
     <string name="search_input_hint">Rechercher des films, séries TV</string>
     <string name="search_input_hint_iptv">Rechercher des chaînes</string>
@@ -624,14 +617,6 @@
     <string name="backup_delete_confirm_message">Supprimer %1$s des sauvegardes locales ?</string>
     <string name="backup_delete_success">Sauvegarde supprimee.</string>
     <string name="backup_delete_error">Impossible de supprimer la sauvegarde.</string>
-    <string name="theme_sunset_cinema">Sunset Cinema</string>
-    <string name="theme_steel_blue">Steel Blue</string>
-    <string name="theme_forest_night">Forest Night</string>
-    <string name="theme_crimson_noir">Crimson Noir</string>
-    <string name="theme_midnight_violet">Midnight Violet</string>
-    <string name="theme_nord_frost">Nord Frost</string>
-    <string name="theme_emerald_luxe">Emerald Luxe</string>
-    <string name="theme_retro_neon">Retro Neon</string>
     <string name="player_settings_software_decoder_title">Décodeur logiciel</string>
     <string name="player_settings_software_decoder_label">Décodeur logiciel</string>
     <string name="player_settings_software_decoder_on">Actif</string>

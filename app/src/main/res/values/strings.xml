@@ -100,24 +100,9 @@
     <string name="live_command_reminder_starts_in_hours">Starts in %1$d h</string>
     <string name="live_command_reminder_starts_in_minutes">Starts in %1$d min</string>
     <string name="live_command_reminder_started_ago">Started %1$d min ago</string>
-    <string name="main_menu_theme_change">Change Theme</string>
-    <string name="theme_default">Default</string>
     <string name="theme_dark">Dark</string>
-    <string name="theme_cinema_ink">Dark</string>
-    <string name="theme_cinema_ink_light">Dark</string>
-    <string name="theme_kids_bright">Dark</string>
-    <string name="settings_looks_locked_summary">Three fixed Looks — Dark, Light, or Kids. No mixed accents.</string>
     <string name="downloads_profile_folder_label">Profile folder: %1$s</string>
     <string name="profile_default">Default</string>
-    <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
-    <string name="theme_sunset_cinema">Sunset Cinema</string>
-    <string name="theme_steel_blue">Steel Blue</string>
-    <string name="theme_forest_night">Forest Night</string>
-    <string name="theme_crimson_noir">Crimson Noir</string>
-    <string name="theme_midnight_violet">Midnight Violet</string>
-    <string name="theme_nord_frost">Nord Frost</string>
-    <string name="theme_emerald_luxe">Emerald Luxe</string>
-    <string name="theme_retro_neon">Retro Neon</string>
 
     <string name="search_input_hint">Titles, people, or similar to…</string>
     <string name="search_input_hint_iptv">Search channels</string>
@@ -1141,7 +1126,6 @@
     <string name="spoiler_shield_episode_cd">%1$s — spoilers hidden, tap to unlock</string>
     <string name="spoiler_shield_kids_pin_title">Adult PIN</string>
     <string name="spoiler_shield_kids_pin_message">Enter the parental or profile PIN to reveal episode titles and thumbs.</string>
-    <string name="spoiler_shield_kids_confirm_message">Reveal episode titles and thumbs for this Kids profile?</string>
     <string name="spoiler_shield_kids_pin_required">Set a parental or profile PIN in Settings before revealing spoilers on this Kids profile.</string>
     <string name="profile_kids_exit_requires_pin">Set a parental PIN or a profile PIN before leaving Kids</string>
     <string name="profile_kids_requires_exit_pin">Kids profiles need a parental PIN (or a PIN on this profile) so adults can leave safely</string>
@@ -1851,12 +1835,7 @@
     <string name="home_featured_title">Featured</string>
     <string name="exp_home_provider_chip">Watching via %1$s</string>
     <string name="exp_opt_dynamic_short">Material You</string>
-    <string name="exp_opt_react_shell_short">React shell</string>
     <string name="exp_opt_pure_black_short">pure black</string>
-    <string name="exp_accent_slate">Slate</string>
-    <string name="exp_accent_aurora">Aurora</string>
-    <string name="exp_accent_ember">Ember</string>
-    <string name="exp_accent_crimson">Crimson</string>
     <string name="settings_hub_eyebrow">Settings</string>
     <string name="settings_hub_title">Settings</string>
     <string name="settings_hub_subtitle">Playback, downloads, profiles and connections — grouped the way you actually use them.</string>

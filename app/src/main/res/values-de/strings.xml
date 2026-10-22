@@ -144,14 +144,7 @@
     <string name="detail_about_empty">Keine weiteren Angaben zu diesem Titel.</string>
     <string name="detail_up_next">Als Nächstes</string>
     <string name="detail_download">Herunterladen</string>
-    <string name="main_menu_theme_change">Design ändern</string>
-    <string name="theme_default">Standard</string>
-    <string name="theme_cinema_ink">Cinema-Ink Dunkel</string>
-    <string name="theme_cinema_ink_light">Cinema-Ink Hell</string>
-    <string name="theme_kids_bright">Cinema-Ink Kids</string>
-    <string name="settings_looks_locked_summary">Drei feste Looks — Dunkel, Hell oder Kids. Keine gemischten Akzente.</string>
     <string name="downloads_profile_folder_label">Profilordner: %1$s</string>
-    <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
 
     <string name="search_input_hint">Titel, Personen oder ähnlich wie…</string>
     <string name="search_input_hint_iptv">Kanäle suchen</string>
@@ -987,7 +980,6 @@
     <string name="spoiler_shield_episode_cd">%1$s — Spoiler verborgen, tippen zum Freigeben</string>
     <string name="spoiler_shield_kids_pin_title">Erwachsene-PIN</string>
     <string name="spoiler_shield_kids_pin_message">Gib die Eltern- oder Profil-PIN ein, um Folgentitel und Vorschaubilder freizugeben.</string>
-    <string name="spoiler_shield_kids_confirm_message">Folgentitel und Vorschaubilder für dieses Kids-Profil freigeben?</string>
     <string name="spoiler_shield_kids_pin_required">Lege zuerst eine Eltern- oder Profil-PIN in den Einstellungen fest, bevor Spoiler auf diesem Kids-Profil sichtbar werden.</string>
     <string name="profile_kids_exit_requires_pin">Lege eine Eltern-PIN oder Profil-PIN fest, bevor du Kids verlässt</string>
     <string name="profile_kids_requires_exit_pin">Kids-Profile brauchen eine Eltern-PIN (oder eine PIN auf diesem Profil), damit Erwachsene sicher wechseln können</string>
@@ -1576,12 +1568,7 @@
     <string name="home_featured_title">Empfohlen</string>
     <string name="exp_home_provider_chip">Via %1$s</string>
     <string name="exp_opt_dynamic_short">Material You</string>
-    <string name="exp_opt_react_shell_short">React-Shell</string>
     <string name="exp_opt_pure_black_short">Pure Black</string>
-    <string name="exp_accent_slate">Slate</string>
-    <string name="exp_accent_aurora">Aurora</string>
-    <string name="exp_accent_ember">Ember</string>
-    <string name="exp_accent_crimson">Crimson</string>
     <string name="settings_hub_eyebrow">Einstellungen</string>
     <string name="settings_hub_title">Einstellungen</string>
     <string name="settings_hub_subtitle">Wiedergabe, Downloads, Profile und Verbindungen — so gruppiert, wie du sie nutzt.</string>
@@ -1854,14 +1841,6 @@
     <string name="backup_delete_confirm_message">%1$s aus den lokalen Backups loeschen?</string>
     <string name="backup_delete_success">Backup geloescht.</string>
     <string name="backup_delete_error">Backup konnte nicht geloescht werden.</string>
-    <string name="theme_sunset_cinema">Sunset Cinema</string>
-    <string name="theme_steel_blue">Steel Blue</string>
-    <string name="theme_forest_night">Forest Night</string>
-    <string name="theme_crimson_noir">Crimson Noir</string>
-    <string name="theme_midnight_violet">Midnight Violet</string>
-    <string name="theme_nord_frost">Nord Frost</string>
-    <string name="theme_emerald_luxe">Emerald Luxe</string>
-    <string name="theme_retro_neon">Retro Neon</string>
     <string name="player_settings_software_decoder_title">Software-Dekodierer</string>
     <string name="player_settings_software_decoder_label">Software-Dekodierer</string>
     <string name="player_settings_software_decoder_on">Aktiv</string>
