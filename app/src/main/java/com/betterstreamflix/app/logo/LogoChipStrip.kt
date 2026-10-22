@@ -44,7 +44,7 @@ object LogoChipStrip {
             return
         }
         root.isVisible = true
-        label?.text = labelText.orEmpty()
+        label?.text = labelText ?: ""
         chips.forEach { chip -> container.addView(chipView(container, chip)) }
     }
 
@@ -59,7 +59,7 @@ object LogoChipStrip {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     dp(this, CHIP_HEIGHT_DP),
-                ).apply { marginEnd = dp(this@apply, CHIP_MARGIN_DP) }
+                ).apply { marginEnd = dp(parent, CHIP_MARGIN_DP) }
                 adjustViewBounds = true
                 maxWidth = dp(this, CHIP_MAX_WIDTH_DP)
                 scaleType = ImageView.ScaleType.FIT_CENTER
@@ -121,7 +121,7 @@ object LogoChipStrip {
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { marginEnd = dp(this@apply, CHIP_MARGIN_DP) }
+                ).apply { marginEnd = dp(parent, CHIP_MARGIN_DP) }
                 text = chip.name
                 contentDescription = chip.name
                 setBackgroundResource(R.drawable.bg_meta_pill)

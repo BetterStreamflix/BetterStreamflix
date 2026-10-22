@@ -384,7 +384,7 @@ class SettingsSectionFragment : PreferenceFragmentCompat() {
             val adapter = recycler.adapter as? PreferenceGroupAdapter
                 ?: return@postDelayed
             val preference = findPreference(prefKey) ?: return@postDelayed
-            val position = adapter.getPreferenceAdapterPosition(preference)
+            val position = adapter.getPreferenceAdapterPosition(prefKey)
             val holder = recycler.findViewHolderForAdapterPosition(position)
                 ?: return@postDelayed
             val item = holder.itemView

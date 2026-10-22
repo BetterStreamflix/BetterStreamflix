@@ -48,8 +48,8 @@ object LogoBulkRefresh {
                     .distinctBy { it.id }
                 val lang = UserPreferences.currentProvider?.language
                 val targets: List<suspend () -> Unit> =
-                    movies.take(MAX_ITEMS / 2).map { m -> { refreshMovie(m, lang) } } +
-                        shows.take(MAX_ITEMS / 2).map { s -> { refreshTv(s, lang) } }
+                    movies.take(MAX_ITEMS / 2).map { m -> suspend { refreshMovie(m, lang) } } +
+                        shows.take(MAX_ITEMS / 2).map { s -> suspend { refreshTv(s, lang) } }
                 lastRunCount = targets.size
                 targets.chunked(CHUNK).forEach { chunk ->
                     coroutineScope {
