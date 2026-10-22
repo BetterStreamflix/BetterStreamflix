@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Profiles — cinema ink + BetterStreamflix crimson (matches Support / Lumina) -->
+    <!-- Profiles — cinema ink + BetterStreamflix crimson (matches Support / Cinema-Ink) -->
     <color name="profile_bg">#0A0A0A</color>
     <color name="profile_bg_elevated">#121212</color>
     <color name="profile_surface">#161616</color>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      Lumina Ink Lock — crimson locked to Support #E50914.
+      Cinema-Ink Lock — crimson locked to Support #E50914.
       Deeper ink blacks; DynamicColors may still tint on 12+.
     -->
     <color name="m3_primary">#E50914</color>
@@ -46,7 +46,7 @@
     <color name="exp_nav_glass">#E0141414</color>
     <color name="exp_nav_glass_stroke">#33FFFFFF</color>
 
-    <!-- Accent presets (Lumina) — Aurora softened for less neon clash -->
+    <!-- Accent presets — Aurora softened for less neon clash -->
     <color name="exp_ember_primary">#E8724A</color>
     <color name="exp_ember_on_primary">#1A0A04</color>
     <color name="exp_ember_primary_container">#5C2A14</color>

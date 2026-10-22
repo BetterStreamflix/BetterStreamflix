@@ -13,7 +13,7 @@ import com.dskja.betterstreamflix.R
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
- * Shared Lumina polish for Material / AppCompat alert buttons and dialog shells.
+ * Shared dialog polish for Material / AppCompat alert buttons and dialog shells.
  * Always themed via [themedContext] so Player / non-Material surfaces cannot crash.
  */
 object ExpDialogChrome {
@@ -202,7 +202,7 @@ object ExpDialogChrome {
     }
 
     /**
-     * Lumina glass info when Experimental UI is on; short Toast otherwise.
+     * Glass info when Experimental UI is on; short Toast otherwise.
      * Default builder is MaterialAlertDialogBuilder on a themed context.
      */
     fun notify(

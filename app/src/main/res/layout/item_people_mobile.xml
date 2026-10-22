@@ -17,7 +17,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Circle"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.CinemaInk.Circle"
         app:strokeColor="@color/cinema_stroke"
         app:strokeWidth="1dp"
         tools:ignore="ContentDescription"

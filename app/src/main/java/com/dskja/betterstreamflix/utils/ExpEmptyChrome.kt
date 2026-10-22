@@ -5,7 +5,7 @@ import com.dskja.betterstreamflix.R
 import com.google.android.material.color.MaterialColors
 
 /**
- * Shared empty-state chrome for Experimental / Lumina Ink Lock screens.
+ * Shared empty-state chrome for Cinema-Ink screens.
  * Glass card, accent rule, primary CTA, reveal + pop-in — one call site pattern.
  */
 object ExpEmptyChrome {

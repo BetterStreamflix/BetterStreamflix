@@ -1,7 +1,7 @@
 <resources>
 
     <!--
-      Classic mobile shell stays on AppCompat, but shared Lumina layouts
+      Classic mobile shell stays on AppCompat, but shared Cinema-Ink layouts
       (profile chip, support dialogs, about) resolve Material color attrs.
       Without these, TextAppearance.CinemaInk.* / ?attr/colorOnSurface inflate
       crashes at startup (Sentry BETTERSTREAMFLIX-14 / -15).
@@ -138,12 +138,10 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_cinema_ink</item>
     </style>
 
-    <!-- Lumina (experimental opt-in shell) — deep-space surfaces, aurora scrims,
-         per-accent focus rings. Selected via ExperimentalMobileDesign.tvThemeRes(). -->
     <!-- Stile Dialogo Nero Amoled/Oled -->
     <style name="AppTheme.SplashScreen" parent="Theme.AppCompat">
         <item name="android:windowBackground">@drawable/bg_splash_screen</item>
-        <!-- Bridge Material attrs if any early inflate uses Lumina styles under splash. -->
+        <!-- Bridge Material attrs if any early inflate uses Cinema-Ink styles under splash. -->
         <item name="colorPrimary">@color/m3_primary</item>
         <item name="colorOnSurface">@color/m3_on_surface</item>
         <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
