@@ -65,7 +65,6 @@ class ShowOptionsMobileDialog(
 
         if (ExperimentalMobileDesign.enabled()) {
             binding.root.setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             ExpMotion.enterScreen(binding.root)
             with(ExpPressEffects) {
                 listOf(

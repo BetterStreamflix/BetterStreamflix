@@ -28,7 +28,6 @@ import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.sync.FavoriteMutations
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
@@ -81,7 +80,6 @@ class FavoritesMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvFavorites)
         HomeProfileChip.refresh(this, binding.root)
         val columnCount = maxOf(3, resources.configuration.screenWidthDp / 120)

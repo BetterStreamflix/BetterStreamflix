@@ -761,7 +761,6 @@ object ProfilesSettingsController {
         }
         dialog.setOnShowListener {
             if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.applyReducedGlass(view)
                 view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                 ExpDialogChrome.polishShown(dialog)
             }

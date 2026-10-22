@@ -104,7 +104,6 @@ object CrashLogDialog {
         if (ExperimentalMobileDesign.enabled()) {
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(view)
             view.findViewById<View>(R.id.sv_crash_log_body)
                 ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             ExpMotion.enterScreen(view)

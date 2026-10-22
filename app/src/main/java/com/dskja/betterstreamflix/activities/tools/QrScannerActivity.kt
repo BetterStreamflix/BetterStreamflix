@@ -150,7 +150,6 @@ class QrScannerActivity : AppCompatActivity() {
 
         if (ExperimentalMobileDesign.enabled()) {
             com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                 binding.qrScannerClose.applyExpPress()
             }

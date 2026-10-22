@@ -134,16 +134,6 @@ private fun ImageView.loadRecoverableArtwork(
                     builder
                 }
             }
-            .let {
-                if (ExperimentalMobileDesign.enabled() &&
-                    !DeviceCapabilities.shouldReduceHomeEffects(context)
-                ) {
-                    it.transition(
-                        com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-                            .withCrossFade(200)
-                    )
-                } else it
-            }
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(
                     e: GlideException?,

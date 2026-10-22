@@ -20,7 +20,6 @@ import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
@@ -75,10 +74,8 @@ class MovieMobileFragment : Fragment() {
         if (args.openTab.equals("about", ignoreCase = true)) {
             selectedTab = DetailTab.ABOUT
         }
-        ExpNavAutoHide.attach(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.staggerFirstFill(binding.rvMovie)
         }

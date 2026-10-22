@@ -11,9 +11,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Unlock chooser for Spoiler Shield — adult confirm, Kids parental PIN.
@@ -78,12 +76,7 @@ object SpoilerShieldUi {
                 onUnlocked()
             }
         }
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
-        } else {
-            AlertDialog.Builder(ExpDialogChrome.themedContext(context))
-        }
-        builder
+        AlertDialog.Builder(ExpDialogChrome.themedContext(context))
             .setTitle(R.string.spoiler_shield_unlock_title)
             .setItems(labels.toTypedArray()) { _, which ->
                 actions.getOrNull(which)?.invoke()
@@ -145,14 +138,9 @@ object SpoilerShieldUi {
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = context.getString(R.string.settings_parental_pin_hint)
         }
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
-        } else {
-            AlertDialog.Builder(ExpDialogChrome.themedContext(context))
-        }
         // On TV, keep the dialog simple — EditText still works with on-screen keyboard /
         // Gboard; Leanback PIN chrome is owned by ProfilesSettingsController.
-        builder
+        AlertDialog.Builder(ExpDialogChrome.themedContext(context))
             .setTitle(title)
             .setMessage(message)
             .setView(input)

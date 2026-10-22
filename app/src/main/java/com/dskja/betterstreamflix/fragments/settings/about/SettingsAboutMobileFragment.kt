@@ -47,7 +47,6 @@ class SettingsAboutMobileFragment : Fragment() {
 
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.enterScreen(binding.root)
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             ExpMotion.revealHeader(
                 binding.tvAboutTitle,
                 binding.tvAboutBrand,

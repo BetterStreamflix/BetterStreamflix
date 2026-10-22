@@ -83,7 +83,6 @@ internal class SettingsHubController(
             }
             if (!enterAnimated) {
                 binding.root.setBackgroundResource(R.drawable.bg_exp_canvas_atmosphere)
-                ExperimentalMobileDesign.applyReducedGlass(binding.root)
                 ExpMotion.enterScreen(binding.root)
                 ExpMotion.startAnimation(binding.svSettingsHub, R.anim.support_fade_slide_up)
                 ExpMotion.revealHeader(
@@ -145,7 +144,6 @@ internal class SettingsHubController(
                     binding.cardSettingsFeatured.setBackgroundResource(
                         ExperimentalMobileDesign.glassCardBackground(),
                     )
-                    ExperimentalMobileDesign.applyReducedGlass(binding.root)
                     with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                         binding.cardSettingsFeatured.applyExpPress()
                     }

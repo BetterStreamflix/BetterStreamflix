@@ -57,7 +57,6 @@ import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.hideKeyboard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -141,9 +140,7 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        ExpNavAutoHide.attach(binding.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvDownloads)
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.revealHeader(

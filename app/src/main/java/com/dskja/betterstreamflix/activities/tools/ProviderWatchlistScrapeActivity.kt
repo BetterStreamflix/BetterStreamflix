@@ -138,7 +138,6 @@ class ProviderWatchlistScrapeActivity : AppCompatActivity() {
         if (ExperimentalMobileDesign.enabled()) {
             val content = findViewById<android.view.View>(android.R.id.content)
             com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(content)
-            ExperimentalMobileDesign.applyReducedGlass(content)
             statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                 importButton.applyExpPress()

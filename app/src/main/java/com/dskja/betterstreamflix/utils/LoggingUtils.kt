@@ -104,7 +104,6 @@ object LoggingUtils {
                     ExperimentalMobileDesign.dialogBackground(),
                 )
                 dialog.window?.decorView?.let { decor ->
-                    ExperimentalMobileDesign.applyReducedGlass(decor)
                     ExpMotion.enterScreen(decor)
                 }
                 ExpMotion.pulseAccentRule(rule)

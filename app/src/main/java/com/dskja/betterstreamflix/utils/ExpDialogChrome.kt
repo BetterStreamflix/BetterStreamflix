@@ -61,7 +61,6 @@ object ExpDialogChrome {
             ExperimentalMobileDesign.dialogBackground(),
         )
         dialog.window?.decorView?.let { decor ->
-            ExperimentalMobileDesign.applyReducedGlass(decor)
             if (decor.getTag(R.id.exp_enter_animated_tag) != true) {
                 decor.setTag(R.id.exp_enter_animated_tag, true)
                 ExpMotion.enterScreen(decor)
@@ -152,7 +151,6 @@ object ExpDialogChrome {
 
     fun polishGlassMessageShown(dialog: Dialog, glass: GlassMessage) {
         polishShown(dialog)
-        ExperimentalMobileDesign.applyReducedGlass(glass.root)
         ExpMotion.pulseAccentRule(glass.rule)
         ExpMotion.revealHeader(glass.rule, glass.body)
     }

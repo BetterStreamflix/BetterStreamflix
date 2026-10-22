@@ -402,7 +402,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         ExperimentalMobileDesign.dialogBackground(),
                     )
                     dialog.window?.decorView?.let { decor ->
-                        ExperimentalMobileDesign.applyReducedGlass(decor)
                         ExpMotion.enterScreen(decor)
                         fun styleFields(group: android.view.ViewGroup) {
                             for (i in 0 until group.childCount) {
@@ -2566,7 +2565,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             .apply {
                 setCanceledOnTouchOutside(false)
                 if (ExperimentalMobileDesign.enabled()) {
-                    ExperimentalMobileDesign.applyReducedGlass(contentView)
                     window?.setBackgroundDrawableResource(ExperimentalMobileDesign.dialogBackground())
                     ExpMotion.enterScreen(contentView)
                     ExpDialogChrome.polishShown(this)

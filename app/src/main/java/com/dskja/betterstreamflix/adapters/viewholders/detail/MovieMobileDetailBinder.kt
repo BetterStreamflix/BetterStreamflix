@@ -43,8 +43,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.bumptech.glide.Glide
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragment
 import com.dskja.betterstreamflix.ui.DetailRating
@@ -86,19 +84,6 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
                 )
             }
         }
-    }
-
-    if (ExperimentalMobileDesign.enabled() &&
-        binding.root.getTag(R.id.exp_enter_animated_tag) != true
-    ) {
-        binding.root.setTag(R.id.exp_enter_animated_tag, true)
-        ExpMotion.revealHeader(
-            binding.tvMovieTitle,
-            binding.ivMovieLogo,
-            binding.btnMovieWatchNow,
-            binding.btnMovieTrailer,
-            binding.btnMovieDownload,
-        )
     }
 
     val ratingText = DetailRating.format(movie.rating)
@@ -162,12 +147,7 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
                     openGenre(genres.first())
                 } else {
                     val labels = genres.map { it.name }.toTypedArray()
-                    val builder = if (ExperimentalMobileDesign.enabled()) {
-                        MaterialAlertDialogBuilder(context)
-                    } else {
-                        AlertDialog.Builder(context)
-                    }
-                    builder
+                    AlertDialog.Builder(context)
                         .setTitle(R.string.genre_section_label)
                         .setItems(labels) { _, which ->
                             genres.getOrNull(which)?.let(::openGenre)

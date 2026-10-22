@@ -155,7 +155,6 @@ object ExpMotion {
 
     /** Light haptic tick for primary actions. */
     fun hapticTap(view: View) {
-        if (!ExperimentalMobileDesign.enabled()) return
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 

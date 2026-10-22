@@ -15,7 +15,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.*
 
 class VoiceRecognitionHelper(
@@ -58,22 +57,10 @@ class VoiceRecognitionHelper(
             }
 
             fragment.shouldShowRequestPermissionRationale(permission) -> {
-                val builder = if (ExperimentalMobileDesign.enabled()) {
-                    MaterialAlertDialogBuilder(context)
-                } else {
-                    AlertDialog.Builder(context)
-                }
                 val rationale = context.getString(R.string.voice_permission_rationale)
-                val glass = if (ExperimentalMobileDesign.enabled()) {
-                    ExpDialogChrome.buildGlassMessage(context, rationale)
-                } else {
-                    null
-                }
-                builder
+                AlertDialog.Builder(context)
                     .setTitle(context.getString(R.string.voice_permission_title))
-                if (glass != null) builder.setView(glass.root)
-                else builder.setMessage(rationale)
-                builder
+                    .setMessage(rationale)
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         permissionLauncher.launch(permission)
                     }
@@ -83,11 +70,7 @@ class VoiceRecognitionHelper(
                     .create()
                     .also { dialog ->
                         dialog.setOnShowListener {
-                            if (glass != null) {
-                                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                            } else {
-                                ExpDialogChrome.polishButtons(dialog)
-                            }
+                            ExpDialogChrome.polishButtons(dialog)
                         }
                         dialog.show()
                     }

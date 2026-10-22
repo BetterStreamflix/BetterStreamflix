@@ -29,7 +29,6 @@ import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpAmbientGlow
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.LoggingUtils
@@ -270,7 +269,6 @@ class HomeMobileFragment : Fragment() {
             if (ExperimentalMobileDesign.heroParallax()) {
                 applyExperimentalParallax()
             }
-            ExpNavAutoHide.attach(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
             refreshProviderChip()
             ExpMotion.brandReveal(
@@ -280,7 +278,6 @@ class HomeMobileFragment : Fragment() {
                 binding.root.findViewById(R.id.v_home_brand_rule),
             )
             ExpMotion.enterScreen(binding.root)
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             ExpMotion.kenBurns(
                 binding.ivHomeBackground,
                 drift = !ExperimentalMobileDesign.heroParallax(),

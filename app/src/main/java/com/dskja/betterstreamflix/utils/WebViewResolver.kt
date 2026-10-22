@@ -549,7 +549,6 @@ class WebViewResolver(private val context: Context) {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
-                    ExperimentalMobileDesign.applyReducedGlass(rootContainer)
                     ExpMotion.enterScreen(rootContainer)
                 }
 

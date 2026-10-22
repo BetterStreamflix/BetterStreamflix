@@ -162,7 +162,6 @@ class MainMobileActivity : FragmentActivity() {
         setContentView(binding.root)
         if (ExperimentalMobileDesign.enabled()) {
             applyExperimentalNavigationChrome()
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
                 nav.setBackgroundResource(ExperimentalMobileDesign.navPillBackground())
                 ExpMotion.enterScreen(binding.root)

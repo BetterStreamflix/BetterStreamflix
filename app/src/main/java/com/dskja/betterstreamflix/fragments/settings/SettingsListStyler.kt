@@ -157,21 +157,15 @@ object SettingsListStyler {
             context.dp(if (isTv) 6 else 3),
         )
         view.layoutParams = layoutParams
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.reducedGlass()) {
-            view.setBackgroundResource(
-                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
-            )
-        } else {
-            view.background = createRowBackground(
-                view = view,
-                isTv = isTv,
-                defaultColor = ColorUtils.setAlphaComponent(surface, 0xCC),
-                defaultStrokeColor = ColorUtils.setAlphaComponent(border, 0x55),
-                activeColor = highlight,
-                activeStrokeColor = highlightBorder,
-                radiusDp = if (isTv) 16 else 12,
-            )
-        }
+        view.background = createRowBackground(
+            view = view,
+            isTv = isTv,
+            defaultColor = ColorUtils.setAlphaComponent(surface, 0xCC),
+            defaultStrokeColor = ColorUtils.setAlphaComponent(border, 0x55),
+            activeColor = highlight,
+            activeStrokeColor = highlightBorder,
+            radiusDp = if (isTv) 16 else 12,
+        )
         view.minimumHeight = context.dp(if (isTv) 76 else 58)
         view.setPadding(
             context.dp(if (isTv) 22 else 14),

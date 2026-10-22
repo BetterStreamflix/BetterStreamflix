@@ -10,8 +10,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -177,18 +175,8 @@ object SharedWatchlistUi {
                 count,
             )
             var importing = false
-            val useGlass = ExperimentalMobileDesign.enabled()
-            val builder = if (useGlass) {
-                MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(activity))
-            } else {
-                androidx.appcompat.app.AlertDialog.Builder(activity)
-            }
-            val glass = if (useGlass) {
-                ExpDialogChrome.buildGlassMessage(activity, message)
-            } else {
-                null
-            }
-            if (glass != null) builder.setView(glass.root) else builder.setMessage(message)
+            val builder = androidx.appcompat.app.AlertDialog.Builder(activity)
+            builder.setMessage(message)
             val dialog = builder
                 .setTitle(R.string.shared_watchlist_import_confirm_title)
                 .setNegativeButton(android.R.string.cancel, null)
@@ -232,11 +220,7 @@ object SharedWatchlistUi {
                 if (!importing) confirmInFlight = false
             }
             dialog.setOnShowListener {
-                if (glass != null) {
-                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                } else {
-                    ExpDialogChrome.polishButtons(dialog)
-                }
+                ExpDialogChrome.polishButtons(dialog)
             }
             dialog.show()
         }

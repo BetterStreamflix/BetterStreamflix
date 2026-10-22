@@ -22,7 +22,6 @@ import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.viewModelsFactory
@@ -83,10 +82,8 @@ class TvShowMobileFragment : Fragment() {
         if (args.openTab.equals("similar", ignoreCase = true)) {
             selectedTab = DetailTab.SIMILAR
         }
-        ExpNavAutoHide.attach(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.staggerFirstFill(binding.rvTvShow)
         }

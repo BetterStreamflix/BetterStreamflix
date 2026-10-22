@@ -106,7 +106,6 @@ class ProfilePickerDialog : DialogFragment() {
         if (startInManageMode) manageMode = true
         ExpMotion.enterScreen(view)
         if (ExperimentalMobileDesign.enabled()) {
-            ExperimentalMobileDesign.applyReducedGlass(view)
             view.findViewById<TextView>(R.id.btn_profile_picker_create)
                 ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
             view.findViewById<TextView>(R.id.btn_profile_picker_manage)
@@ -797,7 +796,6 @@ class ProfilePickerDialog : DialogFragment() {
         }
         cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
         ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-        ExperimentalMobileDesign.applyReducedGlass(form)
         form.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
         nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
         pinInput?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
@@ -905,7 +903,6 @@ class ProfilePickerDialog : DialogFragment() {
         }
         dialog.setOnShowListener {
             if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.applyReducedGlass(view)
                 view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                 ExpMotion.enterScreen(view)
                 ExpDialogChrome.polishShown(dialog)
@@ -1203,7 +1200,6 @@ class ProfilePickerDialog : DialogFragment() {
             }
             dialog.setOnShowListener {
                 if (ExperimentalMobileDesign.enabled()) {
-                    ExperimentalMobileDesign.applyReducedGlass(view)
                     view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                     ExpDialogChrome.polishShown(dialog)
                     nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())

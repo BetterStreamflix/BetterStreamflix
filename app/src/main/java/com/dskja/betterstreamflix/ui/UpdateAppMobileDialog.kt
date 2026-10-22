@@ -63,7 +63,6 @@ class UpdateAppMobileDialog(
             window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
             binding.root.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
             ExpMotion.enterScreen(binding.root)
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             binding.root.findViewById<View>(R.id.sv_release_notes)
                 ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             ExpMotion.revealHeader(

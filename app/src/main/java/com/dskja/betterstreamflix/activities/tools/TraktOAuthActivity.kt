@@ -8,9 +8,6 @@ import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.platform.trakt.TraktClient
 import com.dskja.betterstreamflix.platform.trakt.TraktOAuth
-import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,10 +33,7 @@ class TraktOAuthActivity : AppCompatActivity() {
                 finish()
             }
             is TraktOAuth.Result.Failed -> {
-                notifyAndFinish(
-                    getString(R.string.platform_trakt_oauth_failed, result.reason),
-                    R.string.platform_trakt_category,
-                )
+                notifyAndFinish(getString(R.string.platform_trakt_oauth_failed, result.reason))
             }
             is TraktOAuth.Result.Code -> {
                 lifecycleScope.launch {
@@ -51,30 +45,14 @@ class TraktOAuthActivity : AppCompatActivity() {
                             if (ok) R.string.platform_trakt_oauth_success
                             else R.string.platform_trakt_oauth_exchange_failed,
                         ),
-                        R.string.platform_trakt_category,
                     )
                 }
             }
         }
     }
 
-    private fun notifyAndFinish(message: CharSequence, titleRes: Int) {
-        if (!ExperimentalMobileDesign.enabled()) {
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-            finish()
-            return
-        }
-        val glass = ExpDialogChrome.buildGlassMessage(this, message)
-        MaterialAlertDialogBuilder(this)
-            .setTitle(titleRes)
-            .setView(glass.root)
-            .setPositiveButton(android.R.string.ok, null)
-            .setCancelable(false)
-            .create()
-            .also { dialog ->
-                dialog.setOnShowListener { ExpDialogChrome.polishGlassMessageShown(dialog, glass) }
-                dialog.setOnDismissListener { finish() }
-                dialog.show()
-            }
+    private fun notifyAndFinish(message: CharSequence) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        finish()
     }
 }

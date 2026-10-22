@@ -102,7 +102,6 @@ class BypassWebViewActivity : AppCompatActivity() {
 
         if (ExperimentalMobileDesign.enabled()) {
             com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(findViewById(android.R.id.content))
-            ExperimentalMobileDesign.applyReducedGlass(findViewById(android.R.id.content))
             statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             continueButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
             cancelButton.setBackgroundResource(ExperimentalMobileDesign.chipBackground())

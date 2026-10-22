@@ -11,8 +11,6 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemPeopleMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemPeopleTvBinding
 import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragment
@@ -38,11 +36,6 @@ class PeopleViewHolder(
 ) {
 
     private val context = itemView.context
-    init {
-        if (ExperimentalMobileDesign.enabled()) {
-            itemView.applyExpPress()
-        }
-    }
 
     private lateinit var people: People
 
@@ -101,25 +94,6 @@ class PeopleViewHolder(
             val role = people.character?.takeIf { it.isNotBlank() }
             text = role
             visibility = if (role == null) View.GONE else View.VISIBLE
-        }
-        if (ExperimentalMobileDesign.enabled()) {
-            runCatching {
-                (binding.ivPeopleImage as? com.google.android.material.imageview.ShapeableImageView)?.apply {
-                    strokeColor = android.content.res.ColorStateList.valueOf(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, androidx.appcompat.R.attr.colorPrimary,
-                        ),
-                    )
-                    strokeWidth = 2.5f * resources.displayMetrics.density
-                }
-            }
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.kenBurns(binding.ivPeopleImage, drift = true)
-                ExpMotion.revealHeader(binding.tvPeopleName, binding.tvPeopleCharacter)
-                ExpMotion.popIn(binding.root)
-                ExpMotion.popIn(binding.ivPeopleImage)
-            }
         }
     }
 

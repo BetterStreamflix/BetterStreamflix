@@ -16,9 +16,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Drag (Mobile) + DPAD/buttons (TV) editor for Remix Home block order.
@@ -94,11 +92,7 @@ object HomeRemixUi {
         touchHelper.attachToRecyclerView(recycler)
         adapter.dragStarter = { holder -> touchHelper.startDrag(holder) }
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(themed)
-        } else {
-            AlertDialog.Builder(themed)
-        }
+        val builder = AlertDialog.Builder(themed)
         builder
             .setTitle(R.string.home_remix_title)
             .setView(content)

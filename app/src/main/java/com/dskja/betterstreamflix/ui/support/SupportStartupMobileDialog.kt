@@ -47,7 +47,6 @@ class SupportStartupMobileDialog(
         if (ExperimentalMobileDesign.enabled()) {
             (binding.root.getChildAt(0) as? android.view.View)
                 ?.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
             ExpMotion.enterScreen(binding.root)
             ExpMotion.revealHeader(
                 binding.tvSupportStartupTitle,

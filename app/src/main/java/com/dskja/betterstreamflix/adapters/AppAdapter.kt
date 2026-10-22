@@ -1356,7 +1356,6 @@ class AppAdapter(
     ) {
         fun bind() {
             if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.applyReducedGlass(itemView)
                 val shimmer = itemView.findViewById<View>(R.id.sh_load_more)
                 val spinner = itemView.findViewById<View>(R.id.pb_load_more_is_loading)
                     ?: itemView.findViewById(R.id.pb_is_loading)
