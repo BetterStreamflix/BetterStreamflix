@@ -833,6 +833,12 @@
     <string name="settings_category_poseidon">Poseidonhd2 settings</string>
     <string name="settings_category_poseidon_domain">Poseidonhd2 domain name</string>
     <string name="settings_section_content_title">TMDb &amp; catalog</string>
+    <string name="settings_search_title">Search settings</string>
+    <string name="settings_search_hint">Type to filter all settings…</string>
+    <string name="settings_search_empty">No settings match your search.</string>
+    <string name="settings_search_root">General</string>
+    <string name="settings_search_entry_title">Search settings</string>
+    <string name="settings_search_entry_summary">Find any setting by name or keyword</string>
     <string name="settings_screen_content_summary">TMDb enrichment, API key and provider quarantine</string>
     <string name="settings_screen_profiles_title">Profiles</string>
     <string name="settings_screen_profiles_summary">Avatars, PIN locks, kids mode and integrations</string>

@@ -2,6 +2,13 @@
 <androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <Preference
+        android:key="SETTINGS_SEARCH"
+        android:title="@string/settings_search_entry_title"
+        android:summary="@string/settings_search_entry_summary"
+        android:icon="@drawable/ic_search"
+        app:iconSpaceReserved="true" />
+
     <PreferenceScreen
         android:key="screen_content"
         android:title="@string/settings_section_content_title"

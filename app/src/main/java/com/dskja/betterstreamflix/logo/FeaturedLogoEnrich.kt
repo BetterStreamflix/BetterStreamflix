@@ -112,6 +112,7 @@ object FeaturedLogoEnrich {
                             when (item) {
                                 is Movie -> resolveMovie(item)
                                 is TvShow -> resolveTv(item)
+                                else -> null
                             }
                         } catch (e: CancellationException) {
                             throw e

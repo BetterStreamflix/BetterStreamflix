@@ -698,6 +698,12 @@
     <string name="settings_category_cuevana">Cuevana 3 - Einstellungen</string>
     <string name="settings_category_cuevana_domain">Cuevana 3 - Domain-Name</string>
     <string name="settings_section_content_title">TMDb &amp; Katalog</string>
+    <string name="settings_search_title">Einstellungen suchen</string>
+    <string name="settings_search_hint">Tippe, um alle Einstellungen zu filtern…</string>
+    <string name="settings_search_empty">Keine Einstellungen gefunden.</string>
+    <string name="settings_search_root">Allgemein</string>
+    <string name="settings_search_entry_title">Einstellungen suchen</string>
+    <string name="settings_search_entry_summary">Jede Einstellung nach Name oder Stichwort finden</string>
     <string name="settings_screen_profiles_title">Profile</string>
     <string name="settings_screen_profiles_summary">Avatare, PIN, Kids-Modus und Integrationen</string>
     <string name="profile_picker_title">Wer schaut?</string>

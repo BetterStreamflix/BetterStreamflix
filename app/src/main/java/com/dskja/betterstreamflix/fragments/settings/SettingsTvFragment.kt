@@ -242,6 +242,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     override fun onPreferenceTreeClick(preference: Preference): Boolean {
+        if (preference.key == "SETTINGS_SEARCH") {
+            context?.let { ctx ->
+                SettingsSearchDialog.show(ctx, R.xml.settings_tv) { entry ->
+                    navigateToSetting(entry)
+                }
+            }
+            return true
+        }
         if (preference is PreferenceScreen && !preference.key.isNullOrBlank()) {
             openNestedSettingsScreen(
                 key = preference.key!!,
@@ -251,6 +259,26 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             return true
         }
         return super.onPreferenceTreeClick(preference)
+    }
+
+    private fun navigateToSetting(entry: SettingsSearchIndex.Entry) {
+        val screenKey = entry.screenKey
+        if (screenKey == null) {
+            if (currentScreenState.rootKey != null) {
+                screenBackStack.clear()
+                currentScreenState = SettingsScreenState(rootKey = null, title = null)
+                settingsBackCallback.isEnabled = false
+                renderCurrentScreen()
+            }
+        } else if (screenKey != currentScreenState.rootKey) {
+            openNestedSettingsScreen(
+                key = screenKey,
+                title = entry.screenTitle.ifBlank {
+                    getString(R.string.player_settings_title)
+                },
+            )
+        }
+        view?.postDelayed({ scrollToPreference(entry.prefKey) }, 60)
     }
 
     private fun expAlertBuilder(
