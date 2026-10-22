@@ -109,7 +109,7 @@ class DownloadsAdapter(
         private val title: TextView = view.findViewById(R.id.tv_download_header)
         fun bind(item: DownloadRowUiModel.Header) {
             title.text = item.title
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 itemView.setBackgroundResource(
                     ExperimentalMobileDesign.glassCardBackground(),
                 )
@@ -153,7 +153,7 @@ class DownloadsAdapter(
                 ExpMotion.hapticTap(it)
                 onSeriesToggle(item)
             }
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 itemView.setBackgroundResource(
                     ExperimentalMobileDesign.glassCardBackground(),
                 )
@@ -163,7 +163,7 @@ class DownloadsAdapter(
 
     inner class PackVH(view: View) : RecyclerView.ViewHolder(view) {
         init {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
             }
         }
@@ -185,8 +185,7 @@ class DownloadsAdapter(
             )
             progress.max = pack.totalEpisodes.coerceAtLeast(1)
             val target = pack.completedEpisodes
-            if (ExperimentalMobileDesign.enabled() &&
-                itemView.getTag(R.id.exp_enter_animated_tag) != true
+            if (itemView.getTag(R.id.exp_enter_animated_tag) != true
             ) {
                 itemView.setTag(R.id.exp_enter_animated_tag, true)
                 itemView.setBackgroundResource(
@@ -198,7 +197,7 @@ class DownloadsAdapter(
                     .setDuration(420L)
                     .start()
             } else {
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     itemView.setBackgroundResource(
                         ExperimentalMobileDesign.glassCardBackground(),
                     )
@@ -236,7 +235,7 @@ class DownloadsAdapter(
 
     inner class ItemVH(view: View) : RecyclerView.ViewHolder(view) {
         init {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
             }
         }
@@ -292,7 +291,7 @@ class DownloadsAdapter(
                 ExpMotion.hapticTap(it)
                 onItemMore(item, it)
             }
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 itemView.setBackgroundResource(
                     ExperimentalMobileDesign.glassCardBackground(),
                 )
@@ -363,8 +362,7 @@ class DownloadsAdapter(
                     (item.state.isActive && pct <= 0 && item.entity.bytesDownloaded <= 0L)
                 )
             if (!progress.isIndeterminate) {
-                if (ExperimentalMobileDesign.enabled() &&
-                    progress.visibility == View.VISIBLE
+                if (progress.visibility == View.VISIBLE
                 ) {
                     progress.animate().cancel()
                     progress.progress = pct
@@ -388,8 +386,7 @@ class DownloadsAdapter(
             } else {
                 View.VISIBLE
             }
-            if (ExperimentalMobileDesign.enabled() &&
-                item.state == DownloadItemState.FAILED &&
+            if (item.state == DownloadItemState.FAILED &&
                 !wasFailed
             ) {
                 progressLine.setTag(R.id.exp_enter_animated_tag, "failed")
@@ -402,7 +399,7 @@ class DownloadsAdapter(
                 ExpMotion.popIn(actionPrimary)
             } else if (item.state != DownloadItemState.FAILED) {
                 progressLine.setTag(R.id.exp_enter_animated_tag, null)
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     val onVariant = com.google.android.material.color.MaterialColors.getColor(
                         progressLine,
                         com.google.android.material.R.attr.colorOnSurfaceVariant,

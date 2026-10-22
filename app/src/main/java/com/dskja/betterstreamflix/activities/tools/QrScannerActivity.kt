@@ -45,7 +45,6 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
@@ -130,7 +129,7 @@ class QrScannerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             DynamicColors.applyToActivityIfAvailable(this)
         }
 
@@ -148,7 +147,7 @@ class QrScannerActivity : AppCompatActivity() {
 
         cameraManager = getSystemService(CameraManager::class.java)
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                 binding.qrScannerClose.applyExpPress()
@@ -433,7 +432,7 @@ class QrScannerActivity : AppCompatActivity() {
     private fun deliverResult(result: String) {
         if (!resultDelivered.compareAndSet(false, true)) return
 
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+        {
             com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(findViewById(android.R.id.content))
             findViewById<View>(R.id.fl_qr_scanner_frame)?.let { frame ->
                 frame.animate()
@@ -466,14 +465,9 @@ class QrScannerActivity : AppCompatActivity() {
         finishAfter: Boolean = false,
     ) {
         val message = getString(messageRes)
-        if (!ExperimentalMobileDesign.enabled()) {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-            if (finishAfter) finish()
-            return
-        }
         if (finishAfter) {
             val glass = ExpDialogChrome.buildGlassMessage(this, message)
-            MaterialAlertDialogBuilder(this)
+            androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(titleRes)
                 .setView(glass.root)
                 .setPositiveButton(android.R.string.ok, null)
@@ -487,7 +481,7 @@ class QrScannerActivity : AppCompatActivity() {
             return
         }
         ExpDialogChrome.notify(this, message, titleRes) { ctx ->
-            MaterialAlertDialogBuilder(ctx)
+            androidx.appcompat.app.AlertDialog.Builder(ctx)
         }
     }
 
@@ -497,15 +491,11 @@ class QrScannerActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     private fun applySystemBarColors() {
-        val systemBar = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.color.MaterialColors.getColor(
+        val systemBar = com.google.android.material.color.MaterialColors.getColor(
                 this,
                 com.google.android.material.R.attr.colorSurface,
                 0xFF0B0B0F.toInt(),
             )
-        } else {
-            ThemeManager.palette(UserPreferences.selectedTheme).systemBar
-        }
         window.statusBarColor = systemBar
         window.navigationBarColor = systemBar
     }

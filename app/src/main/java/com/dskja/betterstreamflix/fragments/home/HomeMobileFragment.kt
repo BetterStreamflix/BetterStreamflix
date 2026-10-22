@@ -26,10 +26,8 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.ExpAmbientGlow
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
@@ -129,17 +127,14 @@ class HomeMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
                                 return@collect
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
                             Toast.makeText(
                                 requireContext(),
                                 state.error.message ?: "",
                                 Toast.LENGTH_SHORT
                             ).show()
-                        }
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             val doRetry = { viewModel.getHome() }
                             btnIsLoadingRetry.setOnClickListener { doRetry() }
                             btnIsLoadingClearCache.setOnClickListener {
@@ -252,9 +247,6 @@ class HomeMobileFragment : Fragment() {
         binding.ivProviderLogo.apply {
             isClickable = true
             isFocusable = true
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-            }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 findNavController().navigate(R.id.providers)
@@ -262,28 +254,10 @@ class HomeMobileFragment : Fragment() {
         }
         
         // Default shell hides the background; experimental keeps a full-bleed hero plane.
-        binding.ivHomeBackground.visibility =
-            if (ExperimentalMobileDesign.enabled()) View.VISIBLE else View.GONE
+        binding.ivHomeBackground.visibility = View.GONE
 
-        if (ExperimentalMobileDesign.enabled()) {
-            if (ExperimentalMobileDesign.heroParallax()) {
-                applyExperimentalParallax()
-            }
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
-            refreshProviderChip()
-            ExpMotion.brandReveal(
-                binding.ivProviderLogo,
-                binding.root.findViewById(R.id.tv_home_brand),
-                binding.root.findViewById(R.id.tv_home_tagline),
-                binding.root.findViewById(R.id.v_home_brand_rule),
-            )
-            ExpMotion.enterScreen(binding.root)
-            ExpMotion.kenBurns(
-                binding.ivHomeBackground,
-                drift = !ExperimentalMobileDesign.heroParallax(),
-            )
-            ExpMotion.staggerFirstFill(binding.rvHome)
-        }
+        ExpMotion.enterScreen(binding.root)
+        ExpMotion.staggerFirstFill(binding.rvHome)
     }
 
     private fun refreshProviderLogo() {
@@ -295,47 +269,10 @@ class HomeMobileFragment : Fragment() {
             .error(R.drawable.ic_provider_default_logo)
             .fitCenter()
             .into(logoView)
-        refreshProviderChip()
-    }
-
-    private fun refreshProviderChip() {
-        // Ink Lock: provider identity is the logo only — keep the hero uncluttered.
-        if (!ExperimentalMobileDesign.enabled()) return
-        _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_provider_chip)
-            ?.visibility = View.GONE
     }
 
     private fun refreshProfileChip() {
         HomeProfileChip.refresh(this, _binding?.root, showName = true)
-    }
-
-    private var heroScrollOffset = 0
-
-    private fun applyExperimentalParallax() {
-        binding.rvHome.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                heroScrollOffset += dy
-                // Hero drifts up slower than content, glow/veil follow it.
-                val parallax = (heroScrollOffset * 0.38f).coerceIn(0f, 900f)
-                binding.ivHomeBackground.translationY = -parallax
-                binding.root.findViewById<View>(R.id.v_home_atmosphere)
-                    ?.translationY = -parallax
-                val brandDrift = -parallax * 0.5f
-                val brandAlpha = (1f - parallax / 340f).coerceIn(0f, 1f)
-                listOf(
-                    R.id.tv_home_brand,
-                    R.id.tv_home_tagline,
-                    R.id.v_home_brand_rule,
-                    R.id.iv_provider_logo,
-                    R.id.tv_home_profile_chip,
-                ).forEach { id ->
-                    binding.root.findViewById<View>(id)?.apply {
-                        translationY = brandDrift
-                        alpha = brandAlpha
-                    }
-                }
-            }
-        })
     }
 
     private fun showCatalogWarning(warning: String?) {
@@ -349,25 +286,7 @@ class HomeMobileFragment : Fragment() {
         }
         banner.text = text
         banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
-        if (ExperimentalMobileDesign.enabled()) {
-            banner.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            val density = banner.resources.displayMetrics.density
-            banner.setPadding(
-                (14 * density).toInt(),
-                (10 * density).toInt(),
-                (14 * density).toInt(),
-                (10 * density).toInt(),
-            )
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { banner.applyExpPress() }
-            if (banner.visibility != View.VISIBLE) {
-                banner.visibility = View.VISIBLE
-                ExpMotion.popIn(banner)
-            } else {
-                banner.visibility = View.VISIBLE
-            }
-        } else {
-            banner.visibility = View.VISIBLE
-        }
+        banner.visibility = View.VISIBLE
         banner.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.getHome()
@@ -376,11 +295,7 @@ class HomeMobileFragment : Fragment() {
 
     private fun hideCatalogWarning() {
         _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_catalog_warning)?.apply {
-            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                ExpMotion.fadeOutAndHide(this)
-            } else {
-                visibility = View.GONE
-            }
+            visibility = View.GONE
             setOnClickListener(null)
         }
     }
@@ -389,9 +304,6 @@ class HomeMobileFragment : Fragment() {
         categories: List<Category>,
         watchlistDigestEpisodes: List<Episode> = emptyList(),
     ) {
-        if (ExperimentalMobileDesign.enabled()) {
-            updateExperimentalHero(categories)
-        }
 
         categories
             .find { Category.isFeaturedName(it.name) }
@@ -744,11 +656,6 @@ class HomeMobileFragment : Fragment() {
             onCtaClick = { findNavController().navigate(R.id.providers) },
         )
 
-        if (ExperimentalMobileDesign.enabled()) {
-            // One-shot enter only — skip continuous kenburns on the hero (expensive on mid devices).
-            ExpMotion.startAnimation(binding.rvHome, R.anim.exp_fade_slide_up)
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_home_brand_rule))
-        }
     }
 
     /** Logo-only Room merges reuse the bound shelves. Returns true when submit can be skipped. */
@@ -804,80 +711,6 @@ class HomeMobileFragment : Fragment() {
             val prev = items?.getOrNull(pos - 1)
             if (prev is Category && Category.isFeaturedName(prev.name)) {
                 outRect.top = gapPx * 3
-            }
-        }
-    }
-
-    private var currentHeroArt: String? = null
-
-    private fun updateExperimentalHero(categories: List<Category>) {
-        val featuredCat = categories.find { Category.isFeaturedName(it.name) }
-        val index = FeaturedTvRotation.coerceIndex(
-            featuredCat?.selectedIndex ?: 0,
-            featuredCat?.list?.size ?: 0,
-        )
-        val featured = featuredCat?.list?.getOrNull(index)
-        updateExperimentalHeroArt(featured as? com.dskja.betterstreamflix.models.Show)
-    }
-
-    /** Keeps the hero backdrop + ambient glow in sync with the featured swiper. */
-    fun updateExperimentalHeroArt(show: com.dskja.betterstreamflix.models.Show?) {
-        if (_binding == null || !ExperimentalMobileDesign.enabled()) return
-        val art = when (show) {
-            is Movie -> com.dskja.betterstreamflix.utils.ArtworkUrls
-                .featuredBannerOrPoster(show.banner, show.poster)
-            is TvShow -> com.dskja.betterstreamflix.utils.ArtworkUrls
-                .featuredBannerOrPoster(show.banner, show.poster)
-            else -> null
-        }
-        if (art == currentHeroArt) return
-        currentHeroArt = art
-        if (!art.isNullOrBlank()) {
-            val (w, h) = com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
-                .artworkOverride(binding.ivHomeBackground)
-            Glide.with(binding.ivHomeBackground)
-                .load(art)
-                .override(w, h)
-                .transition(DrawableTransitionOptions.withCrossFade(450))
-                .centerCrop()
-                .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
-                    override fun onLoadFailed(
-                        e: com.bumptech.glide.load.engine.GlideException?,
-                        model: Any?,
-                        target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
-                        isFirstResource: Boolean,
-                    ) = false
-
-                    override fun onResourceReady(
-                        resource: android.graphics.drawable.Drawable,
-                        model: Any,
-                        target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
-                        dataSource: com.bumptech.glide.load.DataSource,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        val root = _binding?.root ?: return false
-                        val bitmap = (resource as? android.graphics.drawable.BitmapDrawable)?.bitmap
-                        root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
-                            // Soft static tint only — avoid re-triggering glow fade on every swipe.
-                            if (glow.tag != art) {
-                                glow.tag = art
-                                ExpAmbientGlow.apply(bitmap, glow)
-                            }
-                        }
-                        return false
-                    }
-                })
-                .into(binding.ivHomeBackground)
-            // Kenburns removed: continuous scale animation caused jank on home scroll.
-        } else {
-            binding.ivHomeBackground.setImageResource(R.drawable.bg_home_sky_fallback)
-            binding.root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
-                glow.tag = null
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    glow,
-                    androidx.appcompat.R.attr.colorPrimary,
-                )
-                ExpAmbientGlow.applyColor(primary, glow)
             }
         }
     }

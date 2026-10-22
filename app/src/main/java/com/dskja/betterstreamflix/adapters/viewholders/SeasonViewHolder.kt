@@ -26,7 +26,7 @@ class SeasonViewHolder(
 
     private val context = itemView.context
     init {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             itemView.applyExpPress()
         }
     }
@@ -61,20 +61,19 @@ class SeasonViewHolder(
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
-            if (ExperimentalMobileDesign.enabled() &&
-                getTag(R.id.exp_ken_burns_animator) == null
+            if (getTag(R.id.exp_ken_burns_animator) == null
             ) {
                 ExpMotion.kenBurns(this)
             }
         }
         val watched = season.isFullyWatched()
         val wasWatched = binding.ivSeasonWatchedRibbon.isVisible
-        if (ExperimentalMobileDesign.enabled() && wasWatched && !watched) {
+        if (wasWatched && !watched) {
             ExpMotion.fadeOutAndHide(binding.ivSeasonWatchedRibbon)
             binding.ivSeasonWatchedRibbon.background = null
         } else {
             binding.ivSeasonWatchedRibbon.isVisible = watched
-            if (ExperimentalMobileDesign.enabled() && watched) {
+            if (watched) {
                 binding.ivSeasonWatchedRibbon.setBackgroundResource(
                     ExperimentalMobileDesign.iconChipBackground(),
                 )
@@ -85,8 +84,7 @@ class SeasonViewHolder(
         }
 
         binding.tvSeasonTitle.text = season.displayTitle()
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())

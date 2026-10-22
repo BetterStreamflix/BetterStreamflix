@@ -5,7 +5,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 object OfflineLibraryActions {
     fun showSeriesEpisodePicker(
@@ -14,7 +13,7 @@ object OfflineLibraryActions {
         onPick: (DownloadItemEntity) -> Unit,
     ) {
         val labels = series.episodes.map(OfflineLibrary::episodeLabel).toTypedArray()
-        MaterialAlertDialogBuilder(context)
+        androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(
                 context.getString(
                     R.string.offline_library_series_episodes_title,

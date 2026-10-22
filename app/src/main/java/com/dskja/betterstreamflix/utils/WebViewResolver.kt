@@ -412,17 +412,13 @@ class WebViewResolver(private val context: Context) {
                 }.apply {
                     layoutParams = ViewGroup.LayoutParams(-1, -1)
                     setBackgroundColor(
-                        if (ExperimentalMobileDesign.enabled()) {
-                            runCatching {
-                                com.google.android.material.color.MaterialColors.getColor(
-                                    uiContext,
-                                    com.google.android.material.R.attr.colorSurface,
-                                    Color.parseColor("#0B0B0F"),
-                                )
-                            }.getOrElse { Color.parseColor("#0B0B0F") }
-                        } else {
-                            Color.BLACK
-                        },
+                        runCatching {
+                            com.google.android.material.color.MaterialColors.getColor(
+                                uiContext,
+                                com.google.android.material.R.attr.colorSurface,
+                                Color.parseColor("#0B0B0F"),
+                            )
+                        }.getOrElse { Color.parseColor("#0B0B0F") },
                     )
                     isFocusable = isTv
                     isFocusableInTouchMode = isTv
@@ -432,24 +428,19 @@ class WebViewResolver(private val context: Context) {
                     val btnInfo = Button(uiContext).apply {
                         id = View.generateViewId()
                         text = context.getString(R.string.bypass_tv_instructions)
-                        if (ExperimentalMobileDesign.enabled()) {
-                            setBackgroundResource(
-                                ExperimentalMobileDesign.primaryButtonBackground(),
-                            )
-                            setTextColor(
-                                runCatching {
-                                    com.google.android.material.color.MaterialColors.getColor(
-                                        uiContext,
-                                        com.google.android.material.R.attr.colorOnPrimary,
-                                        Color.WHITE,
-                                    )
-                                }.getOrElse { Color.WHITE },
-                            )
-                            with(ExpPressEffects) { applyExpPress() }
-                        } else {
-                            setBackgroundColor(Color.parseColor("#4CAF50"))
-                            setTextColor(Color.WHITE)
-                        }
+                        setBackgroundResource(
+                            ExperimentalMobileDesign.primaryButtonBackground(),
+                        )
+                        setTextColor(
+                            runCatching {
+                                com.google.android.material.color.MaterialColors.getColor(
+                                    uiContext,
+                                    com.google.android.material.R.attr.colorOnPrimary,
+                                    Color.WHITE,
+                                )
+                            }.getOrElse { Color.WHITE },
+                        )
+                        with(ExpPressEffects) { applyExpPress() }
                         textSize = 20f
                         stateListAnimator = null
                         isFocusable = false
@@ -471,7 +462,7 @@ class WebViewResolver(private val context: Context) {
 
                     virtualCursor = ImageView(uiContext).apply {
                         setImageResource(android.R.drawable.ic_menu_mylocation)
-                        val cursorColor = if (ExperimentalMobileDesign.enabled()) {
+                        val cursorColor = run {
                             runCatching {
                                 com.google.android.material.color.MaterialColors.getColor(
                                     uiContext,
@@ -479,8 +470,6 @@ class WebViewResolver(private val context: Context) {
                                     Color.RED,
                                 )
                             }.getOrElse { Color.RED }
-                        } else {
-                            Color.RED
                         }
                         setColorFilter(cursorColor)
                         layoutParams = FrameLayout.LayoutParams(80, 80)
@@ -491,7 +480,7 @@ class WebViewResolver(private val context: Context) {
                     // Mobile: Solo WebView a tutto schermo
                     (webView?.parent as? ViewGroup)?.removeView(webView)
                     rootContainer.addView(webView, RelativeLayout.LayoutParams(-1, -1))
-                    if (ExperimentalMobileDesign.enabled()) {
+                    {
                         val density = uiContext.resources.displayMetrics.density
                         val chipSize = (44 * density).toInt()
                         val margin = (14 * density).toInt()
@@ -544,7 +533,7 @@ class WebViewResolver(private val context: Context) {
                     .create()
 
                 dialog?.show()
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     dialog?.window?.setLayout(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,

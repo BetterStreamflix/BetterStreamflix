@@ -28,7 +28,6 @@ object DetailLoadingErrorChrome {
         }
         ExpPressEffects.showLoadingSkeleton(root, false)
         root.findViewById<View>(R.id.g_is_loading_retry)?.visibility = View.VISIBLE
-        ExpPressEffects.animateLoadingError(root)
         root.findViewById<View>(R.id.btn_is_loading_retry)?.setOnClickListener { onRetry() }
         root.findViewById<View>(R.id.btn_is_loading_clear_cache)?.setOnClickListener {
             CacheUtils.clearAppCache(context)

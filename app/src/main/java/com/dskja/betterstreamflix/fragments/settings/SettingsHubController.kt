@@ -30,11 +30,11 @@ internal class SettingsHubController(
 
     private enum class HubMode { ROOT, PLATFORM }
 
+    @Suppress("UNREACHABLE_CODE")
     fun attach(root: View) {
-        if (!ExperimentalMobileDesign.enabled()) {
-            detach()
-            return
-        }
+        // Hub surface is retired (Lumina removal) — keep detach semantics only.
+        detach()
+        return
         val parent = root as? ViewGroup ?: return
         if (hubBinding == null) {
             hubBinding = FragmentSettingsHubMobileBinding.inflate(
@@ -47,12 +47,11 @@ internal class SettingsHubController(
         updateVisibility()
     }
 
+    @Suppress("UNREACHABLE_CODE")
     fun updateVisibility() {
+        detach()
+        return
         val binding = hubBinding
-        if (!ExperimentalMobileDesign.enabled()) {
-            detach()
-            return
-        }
         if (binding == null) return
 
         val key = currentRootKey()
@@ -140,7 +139,7 @@ internal class SettingsHubController(
                         fragment.getString(R.string.platform_settings_title),
                     )
                 }
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     binding.cardSettingsFeatured.setBackgroundResource(
                         ExperimentalMobileDesign.glassCardBackground(),
                     )
@@ -183,7 +182,7 @@ internal class SettingsHubController(
         list.visibility = if (visible) View.VISIBLE else View.GONE
         if (visible && titleRes != 0) {
             label?.setText(titleRes)
-            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() && label != null) {
+            if (label != null) {
                 val key = "$sectionListId|$titleRes"
                 if (label.getTag(com.dskja.betterstreamflix.R.id.exp_enter_animated_tag) != key) {
                     label.setTag(com.dskja.betterstreamflix.R.id.exp_enter_animated_tag, key)
@@ -283,7 +282,7 @@ internal class SettingsHubController(
             ExpMotion.hapticTap(it)
             onClick()
         }
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
             row.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
             (row.findViewById<ImageView>(R.id.iv_settings_hub_card_icon).parent as? View)
@@ -298,7 +297,7 @@ internal class SettingsHubController(
             }
         }
         container.addView(row)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             row.alpha = 0f
             row.postDelayed({ ExpMotion.popIn(row) }, 32L * index)
         }

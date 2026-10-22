@@ -77,7 +77,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             DynamicColors.applyToActivityIfAvailable(this)
         }
         super.onCreate(savedInstanceState)
@@ -100,7 +100,7 @@ class BypassWebViewActivity : AppCompatActivity() {
         continueButton.isEnabled = false
         statusView.setText(R.string.bypass_status_complete_in_page)
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(findViewById(android.R.id.content))
             statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             continueButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
@@ -329,7 +329,7 @@ class BypassWebViewActivity : AppCompatActivity() {
         val hasHoster = !resolvedStreamUrl.isNullOrBlank()
         val wasEnabled = continueButton.isEnabled
         continueButton.isEnabled = solved || hasHoster
-        if (ExperimentalMobileDesign.enabled() && continueButton.isEnabled && !wasEnabled) {
+        if (continueButton.isEnabled && !wasEnabled) {
             com.dskja.betterstreamflix.utils.ExpMotion.popIn(continueButton)
         }
         statusView.text = when {
@@ -337,12 +337,12 @@ class BypassWebViewActivity : AppCompatActivity() {
             cookies.isNotBlank() -> getString(R.string.bypass_status_challenge_pending)
             else -> getString(R.string.bypass_status_complete_in_page)
         }
-        if (ExperimentalMobileDesign.enabled() && (hasHoster || solved)) {
+        if ((hasHoster || solved)) {
             if (statusView.getTag(R.id.exp_enter_animated_tag) != true) {
                 statusView.setTag(R.id.exp_enter_animated_tag, true)
                 com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
             }
-        } else if (ExperimentalMobileDesign.enabled()) {
+        } else {
             statusView.setTag(R.id.exp_enter_animated_tag, null)
         }
 

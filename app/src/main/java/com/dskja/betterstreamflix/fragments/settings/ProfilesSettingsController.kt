@@ -16,7 +16,6 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
@@ -37,32 +36,24 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 /** Shared Profiles binder for Mobile + TV settings. */
 object ProfilesSettingsController {
     private fun alertBuilder(context: Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     private fun notifyUser(
         context: Context,
         message: CharSequence,
         titleRes: Int = R.string.profile_switch_title,
     ) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             ExpDialogChrome.showInfo(context, titleRes, message, ::alertBuilder)
-        } else {
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun styleExpInput(input: EditText, context: Context) {
         val pad = (24 * context.resources.displayMetrics.density).toInt()
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             input.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
             input.setPadding(pad, pad, pad, pad)
             input.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-        } else {
-            input.setPadding(pad, pad / 2, pad, pad / 2)
         }
     }
 
@@ -517,17 +508,12 @@ object ProfilesSettingsController {
         onProfileSwitched: (() -> Unit)?,
     ) {
         val ctx = fragment.requireContext()
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 ctx,
                 fragment.getString(R.string.profile_switch_prompt, created.displayName),
             )
-        } else {
-            null
-        }
         val builder = alertBuilder(ctx)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(fragment.getString(R.string.profile_switch_prompt, created.displayName))
+        builder.setView(glass.root)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 performSwitch(fragment, findPreference, created, onProfileSwitched)
@@ -562,8 +548,7 @@ object ProfilesSettingsController {
         input: EditText,
         onPositive: () -> Unit,
     ) {
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, message).also { g ->
+        val glass = ExpDialogChrome.buildGlassMessage(context, message).also { g ->
                 val density = context.resources.displayMetrics.density
                 g.root.addView(
                     input,
@@ -572,13 +557,9 @@ object ProfilesSettingsController {
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     ).also { it.topMargin = (12 * density).toInt() },
                 )
-            }
-        } else {
-            null
         }
         val builder = alertBuilder(context).setTitle(title)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(message).setView(input)
+        builder.setView(glass.root).setView(input)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ -> onPositive() }
             .setNegativeButton(android.R.string.cancel, null)
@@ -645,28 +626,21 @@ object ProfilesSettingsController {
         val context = fragment.requireContext()
         val profile = ProfileManager.activeProfile() ?: return
         if (ProfileManager.profiles().size <= 1) {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 ExpDialogChrome.showInfo(
                     context,
                     R.string.profile_delete_title,
                     context.getString(R.string.profile_cannot_delete_last),
                     ::alertBuilder,
                 )
-            } else {
-                Toast.makeText(context, R.string.profile_cannot_delete_last, Toast.LENGTH_SHORT).show()
             }
             return
         }
 
         val deleteMessage = context.getString(R.string.profile_delete_confirm, profile.displayName)
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(context, deleteMessage)
-        } else {
-            null
-        }
+        val glass = ExpDialogChrome.buildGlassMessage(context, deleteMessage)
         val builder = alertBuilder(context)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(deleteMessage)
+        builder.setView(glass.root)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val wasActive = profile.id == ProfileManager.activeProfileId
@@ -719,7 +693,7 @@ object ProfilesSettingsController {
                     isClickable = true
                     contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                    if (ExperimentalMobileDesign.enabled()) {
+                    {
                         with(ExpPressEffects) { applyExpPress() }
                     }
                     setOnClickListener {
@@ -734,14 +708,13 @@ object ProfilesSettingsController {
         refreshChoices()
 
         val dialog = (
-            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-            else AlertDialog.Builder(context)
+            androidx.appcompat.app.AlertDialog.Builder(context)
         ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val cancel = view.findViewById<TextView>(R.id.btn_profile_avatar_cancel)
         val ok = view.findViewById<TextView>(R.id.btn_profile_avatar_ok)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
             ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
             with(ExpPressEffects) {
@@ -760,7 +733,7 @@ object ProfilesSettingsController {
             dialog.dismiss()
         }
         dialog.setOnShowListener {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                 ExpDialogChrome.polishShown(dialog)
             }

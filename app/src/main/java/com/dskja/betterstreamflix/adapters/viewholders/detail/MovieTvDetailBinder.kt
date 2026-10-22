@@ -42,8 +42,6 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.download.DetailDownloadLabels
 import com.dskja.betterstreamflix.ui.DetailRating

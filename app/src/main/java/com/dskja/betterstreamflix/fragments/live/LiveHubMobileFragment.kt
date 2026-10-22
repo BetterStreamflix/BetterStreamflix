@@ -60,7 +60,6 @@ class LiveHubMobileFragment : Fragment() {
         ExpMotion.enterScreen(binding.root)
         ExpMotion.staggerFirstFill(binding.rvLiveHub)
         HomeProfileChip.refresh(this, binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
 
         command = LiveCommandController(
             fragment = this,
@@ -146,7 +145,6 @@ class LiveHubMobileFragment : Fragment() {
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             val retry = { reload() }
                             btnIsLoadingRetry.setOnClickListener { retry() }
                             btnIsLoadingClearCache.setOnClickListener {

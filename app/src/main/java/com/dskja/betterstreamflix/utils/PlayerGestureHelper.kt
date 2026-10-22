@@ -226,7 +226,7 @@ class PlayerGestureHelper(
         val wasGone = brightnessLayout.visibility != View.VISIBLE
         brightnessLayout.visibility = View.VISIBLE
         volumeLayout.visibility = View.GONE
-        if (ExperimentalMobileDesign.enabled() && wasGone) {
+        if (wasGone) {
             ExpMotion.hapticTap(brightnessLayout)
             brightnessLayout.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
             ExpMotion.popIn(brightnessLayout)
@@ -261,7 +261,7 @@ class PlayerGestureHelper(
         val wasGone = volumeLayout.visibility != View.VISIBLE
         volumeLayout.visibility = View.VISIBLE
         brightnessLayout.visibility = View.GONE
-        if (ExperimentalMobileDesign.enabled() && wasGone) {
+        if (wasGone) {
             ExpMotion.hapticTap(volumeLayout)
             volumeLayout.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
             ExpMotion.popIn(volumeLayout)
@@ -286,7 +286,7 @@ class PlayerGestureHelper(
         hideJob?.cancel()
         hideJob = CoroutineScope(Dispatchers.Main).launch {
             delay(1000)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 if (brightnessLayout.visibility == View.VISIBLE) {
                     ExpMotion.fadeOutAndHide(brightnessLayout)
                 } else {
@@ -297,9 +297,6 @@ class PlayerGestureHelper(
                 } else {
                     volumeLayout.visibility = View.GONE
                 }
-            } else {
-                brightnessLayout.visibility = View.GONE
-                volumeLayout.visibility = View.GONE
             }
         }
     }

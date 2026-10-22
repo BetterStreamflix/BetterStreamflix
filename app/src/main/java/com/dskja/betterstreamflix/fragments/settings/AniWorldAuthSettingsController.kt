@@ -28,10 +28,8 @@ import kotlinx.coroutines.launch
 object AniWorldAuthSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
+        {
+            androidx.appcompat.app.AlertDialog.Builder(context)
         }
 
     /** Call from Settings onResume after returning from WebView sign-in. */
@@ -84,19 +82,14 @@ object AniWorldAuthSettingsController {
 
         validate?.setOnPreferenceClickListener {
             val ctx = fragment.requireContext()
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     ctx,
                     ctx.getString(R.string.aniworld_auth_validate_progress_message),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.aniworld_auth_validate_progress_title)
                 .setCancelable(false)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.aniworld_auth_validate_progress_message)
+            builder.setView(glass.root)
             val progress = builder.create()
             progress.setOnShowListener {
                 if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
@@ -170,18 +163,13 @@ object AniWorldAuthSettingsController {
 
         logout?.setOnPreferenceClickListener {
             val ctx = fragment.requireContext()
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     ctx,
                     ctx.getString(R.string.aniworld_auth_logout_message),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.settings_aniworld_session_cookies_clear_title)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.aniworld_auth_logout_message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(R.string.aniworld_auth_sign_out) { _, _ ->
                     AniWorldAuthManager.logout()
@@ -236,10 +224,9 @@ object AniWorldAuthSettingsController {
         val density = context.resources.displayMetrics.density
         val padding = (24 * density).toInt()
         val fieldGap = (10 * density).toInt()
-        val exp = ExperimentalMobileDesign.enabled()
-        fun styledField(block: android.widget.EditText.() -> Unit) = android.widget.EditText(context).apply {
+                fun styledField(block: android.widget.EditText.() -> Unit) = android.widget.EditText(context).apply {
             isSingleLine = true
-            if (exp) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
@@ -255,14 +242,10 @@ object AniWorldAuthSettingsController {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
         }
-        val glass = if (exp) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.aniworld_auth_credentials_message),
             )
-        } else {
-            null
-        }
         val contentView = if (glass != null) {
             glass.root.addView(
                 email,
@@ -326,19 +309,14 @@ object AniWorldAuthSettingsController {
         password: String,
     ) {
         val context = fragment.requireContext()
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.aniworld_auth_credentials_progress),
             )
-        } else {
-            null
-        }
         val builder = alertBuilder(context)
             .setTitle(R.string.settings_aniworld_session_login)
             .setCancelable(false)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.aniworld_auth_credentials_progress)
+        builder.setView(glass.root)
         val progress = builder.create()
         progress.setOnShowListener {
             if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
@@ -429,14 +407,14 @@ object AniWorldAuthSettingsController {
             maxLines = 8
             setText(AniWorldAuthManager.exportCookieHeader())
             setSelection(text?.length ?: 0)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
             }
         }
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.aniworld_auth_paste_message),
@@ -460,30 +438,6 @@ object AniWorldAuthSettingsController {
                     dialog.setOnShowListener {
                         ExpDialogChrome.polishGlassMessageShown(dialog, glass)
                     }
-                    dialog.show()
-                }
-        } else {
-            val container = FrameLayout(context).apply {
-                setPadding(padding, padding / 2, padding, 0)
-                addView(
-                    input,
-                    FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ),
-                )
-            }
-            alertBuilder(context)
-                .setTitle(R.string.aniworld_auth_paste_title)
-                .setMessage(R.string.aniworld_auth_paste_message)
-                .setView(container)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.aniworld_auth_paste_save) { _, _ ->
-                    onSubmit(input.text?.toString().orEmpty())
-                }
-                .create()
-                .also { dialog ->
-                    ExpDialogChrome.polishButtons(dialog)
                     dialog.show()
                 }
         }

@@ -63,7 +63,7 @@ class ShowOptionsMobileDialog(
         findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
             ?.setBackgroundColor(Color.TRANSPARENT)
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.root.setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
             ExpMotion.enterScreen(binding.root)
             with(ExpPressEffects) {
@@ -105,7 +105,7 @@ class ShowOptionsMobileDialog(
             is TvShow -> displayTvShow(show)
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             listOf(
                 R.id.btn_option_episode_open_tv_show,
                 R.id.btn_option_show_favorite,
@@ -369,7 +369,7 @@ class ShowOptionsMobileDialog(
         binding.tvOptionsShowTitle.text = movie.title
 
         binding.tvShowSubtitle.text = movie.released?.format("yyyy")
-        if (ExperimentalMobileDesign.enabled() && !binding.tvShowSubtitle.text.isNullOrBlank()) {
+        if (!binding.tvShowSubtitle.text.isNullOrBlank()) {
             binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
             val density = context.resources.displayMetrics.density
             binding.tvShowSubtitle.setPadding(
@@ -412,7 +412,7 @@ class ShowOptionsMobileDialog(
                 freshMovie.isFavorite -> context.getString(R.string.option_show_unfavorite)
                 else -> context.getString(R.string.option_show_favorite)
             }
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(
                     if (freshMovie.isFavorite) ExperimentalMobileDesign.primaryButtonBackground()
                     else ExperimentalMobileDesign.optionItemBackground(),
@@ -458,7 +458,7 @@ class ShowOptionsMobileDialog(
                 freshMovie.isWatched -> context.getString(R.string.option_show_unwatched)
                 else -> context.getString(R.string.option_show_watched)
             }
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(
                     if (freshMovie.isWatched) ExperimentalMobileDesign.primaryButtonBackground()
                     else ExperimentalMobileDesign.optionItemBackground(),
@@ -542,7 +542,7 @@ class ShowOptionsMobileDialog(
         binding.tvOptionsShowTitle.text = tvShow.title
 
         binding.tvShowSubtitle.text = tvShow.released?.format("yyyy")
-        if (ExperimentalMobileDesign.enabled() && !binding.tvShowSubtitle.text.isNullOrBlank()) {
+        if (!binding.tvShowSubtitle.text.isNullOrBlank()) {
             binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
             val density = context.resources.displayMetrics.density
             binding.tvShowSubtitle.setPadding(
@@ -585,7 +585,7 @@ class ShowOptionsMobileDialog(
             } else {
                 context.getString(R.string.option_show_favorite)
             }
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(
                     if (freshTvShow.isFavorite) ExperimentalMobileDesign.primaryButtonBackground()
                     else ExperimentalMobileDesign.optionItemBackground(),

@@ -40,7 +40,7 @@ class ProviderViewHolder(
 
     private val context = itemView.context
     init {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             itemView.applyExpPress()
         }
     }
@@ -68,7 +68,7 @@ class ProviderViewHolder(
                 val fav = binding.ivProviderFavorite
                 val wasVisible = fav.visibility == View.VISIBLE
                 fav.visibility = if (provider.isFavorite) View.VISIBLE else View.GONE
-                if (ExperimentalMobileDesign.enabled() && provider.isFavorite && !wasVisible) {
+                if (provider.isFavorite && !wasVisible) {
                     ExpMotion.popIn(fav)
                 }
                 true
@@ -78,7 +78,7 @@ class ProviderViewHolder(
         val favWasVisible = binding.ivProviderFavorite.visibility == View.VISIBLE
         binding.ivProviderFavorite.visibility =
             if (provider.isFavorite) View.VISIBLE else View.GONE
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             if (provider.isFavorite) {
                 binding.ivProviderFavorite.setBackgroundResource(
                     ExperimentalMobileDesign.iconChipBackground(),
@@ -93,7 +93,7 @@ class ProviderViewHolder(
             val isCurrent = UserPreferences.currentProvider?.name == provider.name
             val wasVisible = selected.visibility == View.VISIBLE
             selected.visibility = if (isCurrent) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && isCurrent) {
+            if (isCurrent) {
                 selected.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
                 if (!wasVisible) ExpMotion.popIn(selected)
             } else if (!isCurrent) {
@@ -110,7 +110,7 @@ class ProviderViewHolder(
         val lang = Locale.forLanguageTag(provider.language)
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             // OEM LayerDrawable/GradientDrawable draw crashes (BETTERSTREAMFLIX-3J).
             setBackgroundResourceSafe(
                 binding.root,
@@ -128,9 +128,6 @@ class ProviderViewHolder(
                 ExpMotion.popIn(binding.root)
                 ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
             }
-        } else {
-            binding.tvProviderLanguage.text = providerMetaLabel(lang, provider.name)
-            bindProviderPassportPill(binding.root)
         }
     }
 
@@ -166,7 +163,7 @@ class ProviderViewHolder(
                 0xFFE8E8E8.toInt(),
             ),
         )
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
         }
         pill.visibility = View.VISIBLE
@@ -318,7 +315,7 @@ class ProviderViewHolder(
                 0xFFE8E8E8.toInt(),
             ),
         )
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
         }
         pill.visibility = View.VISIBLE
@@ -346,19 +343,10 @@ class ProviderViewHolder(
             else ->
                 context.getString(R.string.provider_confirm_unstable, name)
         }
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(context, message)
-        } else {
-            null
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context)
+        val glass = com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(context, message)
         builder.setTitle(R.string.provider_confirm_title)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(message)
+        builder.setView(glass.root)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 ExpMotion.hapticTap(itemView)
@@ -447,7 +435,7 @@ class ProviderViewHolder(
         }
         gear.isFocusable = true
         gear.isClickable = true
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             gear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
             if (!wasVisible) ExpMotion.popIn(gear)
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) { gear.applyExpPress() }

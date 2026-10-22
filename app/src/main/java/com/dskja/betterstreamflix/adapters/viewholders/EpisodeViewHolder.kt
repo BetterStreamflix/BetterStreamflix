@@ -65,7 +65,7 @@ class EpisodeViewHolder(
 
     private val context = itemView.context
     init {
-        if (ExperimentalMobileDesign.enabled() && (
+        if ((
                 _binding is ItemEpisodeMobileBinding ||
                     _binding is ItemEpisodeDetailMobileBinding ||
                     _binding is ItemEpisodeContinueWatchingMobileBinding ||
@@ -173,14 +173,14 @@ class EpisodeViewHolder(
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 ExpMotion.kenBurns(this)
             }
         }
         binding.ivEpisodeWatchedRibbon.let { ribbon ->
             val wasVisible = ribbon.visibility == View.VISIBLE
             ribbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && episode.isWatched) {
+            if (episode.isWatched) {
                 ribbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
                 val pad = (4 * context.resources.displayMetrics.density).toInt()
                 ribbon.setPadding(pad, pad, pad, pad)
@@ -199,7 +199,7 @@ class EpisodeViewHolder(
             R.string.episode_number,
             episode.number
         )
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
         }
 
@@ -213,14 +213,14 @@ class EpisodeViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && show) {
+            if (show) {
                 setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
         binding.tvEpisodeOverview.apply {
             text = episode.overview ?: ""
-            if (ExperimentalMobileDesign.enabled() && !episode.overview.isNullOrBlank()) {
+            if (!episode.overview.isNullOrBlank()) {
                 maxLines = 3
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 var expanded = false
@@ -232,8 +232,7 @@ class EpisodeViewHolder(
                 }
             }
         }
-            if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
@@ -783,7 +782,7 @@ class EpisodeViewHolder(
         binding.ivEpisodeTvShowPoster.apply {
             clipToOutline = true
             loadContinueWatchingArtwork()
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 ExpMotion.kenBurns(this)
             }
         }
@@ -827,7 +826,7 @@ class EpisodeViewHolder(
                 episode.number
             )
         )
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
             if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
@@ -840,7 +839,7 @@ class EpisodeViewHolder(
 
     private fun displayContinueWatchingTvItem(binding: ItemEpisodeContinueWatchingTvBinding) {
         binding.root.apply {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
                 applyExpPress()
             }
@@ -878,7 +877,7 @@ class EpisodeViewHolder(
             clipToOutline = true
             com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(this)
             loadContinueWatchingArtwork(withFallback = true)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 ExpMotion.kenBurns(this)
             }
         }
@@ -922,7 +921,7 @@ class EpisodeViewHolder(
             )
         )
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             val onSurface = com.google.android.material.color.MaterialColors.getColor(
                 binding.tvEpisodeTvShowTitle, com.google.android.material.R.attr.colorOnSurface,
             )
@@ -995,7 +994,7 @@ class EpisodeViewHolder(
         val show = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
         val wasVisible = downloadRibbon.visibility == View.VISIBLE
         downloadRibbon.visibility = if (show) View.VISIBLE else View.GONE
-        if (show && ExperimentalMobileDesign.enabled()) {
+        if (show) {
             downloadRibbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
             val pad = (4 * context.resources.displayMetrics.density).toInt()
             downloadRibbon.setPadding(pad, pad, pad, pad)
@@ -1016,7 +1015,7 @@ class EpisodeViewHolder(
                 val visible = key != null && keys.contains(key)
                 val was = downloadRibbon.visibility == View.VISIBLE
                 downloadRibbon.visibility = if (visible) View.VISIBLE else View.GONE
-                if (visible && ExperimentalMobileDesign.enabled()) {
+                if (visible) {
                     downloadRibbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
                     val pad = (4 * context.resources.displayMetrics.density).toInt()
                     downloadRibbon.setPadding(pad, pad, pad, pad)
@@ -1139,7 +1138,7 @@ class EpisodeViewHolder(
                 remaining.text = com.dskja.betterstreamflix.ui.DetailWatchLabels
                     .remainingMinutesLabel(context, watchHistory)
                     ?: context.getString(R.string.continue_watching_percent, 0)
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
                     val density = context.resources.displayMetrics.density
                     remaining.setPadding(
@@ -1151,17 +1150,17 @@ class EpisodeViewHolder(
                 }
                 val wasVisible = remaining.visibility == View.VISIBLE
                 remaining.visibility = View.VISIBLE
-                if (ExperimentalMobileDesign.enabled() && !wasVisible) ExpMotion.popIn(remaining)
+                if (!wasVisible) ExpMotion.popIn(remaining)
             }
             // Next-episode shelf (and unfinished CW without a resume point): badge, not a 0% bar.
             !episode.isWatched -> {
                 remaining.text = context.getString(R.string.detail_up_next)
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
                 }
                 val wasVisible = remaining.visibility == View.VISIBLE
                 remaining.visibility = View.VISIBLE
-                if (ExperimentalMobileDesign.enabled() && !wasVisible) ExpMotion.popIn(remaining)
+                if (!wasVisible) ExpMotion.popIn(remaining)
             }
             else -> remaining.visibility = View.GONE
         }
@@ -1178,7 +1177,7 @@ class EpisodeViewHolder(
         val show = (watchHistory != null && watchHistory.durationMillis > 0) || episode.isWatched
         val wasVisible = bar.visibility == View.VISIBLE
         bar.visibility = if (show) View.VISIBLE else View.GONE
-        if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || bar.progress != target)) {
+        if (show && (!wasVisible || bar.progress != target)) {
             android.animation.ObjectAnimator.ofInt(bar, "progress", 0, target)
                 .setDuration(420L)
                 .start()

@@ -77,9 +77,7 @@ import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.CrashReporter
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.QrUtils

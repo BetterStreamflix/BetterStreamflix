@@ -29,18 +29,13 @@ class UpdateAppMobileDialog(
     var isLoading: Boolean
         get() = binding.pbUpdateIsLoading.isVisible
         set(value) {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 if (value) {
                     ExpMotion.fadeInAndShow(binding.pbUpdateIsLoading)
                 } else if (binding.pbUpdateIsLoading.isVisible) {
                     ExpMotion.fadeOutAndHide(binding.pbUpdateIsLoading)
                 } else {
                     binding.pbUpdateIsLoading.visibility = View.GONE
-                }
-            } else {
-                binding.pbUpdateIsLoading.visibility = when {
-                    value -> View.VISIBLE
-                    else -> View.GONE
                 }
             }
         }
@@ -59,7 +54,7 @@ class UpdateAppMobileDialog(
             )
         }.joinToString("\n")
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
             binding.root.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
             ExpMotion.enterScreen(binding.root)

@@ -160,7 +160,7 @@ class MainMobileActivity : FragmentActivity() {
             )
         )
         setContentView(binding.root)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             applyExperimentalNavigationChrome()
             binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
                 nav.setBackgroundResource(ExperimentalMobileDesign.navPillBackground())
@@ -168,8 +168,6 @@ class MainMobileActivity : FragmentActivity() {
                 ExpMotion.popIn(nav)
                 ExpMotion.popIn(binding.btnMainSearch)
             }
-        } else {
-            applyThemeNavigationChrome()
         }
         if (UserPreferences.castEnabled) {
             CastPlaybackHub.ensureCastContext(this)
@@ -278,7 +276,7 @@ class MainMobileActivity : FragmentActivity() {
                     if (keys.isNotEmpty()) badge.number = keys.size.coerceAtMost(99)
                 }
         }
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             with(ExpPressEffects) { binding.btnMainSearch.applyExpPress() }
             binding.bnvMain.setOnItemReselectedListener {
                 ExpMotion.hapticTap(binding.bnvMain)
@@ -649,7 +647,7 @@ class MainMobileActivity : FragmentActivity() {
         binding.root.findViewById<View>(R.id.bv_main_nav)?.let { pill ->
             val wasVisible = pill.visibility == View.VISIBLE
             pill.visibility = navVisibility
-            if (ExperimentalMobileDesign.enabled() && showBottomNav && !wasVisible) {
+            if (showBottomNav && !wasVisible) {
                 ExpMotion.popIn(pill)
             }
         }
@@ -663,10 +661,10 @@ class MainMobileActivity : FragmentActivity() {
         val searchWasVisible = binding.btnMainSearch.visibility == View.VISIBLE
         if (showSearch) {
             binding.btnMainSearch.visibility = View.VISIBLE
-            if (ExperimentalMobileDesign.enabled() && !searchWasVisible) {
+            if (!searchWasVisible) {
                 ExpMotion.popIn(binding.btnMainSearch)
             }
-        } else if (ExperimentalMobileDesign.enabled() && searchWasVisible) {
+        } else if (searchWasVisible) {
             ExpMotion.fadeOutAndHide(binding.btnMainSearch)
         } else {
             binding.btnMainSearch.visibility = View.GONE
@@ -683,7 +681,7 @@ class MainMobileActivity : FragmentActivity() {
             CastPlaybackHub.isCasting &&
             destinationId != R.id.player
         if (show) {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 // Prefer flat cast chrome on OEM forks that crash LayerDrawable
                 // linear gradients during draw (BETTERSTREAMFLIX-3J).
                 runCatching {
@@ -739,13 +737,11 @@ class MainMobileActivity : FragmentActivity() {
                         if (controller is android.view.ViewGroup) wire(controller)
                     }
                 }
-            } else {
-                controller.visibility = View.VISIBLE
             }
         } else {
             controller.elevation = 0f
             controller.setTag(R.id.exp_enter_animated_tag, null)
-            if (ExperimentalMobileDesign.enabled() && controller.visibility == View.VISIBLE) {
+            if (controller.visibility == View.VISIBLE) {
                 ExpMotion.fadeOutAndHide(controller)
             } else {
                 controller.visibility = View.GONE
@@ -1196,21 +1192,12 @@ class MainMobileActivity : FragmentActivity() {
     private fun showResolverConnectionErrorDialog(ws: String, token: String) {
         if (isFinishing || isDestroyed) return
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        val glass = com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
                 this,
                 getString(R.string.settings_resolver_connection_error),
             )
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.settings_resolver_connection_error)
+        builder.setView(glass.root)
         builder
             .setTitle(R.string.app_name)
             .setPositiveButton(R.string.settings_resolver_retry) { _, _ ->
@@ -1238,21 +1225,12 @@ class MainMobileActivity : FragmentActivity() {
     private fun showPostBypassCloseDialog() {
         if (isFinishing || isDestroyed) return
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(this)
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        val glass = com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
                 this,
                 getString(R.string.settings_resolver_bypass_done),
             )
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.settings_resolver_bypass_done)
+        builder.setView(glass.root)
         builder
             .setTitle(R.string.app_name)
             .setPositiveButton(R.string.settings_resolver_close_app) { _, _ ->
@@ -1291,7 +1269,6 @@ class MainMobileActivity : FragmentActivity() {
 
     /** Slides the floating nav pill off-screen while the user scrolls down. */
     fun setExperimentalNavHidden(hidden: Boolean) {
-        if (!ExperimentalMobileDesign.enabled()) return
         val pill = binding.root.findViewById<View>(R.id.bv_main_nav) ?: return
         if (expNavHidden == hidden) return
         expNavHidden = hidden

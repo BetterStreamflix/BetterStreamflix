@@ -24,16 +24,14 @@ object CrashLogDialog {
     fun show(context: Context) {
         val text = CrashReporter.latestCrashText(context)
         if (text.isNullOrBlank()) {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 com.dskja.betterstreamflix.utils.ExpDialogChrome.showInfo(
                     context,
                     R.string.settings_view_crash_log_title,
                     context.getString(R.string.settings_view_crash_log_empty),
                 ) { ctx ->
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+                    androidx.appcompat.app.AlertDialog.Builder(ctx)
                 }
-            } else {
-                Toast.makeText(context, R.string.settings_view_crash_log_empty, Toast.LENGTH_SHORT).show()
             }
             return
         }
@@ -47,22 +45,14 @@ object CrashLogDialog {
         body.text = text
         body.setTextIsSelectable(true)
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context).setView(view)
-        } else {
-            AlertDialog.Builder(context).setView(view)
-        }
-        if (!ExperimentalMobileDesign.enabled()) {
-            builder.setTitle(R.string.settings_view_crash_log_title)
-                .setPositiveButton(android.R.string.ok, null)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context).setView(view)
+        builder.setTitle(R.string.settings_view_crash_log_title)
+            .setPositiveButton(android.R.string.ok, null)
         val dialog = builder.create()
 
         fun wire(button: View?, action: () -> Unit) {
             button ?: return
-            if (ExperimentalMobileDesign.enabled()) {
-                button.applyExpPress()
-            }
+            button.applyExpPress()
             button.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 action()
@@ -101,7 +91,7 @@ object CrashLogDialog {
             }
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
             view.findViewById<View>(R.id.sv_crash_log_body)

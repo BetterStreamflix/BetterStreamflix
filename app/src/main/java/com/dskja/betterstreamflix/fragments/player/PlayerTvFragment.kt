@@ -100,7 +100,6 @@ import com.dskja.betterstreamflix.ui.PlayerTvView
 import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.EpisodeManager
@@ -4688,7 +4687,7 @@ class PlayerTvFragment : Fragment(),
                 requireContext(),
                 message,
                 titleRes,
-            ) { ctx -> MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx)) }
+            ) { ctx -> androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(ctx)) }
         }
 
         private fun notifyPlayer(messageRes: Int, titleRes: Int = R.string.player_settings_title) {

@@ -173,7 +173,6 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                             ui.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
-                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 btnIsLoadingRetry.setOnClickListener { retryLastSearch() }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())

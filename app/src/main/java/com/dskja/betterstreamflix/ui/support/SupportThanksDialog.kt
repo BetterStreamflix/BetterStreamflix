@@ -47,7 +47,7 @@ class SupportThanksDialog(
             context.getString(R.string.support_thanks_body)
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             (binding.root.getChildAt(0) as? android.view.View)
                 ?.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
             ExpMotion.enterScreen(binding.root)

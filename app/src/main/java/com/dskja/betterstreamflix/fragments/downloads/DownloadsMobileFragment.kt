@@ -51,14 +51,11 @@ import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.hideKeyboard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.google.android.material.color.MaterialColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
@@ -142,32 +139,8 @@ class DownloadsMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         ExpMotion.enterScreen(binding.root)
         ExpMotion.staggerFirstFill(binding.rvDownloads)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_downloads_eyebrow),
-                binding.tvDownloadsTitle,
-                binding.root.findViewById(R.id.tv_downloads_tagline),
-                binding.root.findViewById(R.id.v_downloads_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_downloads_rule))
-            binding.btnDownloadsMenu.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-            ExpMotion.popIn(binding.btnDownloadsMenu)
-            listOf(
-                binding.chipFilterAll,
-                binding.chipFilterDownloading,
-                binding.chipFilterCompleted,
-                binding.chipFilterFailed,
-            ).forEachIndexed { index, chip ->
-                chip.postDelayed({ ExpMotion.popIn(chip) }, 32L * index)
-            }
-        }
         binding.rvDownloads.itemAnimator = null
         binding.btnDownloadsMenu.apply {
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-            }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 showMenu(it)
@@ -181,14 +154,6 @@ class DownloadsMobileFragment : Fragment() {
             onScanPackQr = { scanDownloadPackQr() },
             styleModeChip = { chip, selected -> styleChip(chip, selected) },
         ).also { it.attach() }
-        if (ExperimentalMobileDesign.enabled()) {
-            listOf(
-                binding.chipModeLibrary,
-                binding.chipModeQueue,
-            ).forEach {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
-            }
-        }
         wireOfflineLibrarySearch()
         listOf(
             binding.chipFilterAll to DownloadsFilter.ALL,
@@ -196,9 +161,6 @@ class DownloadsMobileFragment : Fragment() {
             binding.chipFilterCompleted to DownloadsFilter.COMPLETED,
             binding.chipFilterFailed to DownloadsFilter.FAILED,
         ).forEach { (chip, filter) ->
-            if (ExperimentalMobileDesign.enabled()) {
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-            }
             chip.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 viewModel.setFilter(filter)
@@ -251,16 +213,7 @@ class DownloadsMobileFragment : Fragment() {
         applyViewMode(viewModel.currentViewMode())
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.storageLabel.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect {
-                val storage = binding.tvDownloadsStorage
-                val wasBlank = storage.text.isNullOrBlank()
-                storage.text = it
-                if (ExperimentalMobileDesign.enabled() && wasBlank && !it.isNullOrBlank()) {
-                    storage.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                    val padH = (10 * resources.displayMetrics.density).toInt()
-                    val padV = (4 * resources.displayMetrics.density).toInt()
-                    storage.setPadding(padH, padV, padH, padV)
-                    ExpMotion.popIn(storage)
-                }
+                binding.tvDownloadsStorage.text = it
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -425,21 +378,10 @@ class DownloadsMobileFragment : Fragment() {
         val cta = binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)
         val emptyRule = binding.root.findViewById<View>(R.id.v_downloads_empty_rule)
         if (!empty) {
-            if (ExperimentalMobileDesign.enabled() && binding.tvDownloadsEmpty.isVisible) {
-                ExpMotion.fadeOutAndHide(binding.tvDownloadsEmpty)
-                emptyRule?.let { ExpMotion.fadeOutAndHide(it) }
-                cta?.let { ExpMotion.fadeOutAndHide(it) }
-            } else {
-                binding.tvDownloadsEmpty.isVisible = false
-                emptyRule?.isVisible = false
-                cta?.isVisible = false
-            }
+            binding.tvDownloadsEmpty.isVisible = false
+            emptyRule?.isVisible = false
+            cta?.isVisible = false
             return
-        }
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.tvDownloadsEmpty.setBackgroundResource(
-                ExperimentalMobileDesign.glassCardBackground(),
-            )
         }
         binding.tvDownloadsEmpty.setText(
             when {
@@ -449,23 +391,9 @@ class DownloadsMobileFragment : Fragment() {
                 else -> R.string.downloads_filter_empty
             },
         )
-        if (binding.tvDownloadsEmpty.visibility != View.VISIBLE) {
-            binding.tvDownloadsEmpty.isVisible = true
-            emptyRule?.isVisible = true
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.revealHeader(binding.tvDownloadsEmpty, emptyRule, cta)
-                ExpMotion.pulseAccentRule(emptyRule)
-            } else {
-                ExpMotion.fadeInAndShow(binding.tvDownloadsEmpty)
-                emptyRule?.let { ExpMotion.fadeInAndShow(it) }
-                cta?.let { ExpMotion.fadeInAndShow(it) }
-            }
-        } else {
-            binding.tvDownloadsEmpty.isVisible = true
-            emptyRule?.isVisible = true
-        }
+        binding.tvDownloadsEmpty.isVisible = true
+        emptyRule?.isVisible = true
         binding.root.findViewById<android.widget.TextView>(R.id.btn_downloads_empty_cta)?.let { chip ->
-            val wasVisible = chip.isVisible
             chip.isVisible = true
             val resetLibrarySearch = libraryMode && searchActive
             val filterAll = !libraryMode && manageFilter == DownloadsFilter.ALL
@@ -476,11 +404,6 @@ class DownloadsMobileFragment : Fragment() {
                     else -> R.string.exp_empty_clear_filter
                 },
             )
-            if (ExperimentalMobileDesign.enabled()) {
-                chip.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-                if (!wasVisible) ExpMotion.popIn(chip)
-            }
             chip.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 when {
@@ -503,7 +426,6 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     private fun styleChip(chip: android.widget.TextView, selected: Boolean) {
-        val wasSelected = chip.isSelected
         chip.isSelected = selected
         chip.isClickable = true
         chip.isFocusable = true
@@ -517,40 +439,14 @@ class DownloadsMobileFragment : Fragment() {
         } else {
             chip.text
         }
-        val exp = ExperimentalMobileDesign.enabled()
         chip.setBackgroundResource(
-            when {
-                exp && selected -> ExperimentalMobileDesign.primaryButtonBackground()
-                exp -> ExperimentalMobileDesign.chipBackground()
-                selected -> R.drawable.bg_download_filter_chip_selected
-                else -> R.drawable.bg_download_filter_chip
-            },
+            if (selected) R.drawable.bg_download_filter_chip_selected
+            else R.drawable.bg_download_filter_chip,
         )
         chip.setTextColor(
-            when {
-                exp && selected -> MaterialColors.getColor(
-                    chip, com.google.android.material.R.attr.colorOnPrimary,
-                )
-                exp -> MaterialColors.getColor(
-                    chip, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                )
-                selected -> 0xFF111111.toInt()
-                else -> 0xFFFFFFFF.toInt()
-            },
+            if (selected) 0xFF111111.toInt() else 0xFFFFFFFF.toInt(),
         )
         chip.refreshDrawableState()
-        if (exp && selected && !wasSelected) {
-            ExpMotion.popIn(chip)
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_downloads_rule))
-        }
-        if (exp) {
-            chip.typeface = if (selected) {
-                android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            } else {
-                android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
-            }
-            chip.letterSpacing = if (selected) 0.02f else 0f
-        }
     }
 
     private fun updateBanner(
@@ -561,68 +457,29 @@ class DownloadsMobileFragment : Fragment() {
         val row = binding.llDownloadsBanner
         val banner = binding.tvDownloadsBanner
         val cta = binding.btnDownloadsHealthRedownload
-        val wasVisible = row.isVisible
         // Care already hosts health CTAs — avoid duplicate banner (OS-028 / OS-017).
         val hideHealthInCare = viewModel.currentViewMode() == DownloadsViewMode.CARE
         when {
             wifiPaused -> {
                 banner.setText(R.string.downloads_wifi_paused)
                 cta.isVisible = false
-                if (ExperimentalMobileDesign.enabled()) {
-                    banner.setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            banner, com.google.android.material.R.attr.colorTertiary,
-                        ),
-                    )
-                }
             }
             lowSpace -> {
                 banner.setText(R.string.downloads_low_space)
                 cta.isVisible = false
-                if (ExperimentalMobileDesign.enabled()) {
-                    banner.setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            banner, androidx.appcompat.R.attr.colorError,
-                        ),
-                    )
-                }
             }
             health.hasUnhealthy && !hideHealthInCare -> {
                 banner.text = com.dskja.betterstreamflix.download.DownloadHealth
                     .bannerMessage(requireContext(), health)
                 cta.isVisible = true
-                if (ExperimentalMobileDesign.enabled()) {
-                    banner.setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            banner, androidx.appcompat.R.attr.colorError,
-                        ),
-                    )
-                }
             }
             else -> {
                 cta.isVisible = false
-                if (ExperimentalMobileDesign.enabled() && wasVisible) {
-                    ExpMotion.fadeOutAndHide(row)
-                } else {
-                    row.isVisible = false
-                }
+                row.isVisible = false
                 return
             }
         }
         row.isVisible = true
-        if (ExperimentalMobileDesign.enabled()) {
-            row.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            val density = resources.displayMetrics.density
-            row.setPadding(
-                (14 * density).toInt(),
-                (10 * density).toInt(),
-                (12 * density).toInt(),
-                (10 * density).toInt(),
-            )
-            if (!wasVisible) {
-                ExpMotion.popIn(row)
-            }
-        }
     }
 
     private fun showMenu(anchor: View) {
@@ -677,32 +534,14 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     private fun confirmDestructive(messageRes: Int, onConfirm: () -> Unit) {
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-        }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
-                requireContext(),
-                getString(messageRes),
-            )
-        } else {
-            null
-        }
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(messageRes)
-        builder
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setMessage(messageRes)
             .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }
             .setNegativeButton(android.R.string.cancel, null)
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
-                    if (glass != null) {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                    } else {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                    }
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
                 }
                 dialog.show()
             }
@@ -904,16 +743,7 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     private fun showDownloadError(messageRes: Int) {
-        val message = getString(messageRes)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.showInfo(
-                requireContext(),
-                R.string.downloads_title,
-                message,
-            ) { ctx -> MaterialAlertDialogBuilder(ctx) }
-        } else {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-        }
+        Toast.makeText(requireContext(), getString(messageRes), Toast.LENGTH_SHORT).show()
     }
 
     private fun retry(row: DownloadRowUiModel.Item) {

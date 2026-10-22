@@ -10,7 +10,6 @@ import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Settings pickers + non-dismissible bedtime PIN lock for Mobile and TV.
@@ -85,7 +84,7 @@ object KidsBedtimeUi {
         val selected = options.indexOfFirst { it == current }.let { idx ->
             if (idx >= 0) idx else options.indexOfFirst { it >= current }.coerceAtLeast(0)
         }
-        MaterialAlertDialogBuilder(context)
+        androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(R.string.kids_bedtime_time_title)
             .setSingleChoiceItems(labels, selected) { dialog, which ->
                 UserPreferences.kidsBedtimeMinuteOfDay = options[which]
@@ -162,7 +161,7 @@ object KidsBedtimeUi {
 
         lockDialogActivityId = activityId
         val time = KidsBedtime.formatMinuteOfDay(UserPreferences.kidsBedtimeMinuteOfDay)
-        val dialog: AlertDialog = MaterialAlertDialogBuilder(activity)
+        val dialog: AlertDialog = androidx.appcompat.app.AlertDialog.Builder(activity)
             .setTitle(R.string.kids_bedtime_lock_title)
             .setMessage(activity.getString(R.string.kids_bedtime_lock_message, time))
             .setCancelable(false)

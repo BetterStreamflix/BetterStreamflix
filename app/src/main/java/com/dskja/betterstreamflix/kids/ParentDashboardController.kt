@@ -172,7 +172,7 @@ object ParentDashboardController {
         displayName: String,
     ) {
         val ctx = fragment.requireContext()
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
             .setTitle(R.string.parent_dashboard_switch_title)
             .setMessage(ctx.getString(R.string.parent_dashboard_switch_message, displayName))
             .setNegativeButton(android.R.string.cancel, null)

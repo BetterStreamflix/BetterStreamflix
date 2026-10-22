@@ -73,7 +73,6 @@ class MovieMobileFragment : Fragment() {
         if (args.openTab.equals("about", ignoreCase = true)) {
             selectedTab = DetailTab.ABOUT
         }
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)

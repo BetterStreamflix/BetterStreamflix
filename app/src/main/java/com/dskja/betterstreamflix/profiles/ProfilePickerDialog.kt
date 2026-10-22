@@ -30,7 +30,6 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** Centered profile switcher popup with avatar orbs and optional PIN gate. */
 class ProfilePickerDialog : DialogFragment() {
@@ -105,7 +104,7 @@ class ProfilePickerDialog : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         if (startInManageMode) manageMode = true
         ExpMotion.enterScreen(view)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             view.findViewById<TextView>(R.id.btn_profile_picker_create)
                 ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
             view.findViewById<TextView>(R.id.btn_profile_picker_manage)
@@ -329,7 +328,7 @@ class ProfilePickerDialog : DialogFragment() {
         item.findViewById<View>(R.id.v_profile_active_ring).apply {
             val wasVisible = visibility == View.VISIBLE
             visibility = if (!manageMode && profile.id == activeId) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+            if (visibility == View.VISIBLE) {
                 val primary = com.google.android.material.color.MaterialColors.getColor(
                     this,
                     androidx.appcompat.R.attr.colorPrimary,
@@ -718,11 +717,7 @@ class ProfilePickerDialog : DialogFragment() {
 
     private fun confirmEndGuest(profile: UserProfile) {
         val context = requireContext()
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context)
         builder
             .setMessage(getString(R.string.profile_guest_end_confirm))
             .setPositiveButton(R.string.profile_guest_end) { _, _ ->
@@ -749,11 +744,7 @@ class ProfilePickerDialog : DialogFragment() {
 
     private fun confirmDeleteProfile(profile: UserProfile) {
         val context = requireContext()
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(context)
         builder
             .setMessage(getString(R.string.profile_delete_confirm, profile.displayName))
             .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -786,7 +777,6 @@ class ProfilePickerDialog : DialogFragment() {
         pinInput: EditText?,
         kidsCheck: CheckBox?,
     ) {
-        if (!ExperimentalMobileDesign.enabled()) return
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
             cancel.applyExpPress()
             ok.applyExpPress()
@@ -869,8 +859,7 @@ class ProfilePickerDialog : DialogFragment() {
         val input = view.findViewById<EditText>(R.id.et_profile_pin)
 
         val dialog = (
-            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-            else AlertDialog.Builder(context)
+            androidx.appcompat.app.AlertDialog.Builder(context)
         ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
@@ -902,7 +891,7 @@ class ProfilePickerDialog : DialogFragment() {
             }
         }
         dialog.setOnShowListener {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                 ExpMotion.enterScreen(view)
                 ExpDialogChrome.polishShown(dialog)
@@ -969,8 +958,7 @@ class ProfilePickerDialog : DialogFragment() {
         input.hint = getString(R.string.settings_parental_pin_hint)
 
         val dialog = (
-            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-            else AlertDialog.Builder(context)
+            androidx.appcompat.app.AlertDialog.Builder(context)
         ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
@@ -1134,13 +1122,12 @@ class ProfilePickerDialog : DialogFragment() {
             })
 
             val dialog = (
-                if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
-                else AlertDialog.Builder(context)
+                androidx.appcompat.app.AlertDialog.Builder(context)
             ).setView(view).create()
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             val cancel = view.findViewById<TextView>(R.id.btn_profile_create_cancel)
             val ok = view.findViewById<TextView>(R.id.btn_profile_create_ok)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     cancel.applyExpPress()
                     ok.applyExpPress()
@@ -1199,7 +1186,7 @@ class ProfilePickerDialog : DialogFragment() {
                 onCreated?.invoke(created)
             }
             dialog.setOnShowListener {
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                     ExpDialogChrome.polishShown(dialog)
                     nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
@@ -1351,7 +1338,7 @@ class ProfilePickerDialog : DialogFragment() {
                     isClickable = true
                     contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                    if (ExperimentalMobileDesign.enabled()) {
+                    {
                         with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
                     }
                     setOnClickListener {

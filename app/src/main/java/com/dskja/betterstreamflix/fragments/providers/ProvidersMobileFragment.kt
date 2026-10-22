@@ -29,7 +29,6 @@ import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -63,19 +62,8 @@ class ProvidersMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
         ExpMotion.staggerFirstFill(binding.rvProviders)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_providers_eyebrow),
-                binding.root.findViewById(R.id.tv_providers_label),
-                binding.root.findViewById(R.id.tv_providers_subtitle),
-                binding.root.findViewById(R.id.v_providers_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_providers_rule))
-        }
-
         initializeProviders()
         initializeProviderSearch()
 
@@ -92,17 +80,14 @@ class ProvidersMobileFragment : Fragment() {
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                     }
                     is ProvidersViewModel.State.FailedLoading -> {
-                        if (!ExperimentalMobileDesign.enabled()) {
                             Toast.makeText(
                                 requireContext(),
                                 state.error.message ?: "",
                                 Toast.LENGTH_SHORT
                             ).show()
-                        }
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             val doRetry = { viewModel.getProviders() }
                             btnIsLoadingRetry.setOnClickListener { doRetry() }
                             btnIsLoadingClearCache.setOnClickListener {
@@ -161,21 +146,6 @@ class ProvidersMobileFragment : Fragment() {
             }
             setAdapter(spinnerAdapter)
 
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-                runCatching {
-                    setPopupBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                }
-                if (getTag(R.id.exp_enter_animated_tag) != true) {
-                    setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.popIn(this)
-                    binding.root.findViewById<View>(R.id.iv_providers_language)?.let {
-                        ExpMotion.popIn(it)
-                    }
-                }
-            }
-
             onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(
                     parent: AdapterView<*>?,
@@ -227,31 +197,6 @@ class ProvidersMobileFragment : Fragment() {
     }
 
     private fun initializeProviderSearch() {
-        val searchField = binding.clProvidersSearch
-        if (ExperimentalMobileDesign.enabled()) {
-            searchField.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-            binding.btnProvidersSearchClear.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.btnProvidersSearchClear.applyExpPress()
-            }
-            if (searchField.getTag(R.id.exp_enter_animated_tag) != true) {
-                searchField.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.popIn(searchField)
-            }
-            binding.etProvidersSearch.setOnFocusChangeListener { _, hasFocus ->
-                searchField.isActivated = hasFocus
-                searchField.animate()
-                    .scaleX(if (hasFocus) 1.01f else 1f)
-                    .scaleY(if (hasFocus) 1.01f else 1f)
-                    .setDuration(160L)
-                    .start()
-                searchField.elevation =
-                    if (hasFocus) 6f * resources.displayMetrics.density else 0f
-            }
-        }
-
         binding.etProvidersSearch.apply {
             setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_SEARCH) {

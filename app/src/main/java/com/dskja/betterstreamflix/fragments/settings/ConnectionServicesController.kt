@@ -9,7 +9,6 @@ import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.EditTextPreference
@@ -31,11 +30,7 @@ import kotlinx.coroutines.withContext
  */
 object ConnectionServicesController {
     private fun alertBuilder(context: android.content.Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
 
 
@@ -85,7 +80,7 @@ object ConnectionServicesController {
             edit.summary = maskedKeySummary(context, value)
             edit.setOnBindEditTextListener { editText ->
                 editText.setSingleLine()
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     val pad = (20 * context.resources.displayMetrics.density).toInt()
                     editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                     editText.setPadding(pad, pad, pad, pad)
@@ -119,7 +114,7 @@ object ConnectionServicesController {
                 editText.hint = "192.168.1.50"
                 editText.setText(UserPreferences.bypassWsAdvertisedHost)
                 editText.setSelection(editText.text?.length ?: 0)
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     val pad = (20 * context.resources.displayMetrics.density).toInt()
                     editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                     editText.setPadding(pad, pad, pad, pad)
@@ -165,14 +160,9 @@ object ConnectionServicesController {
                 pref.isEnabled = true
                 pref.summary = report.asSummary()
                 applyLastProbe(findPreference, report)
-                val glass = if (ExperimentalMobileDesign.enabled()) {
-                    ExpDialogChrome.buildGlassMessage(context, report.lines.joinToString("\n"))
-                } else {
-                    null
-                }
+                val glass = ExpDialogChrome.buildGlassMessage(context, report.lines.joinToString("\n"))
                 val builder = alertBuilder(context).setTitle(report.title)
-                if (glass != null) builder.setView(glass.root)
-                else builder.setMessage(report.lines.joinToString("\n"))
+                builder.setView(glass.root)
                 builder
                     .setPositiveButton(android.R.string.ok, null)
                     .setNeutralButton(R.string.connection_copy_report) { _, _ ->
@@ -258,14 +248,9 @@ object ConnectionServicesController {
                 pref.isEnabled = true
                 pref.summary = report.title
                 applyLastProbe(findPreference, report)
-                val glass = if (ExperimentalMobileDesign.enabled()) {
-                    ExpDialogChrome.buildGlassMessage(context, report.lines.joinToString("\n"))
-                } else {
-                    null
-                }
+                val glass = ExpDialogChrome.buildGlassMessage(context, report.lines.joinToString("\n"))
                 val builder = alertBuilder(context).setTitle(report.title)
-                if (glass != null) builder.setView(glass.root)
-                else builder.setMessage(report.lines.joinToString("\n"))
+                builder.setView(glass.root)
                 builder
                     .setPositiveButton(android.R.string.ok, null)
                     .setNeutralButton(R.string.connection_copy_report) { _, _ ->
@@ -303,17 +288,12 @@ object ConnectionServicesController {
 
         findPreference("NETWORK_CLEAR_COOKIES")?.setOnPreferenceClickListener {
             haptic(fragment)
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     context,
                     context.getString(R.string.connection_clear_cookies_confirm),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder(context)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.connection_clear_cookies_confirm)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     runCatching {
@@ -452,7 +432,7 @@ object ConnectionServicesController {
         }
 
     private fun haptic(fragment: Fragment) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             runCatching { ExpMotion.hapticTap(fragment.requireView()) }
         }
     }

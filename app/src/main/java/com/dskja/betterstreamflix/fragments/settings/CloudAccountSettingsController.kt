@@ -32,10 +32,8 @@ import kotlinx.coroutines.launch
 object CloudAccountSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
+        {
+            androidx.appcompat.app.AlertDialog.Builder(context)
         }
 
     /**
@@ -167,15 +165,10 @@ object CloudAccountSettingsController {
             val message = email?.let {
                 fragment.getString(R.string.cloud_sync_signed_in_as, it)
             } ?: fragment.getString(R.string.cloud_sync_signed_out)
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(ctx, message)
-            } else {
-                null
-            }
+            val glass = ExpDialogChrome.buildGlassMessage(ctx, message)
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.cloud_sync_sign_out)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(R.string.cloud_sync_sign_out) { _, _ ->
                     runAction(fragment, scope, ::refresh) {
@@ -235,8 +228,7 @@ object CloudAccountSettingsController {
         val density = context.resources.displayMetrics.density
         val padding = (24 * density).toInt()
         val fieldGap = (10 * density).toInt()
-        val exp = ExperimentalMobileDesign.enabled()
-        val email = EditText(context).apply {
+                val email = EditText(context).apply {
             hint = context.getString(R.string.cloud_sync_email_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             isSingleLine = true
@@ -244,7 +236,7 @@ object CloudAccountSettingsController {
                 setText(prefilledEmail.trim())
                 setSelection(text?.length ?: 0)
             }
-            if (exp) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
@@ -255,20 +247,16 @@ object CloudAccountSettingsController {
             isSingleLine = true
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             transformationMethod = PasswordTransformationMethod.getInstance()
-            if (exp) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
-        val glass = if (exp) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.cloud_sync_email_hint),
             )
-        } else {
-            null
-        }
         val contentView = if (glass != null) {
             glass.root.addView(
                 email,
@@ -342,7 +330,7 @@ object CloudAccountSettingsController {
             null,
             android.R.attr.progressBarStyleHorizontal,
         ).apply {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 progressTintList = android.content.res.ColorStateList.valueOf(
                     com.google.android.material.color.MaterialColors.getColor(
                         this,
@@ -353,7 +341,7 @@ object CloudAccountSettingsController {
         }
         val message = TextView(context).apply {
             setText(R.string.cloud_sync_progress_connecting)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
@@ -378,8 +366,7 @@ object CloudAccountSettingsController {
                 },
             )
         }
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.cloud_sync_progress_connecting),
             ).also { g ->
@@ -391,9 +378,6 @@ object CloudAccountSettingsController {
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                     ).also { it.topMargin = (4 * density).toInt() },
                 )
-            }
-        } else {
-            null
         }
         val contentView = glass?.root ?: LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL

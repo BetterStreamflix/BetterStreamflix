@@ -45,7 +45,6 @@ import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.Dispatchers
@@ -123,8 +122,7 @@ class TvShowViewHolder(
         get() = AppDatabase.getInstanceOrNull(context)
 
     init {
-        if (ExperimentalMobileDesign.enabled() &&
-            (_binding is ItemTvShowMobileBinding ||
+        if ((_binding is ItemTvShowMobileBinding ||
                 _binding is ItemTvShowGridMobileBinding ||
                 _binding is ItemCategorySwiperMobileBinding ||
                 _binding is ItemTvShowTvBinding ||
@@ -234,7 +232,7 @@ class TvShowViewHolder(
         val wasVisible = badge.isVisible
         badge.text = text
         badge.isVisible = text.isNotBlank()
-        if (isIptvProvider() && ExperimentalMobileDesign.enabled()) {
+        if (isIptvProvider()) {
             badge.setBackgroundResource(ExperimentalMobileDesign.liveIndicatorBackground())
             badge.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
@@ -261,7 +259,7 @@ class TvShowViewHolder(
                     )
                 }
             }
-        } else if (ExperimentalMobileDesign.enabled()) {
+        } else {
             badge.clearAnimation()
             badge.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
             badge.setTextColor(
@@ -453,7 +451,7 @@ class TvShowViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = isVisible
             isVisible = show
-            if (ExperimentalMobileDesign.enabled() && show) {
+            if (show) {
                 setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
                 if (!wasVisible) ExpMotion.popIn(this)
             }
@@ -468,8 +466,7 @@ class TvShowViewHolder(
             tvShow = tvShow,
             hideUntilReady = true,
         )
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.kenBurns(binding.ivTvShowPoster)
@@ -575,7 +572,7 @@ class TvShowViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = isVisible
             isVisible = show
-            if (ExperimentalMobileDesign.enabled() && show) {
+            if (show) {
                 setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
                 if (!wasVisible) ExpMotion.popIn(this)
             }
@@ -590,8 +587,7 @@ class TvShowViewHolder(
             tvShow = tvShow,
             hideUntilReady = true,
         )
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.kenBurns(binding.ivTvShowPoster)
@@ -660,14 +656,14 @@ class TvShowViewHolder(
         val show = watchHistory != null && watchHistory.durationMillis > 0
         val wasVisible = bar.isVisible
         bar.isVisible = show
-        if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || bar.progress != target)) {
+        if (show && (!wasVisible || bar.progress != target)) {
             android.animation.ObjectAnimator.ofInt(bar, "progress", 0, target)
                 .setDuration(420L)
                 .start()
         } else {
             bar.progress = target
         }
-        if (ExperimentalMobileDesign.enabled() && show && !wasVisible) {
+        if (show && !wasVisible) {
             ExpMotion.popIn(bar)
         }
     }
@@ -687,24 +683,19 @@ class TvShowViewHolder(
         }
         if (itemSelected) {
             val width = (3 * context.resources.displayMetrics.density).toInt()
-            val stroke = if (ExperimentalMobileDesign.enabled()) {
-                com.google.android.material.color.MaterialColors.getColor(
+            val stroke = com.google.android.material.color.MaterialColors.getColor(
                     view,
                     androidx.appcompat.R.attr.colorPrimary,
                 )
-            } else {
-                ContextCompat.getColor(context, R.color.favorite_selected)
-            }
             view.background = GradientDrawable().apply {
                 setColor(Color.TRANSPARENT)
                 setStroke(width, stroke)
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     cornerRadius = 10f * context.resources.displayMetrics.density
                 }
             }
             view.setPadding(width, width, width, width)
-            if (ExperimentalMobileDesign.enabled() &&
-                view.getTag(R.id.exp_enter_animated_tag) != "selected"
+            if (view.getTag(R.id.exp_enter_animated_tag) != "selected"
             ) {
                 view.setTag(R.id.exp_enter_animated_tag, "selected")
                 ExpMotion.popIn(view)
@@ -902,7 +893,7 @@ class TvShowViewHolder(
     private fun setRibbonVisible(view: View, visible: Boolean) {
         val wasVisible = view.isVisible
         view.isVisible = visible
-        if (visible && ExperimentalMobileDesign.enabled()) {
+        if (visible) {
             view.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
             val pad = (4 * context.resources.displayMetrics.density).toInt()
             view.setPadding(pad, pad, pad, pad)
@@ -997,7 +988,7 @@ class TvShowViewHolder(
         bindTvShowSeasonsMobile(binding)
 
     private fun displaySeasonsTv(binding: ContentTvShowSeasonsTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.tvTvShowSeasonsLabel.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     binding.tvTvShowSeasonsLabel,
@@ -1025,8 +1016,7 @@ class TvShowViewHolder(
     }
 
     private fun displayDirectorsMobile(binding: ContentTvShowDirectorsMobileBinding) {
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.revealHeader(
@@ -1045,7 +1035,7 @@ class TvShowViewHolder(
         }
     }
     private fun displayDirectorsTv(binding: ContentTvShowDirectorsTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.tvTvShowDirectorsLabel.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     binding.tvTvShowDirectorsLabel,
@@ -1074,8 +1064,7 @@ class TvShowViewHolder(
         }
     }
     private fun displayCastMobile(binding: ContentTvShowCastMobileBinding) {
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.revealHeader(
@@ -1096,7 +1085,7 @@ class TvShowViewHolder(
     }
 
     private fun displayCastTv(binding: ContentTvShowCastTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.tvTvShowCastLabel.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     binding.tvTvShowCastLabel,
@@ -1126,8 +1115,7 @@ class TvShowViewHolder(
     }
     private fun displayRecommendationsMobile(binding: ContentTvShowRecommendationsMobileBinding) {
         binding.root.tag = DETAIL_SECTION_RECOMMENDATIONS
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.revealHeader(
@@ -1162,7 +1150,7 @@ class TvShowViewHolder(
     }
 
     private fun displayRecommendationsTv(binding: ContentTvShowRecommendationsTvBinding) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.tvTvShowRecommendationsLabel.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     binding.tvTvShowRecommendationsLabel,

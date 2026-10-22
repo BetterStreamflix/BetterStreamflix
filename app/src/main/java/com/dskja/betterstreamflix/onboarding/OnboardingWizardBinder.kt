@@ -10,7 +10,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Shared 3-step wizard chrome for Mobile + TV dialogs (same view ids).
@@ -88,7 +87,7 @@ class OnboardingWizardBinder(
 
     private fun confirmSkip() {
         val ctx = ExpDialogChrome.themedContext(root.context)
-        MaterialAlertDialogBuilder(ctx)
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
             .setTitle(R.string.onboarding_skip_confirm_title)
             .setMessage(R.string.onboarding_skip_confirm_body)
             .setNegativeButton(R.string.option_cancel, null)

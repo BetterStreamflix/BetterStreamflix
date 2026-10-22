@@ -45,7 +45,7 @@ class SettingsAboutMobileFragment : Fragment() {
             binding.tvAboutSupportersSubtitle,
         )
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             ExpMotion.enterScreen(binding.root)
             ExpMotion.revealHeader(
                 binding.tvAboutTitle,

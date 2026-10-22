@@ -37,11 +37,10 @@ object SupportHubBinder {
         container.visibility = View.VISIBLE
 
         val inflater = LayoutInflater.from(context)
-        val exp = ExperimentalMobileDesign.enabled()
-        val glassBg = ExperimentalMobileDesign.glassCardBackground()
+                val glassBg = ExperimentalMobileDesign.glassCardBackground()
         supporters.forEachIndexed { index, supporter ->
             val row = inflater.inflate(R.layout.item_support_supporter, container, false)
-            if (exp) {
+            {
                 row.setBackgroundResource(glassBg)
             }
             row.findViewById<TextView>(R.id.tv_support_supporter_name).text = supporter.name
@@ -62,7 +61,7 @@ object SupportHubBinder {
             }
             container.addView(row, lp)
             SupportUiBinder.wireInteractive(row)
-            if (exp) {
+            {
                 row.visibility = View.INVISIBLE
                 row.postDelayed({
                     row.visibility = View.VISIBLE
@@ -76,11 +75,10 @@ object SupportHubBinder {
         container ?: return
         container.removeAllViews()
         val inflater = LayoutInflater.from(context)
-        val exp = ExperimentalMobileDesign.enabled()
-        val glassBg = ExperimentalMobileDesign.glassCardBackground()
+                val glassBg = ExperimentalMobileDesign.glassCardBackground()
         SupportContent.impactGoals.forEachIndexed { index, goal ->
             val row = inflater.inflate(R.layout.item_support_impact, container, false)
-            if (exp) {
+            {
                 row.setBackgroundResource(glassBg)
                 row.findViewById<ProgressBar>(R.id.pb_support_impact)?.let { bar ->
                     val primary = MaterialColors.getColor(
@@ -94,13 +92,11 @@ object SupportHubBinder {
             row.findViewById<TextView>(R.id.tv_support_impact_body).setText(goal.bodyRes)
             row.findViewById<ProgressBar>(R.id.pb_support_impact).apply {
                 val target = goal.progressPercent.coerceIn(0, 100)
-                if (exp) {
+                {
                     progress = 0
                     android.animation.ObjectAnimator.ofInt(this, "progress", 0, target)
                         .setDuration(520L)
                         .start()
-                } else {
-                    progress = target
                 }
             }
             row.findViewById<TextView>(R.id.tv_support_impact_percent).text =
@@ -115,7 +111,7 @@ object SupportHubBinder {
             }
             container.addView(row, lp)
             SupportUiBinder.wireInteractive(row)
-            if (exp) {
+            {
                 row.visibility = View.INVISIBLE
                 row.postDelayed({
                     row.visibility = View.VISIBLE
@@ -129,11 +125,10 @@ object SupportHubBinder {
         container ?: return
         container.removeAllViews()
         val inflater = LayoutInflater.from(context)
-        val exp = ExperimentalMobileDesign.enabled()
-        val glassBg = ExperimentalMobileDesign.glassCardBackground()
+                val glassBg = ExperimentalMobileDesign.glassCardBackground()
         SupportContent.faq.forEachIndexed { index, item ->
             val row = inflater.inflate(R.layout.item_support_faq, container, false)
-            if (exp) {
+            {
                 row.setBackgroundResource(glassBg)
             }
             val question = row.findViewById<TextView>(R.id.tv_support_faq_question)
@@ -145,7 +140,7 @@ object SupportHubBinder {
                 ExpMotion.hapticTap(it)
                 val open = answer.visibility != View.VISIBLE
                 if (open) {
-                    if (ExperimentalMobileDesign.enabled()) {
+                    {
                         row.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
                         question.setTextColor(
                             com.google.android.material.color.MaterialColors.getColor(
@@ -153,11 +148,9 @@ object SupportHubBinder {
                             ),
                         )
                         ExpMotion.fadeInAndShow(answer)
-                    } else {
-                        answer.visibility = View.VISIBLE
                     }
                 } else {
-                    if (ExperimentalMobileDesign.enabled()) {
+                    {
                         row.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
                         question.setTextColor(
                             com.google.android.material.color.MaterialColors.getColor(
@@ -165,8 +158,6 @@ object SupportHubBinder {
                             ),
                         )
                         ExpMotion.fadeOutAndHide(answer)
-                    } else {
-                        answer.visibility = View.GONE
                     }
                 }
             }
@@ -180,7 +171,7 @@ object SupportHubBinder {
             }
             container.addView(row, lp)
             SupportUiBinder.wireInteractive(row)
-            if (exp) {
+            {
                 row.visibility = View.INVISIBLE
                 row.postDelayed({
                     row.visibility = View.VISIBLE

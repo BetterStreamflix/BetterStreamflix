@@ -14,7 +14,6 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.constraintlayout.widget.Group
@@ -81,10 +80,8 @@ import java.util.Locale
 
 class SettingsMobileFragment : PreferenceFragmentCompat() {
     private fun alertBuilder() =
-        if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(requireContext())
-        } else {
-            AlertDialog.Builder(requireContext())
+        {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
         }
 
     private data class SettingsScreenState(
@@ -335,11 +332,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
     private fun ensureSettingsHub(view: View) {
         // Hub / Lumina shell is intentionally retained in-tree but retired at runtime.
-        if (!ExperimentalMobileDesign.enabled()) {
-            settingsHubController?.detach()
-            settingsHubController = null
-            return
-        }
+        settingsHubController?.detach()
+        settingsHubController = null
+        @Suppress("UNREACHABLE_CODE")
+        return
         val controller = settingsHubController ?: SettingsHubController(
             fragment = this,
             currentRootKey = { currentScreenState.rootKey },
@@ -390,7 +386,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
         if (childFragmentManager.isStateSaved) return
         super.onDisplayPreferenceDialog(preference)
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             view?.post {
                 val dialog = (childFragmentManager
                     .findFragmentByTag("androidx.preference.PreferenceFragment.DIALOG")
@@ -489,7 +485,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         applyScreenTitle()
         view?.let { ensureSettingsHub(it) }
         settingsHubController?.updateVisibility()
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             view?.let { root ->
                 if (root.getTag(R.id.exp_enter_animated_tag) != true) {
                     root.setTag(R.id.exp_enter_animated_tag, true)
@@ -1122,7 +1118,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         editText.imeOptions = EditorInfo.IME_ACTION_DONE
                         editText.hint = configProvider.defaultBaseUrl
                         editText.setText(summary)
-                        if (ExperimentalMobileDesign.enabled()) {
+                        {
                             val pad = (20 * resources.displayMetrics.density).toInt()
                             editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                             editText.setPadding(pad, pad, pad, pad)
@@ -1163,7 +1159,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         editText.imeOptions = EditorInfo.IME_ACTION_DONE
                         editText.hint = portalProvider.defaultPortalUrl
                         editText.setText(summary)
-                        if (ExperimentalMobileDesign.enabled()) {
+                        {
                             val pad = (20 * resources.displayMetrics.density).toInt()
                             editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                             editText.setPadding(pad, pad, pad, pad)
@@ -1519,16 +1515,13 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             val input = android.widget.EditText(ctx).apply {
                 hint = getString(R.string.settings_send_sentry_feedback_hint)
                 minLines = 3
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                     setPadding(48, 36, 48, 36)
                     setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
-                } else {
-                    setPadding(48, 32, 48, 32)
                 }
             }
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     ctx,
                     getString(R.string.settings_send_sentry_feedback_hint),
                 ).also { g ->
@@ -1539,9 +1532,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
                         ).also { it.topMargin = (12 * density).toInt() },
                     )
-                }
-            } else {
-                null
             }
             val builder = alertBuilder()
                 .setTitle(R.string.settings_send_sentry_feedback_title)
@@ -1703,17 +1693,12 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     requireContext(),
                     getString(R.string.settings_clear_recently_watched_confirm_message),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder().setTitle(R.string.settings_clear_recently_watched_title)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.settings_clear_recently_watched_confirm_message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
@@ -1762,17 +1747,12 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("key_backup_refresh_cache_mobile")?.setOnPreferenceClickListener {
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
+            val glass = ExpDialogChrome.buildGlassMessage(
                     requireContext(),
                     getString(R.string.settings_refresh_cache_message),
                 )
-            } else {
-                null
-            }
             val builder = alertBuilder().setTitle(R.string.settings_refresh_cache_confirm)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(R.string.settings_refresh_cache_message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
@@ -2075,10 +2055,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
     private fun showSettingsInfo(message: CharSequence, titleRes: Int = R.string.settings_parental_pin_title) {
         if (!isAdded) return
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             ExpDialogChrome.showInfo(requireContext(), titleRes, message, { alertBuilder() })
-        } else {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -2251,14 +2229,14 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = getString(R.string.settings_parental_pin_hint)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(48, 36, 48, 36)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
 
-        val dialog = if (ExperimentalMobileDesign.enabled()) {
+        val dialog = run {
             val glass = ExpDialogChrome.buildGlassMessage(requireContext(), getString(messageRes))
             val density = resources.displayMetrics.density
             glass.root.addView(
@@ -2293,29 +2271,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         }
                     }
                 }
-        } else {
-            alertBuilder()
-                .setTitle(titleRes)
-                .setMessage(messageRes)
-                .setView(input)
-                .setPositiveButton(android.R.string.ok, null)
-                .setNegativeButton(android.R.string.cancel, null)
-                .create()
-                .also { dialog ->
-                    dialog.setOnShowListener {
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                            input.error = null
-                            val errorMessage = onSubmit(input.text?.toString()?.trim().orEmpty())
-                            if (errorMessage == null) {
-                                dialog.dismiss()
-                            } else {
-                                input.setText("")
-                                input.error = errorMessage
-                                input.requestFocus()
-                            }
-                        }
-                    }
-                }
         }
 
         dialog.show()
@@ -2331,7 +2286,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = getString(R.string.settings_parental_pin_hint)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(48, 36, 48, 36)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
@@ -2360,7 +2315,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val dialog = if (ExperimentalMobileDesign.enabled()) {
+        val dialog = run {
             val glass = ExpDialogChrome.buildGlassMessage(requireContext(), getString(messageRes))
             val density = resources.displayMetrics.density
             glass.root.addView(
@@ -2384,17 +2339,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         wirePositive(d)
                     }
                 }
-        } else {
-            alertBuilder()
-                .setTitle(titleRes)
-                .setMessage(messageRes)
-                .setView(input)
-                .setPositiveButton(android.R.string.ok, null)
-                .setNegativeButton(android.R.string.cancel, null)
-                .create()
-                .also { d ->
-                    d.setOnShowListener { wirePositive(d) }
-                }
         }
 
         dialog.show()
@@ -2407,10 +2351,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
     private fun showBackupResult(message: String, offerRestart: Boolean = false) {
         if (!isAdded) return
-        if (!ExperimentalMobileDesign.enabled()) {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-            return
-        }
         val glass = ExpDialogChrome.buildGlassMessage(requireContext(), message)
         val builder = alertBuilder().setView(glass.root)
         if (offerRestart) {
@@ -2564,7 +2504,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             .create()
             .apply {
                 setCanceledOnTouchOutside(false)
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     window?.setBackgroundDrawableResource(ExperimentalMobileDesign.dialogBackground())
                     ExpMotion.enterScreen(contentView)
                     ExpDialogChrome.polishShown(this)

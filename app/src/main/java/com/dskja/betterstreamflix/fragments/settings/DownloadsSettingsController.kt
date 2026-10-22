@@ -4,7 +4,6 @@ import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
@@ -502,7 +501,7 @@ object DownloadsSettingsController {
         onCancel: (() -> Unit)? = null,
         onConfirm: () -> Unit,
     ) {
-        MaterialAlertDialogBuilder(context)
+        androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(titleRes)
             .setMessage(messageRes)
             .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }

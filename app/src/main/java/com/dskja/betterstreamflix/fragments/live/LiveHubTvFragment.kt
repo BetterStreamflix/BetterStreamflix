@@ -61,7 +61,6 @@ class LiveHubTvFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         ExpMotion.enterScreen(binding.root)
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         refreshProfileChip()
 
         command = LiveCommandController(
@@ -176,7 +175,6 @@ class LiveHubTvFragment : Fragment() {
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             val retry = { reload() }
                             btnIsLoadingRetry.setOnClickListener { retry() }
                             btnIsLoadingClearCache.setOnClickListener {

@@ -365,7 +365,7 @@ class CategoryViewHolder(
         binding.rvCategory.visibility = View.VISIBLE
         bindShelfWeather(binding.tvCategoryTitle, binding.rvCategory, binding.tvShelfWeather)
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
             binding.tvCategoryTitle.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
@@ -689,7 +689,6 @@ class CategoryViewHolder(
         )
 
         fun restartAutoProgress() {
-            if (!ExperimentalMobileDesign.enabled()) return
             if (DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)) return
             val bar = binding.root.findViewById<android.widget.ProgressBar>(R.id.pb_swiper_auto_progress)
                 ?: return
@@ -764,10 +763,7 @@ class CategoryViewHolder(
 
         scheduleAdvance()
 
-        val exp = ExperimentalMobileDesign.enabled()
-        if (exp) {
-            applyExperimentalSwiperChrome(binding)
-        }
+        applyExperimentalSwiperChrome(binding)
 
         binding.llDotsIndicator.apply {
             removeAllViews()
@@ -779,7 +775,7 @@ class CategoryViewHolder(
                     container = this,
                     total = source.size,
                     selected = FeaturedTvRotation.coerceIndex(category.selectedIndex, source.size),
-                    exp = exp,
+                    exp = true,
                     leanbackFocusable = false,
                     onSelect = { index ->
                         val target = if (useLoop) index + 1 else index
@@ -787,7 +783,7 @@ class CategoryViewHolder(
                     },
                 )
             }
-            if (exp && source.isNotEmpty() && getTag(R.id.exp_enter_animated_tag) != true) {
+            if (source.isNotEmpty() && getTag(R.id.exp_enter_animated_tag) != true) {
                 setTag(R.id.exp_enter_animated_tag, true)
                 ExpMotion.popIn(this)
             }
@@ -810,10 +806,8 @@ class CategoryViewHolder(
                 if (indicatorPosition == lastMobileDotIndex) return
                 lastMobileDotIndex = indicatorPosition
                 category.selectedIndex = indicatorPosition
-                if (exp) {
+                {
                     updateExpDots(binding, indicatorPosition)
-                } else {
-                    updateMobilePageIndicator(binding, indicatorPosition, source.size)
                 }
             }
 
@@ -859,7 +853,7 @@ class CategoryViewHolder(
                     count = 2,
                     wifiOnly = true,
                 )
-                if (exp) {
+                {
                     if (FeaturedAdvancePolicy.shouldHapticOnPageChange(context)) {
                         ExpMotion.hapticTap(binding.vpCategorySwiper)
                     }
@@ -890,11 +884,6 @@ class CategoryViewHolder(
                         }
                     }
                     currentShow?.let { show ->
-                        val activity = context.toActivity()
-                        if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
-                            (activity.getCurrentFragment() as? HomeMobileFragment)
-                                ?.updateExperimentalHeroArt(show)
-                        }
                         FeaturedTvRotation.titleOf(show)?.let { title ->
                             binding.vpCategorySwiper.announceForAccessibility(
                                 context.getString(R.string.home_featured_page, title)
@@ -965,10 +954,8 @@ class CategoryViewHolder(
         binding.vpCategorySwiper.registerOnPageChangeCallback(callback)
         if (source.isNotEmpty()) {
             val start = FeaturedTvRotation.coerceIndex(category.selectedIndex, source.size)
-            if (exp) {
+            {
                 updateExpDots(binding, start)
-            } else {
-                updateMobilePageIndicator(binding, start, source.size)
             }
         }
     }
@@ -982,8 +969,7 @@ class CategoryViewHolder(
         if (!FeaturedAdvancePolicy.shouldAutoAdvance(context)) return
         handler.removeCallbacksAndMessages(null)
         // Restart progress chrome the same way scheduleAdvance does after page changes.
-        if (ExperimentalMobileDesign.enabled() &&
-            !DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
+        if (!DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
         ) {
             val bar = binding.root.findViewById<android.widget.ProgressBar>(R.id.pb_swiper_auto_progress)
             if (bar != null) {
@@ -1302,7 +1288,7 @@ class CategoryViewHolder(
         binding.btnSwiperWatchNow.visibility = View.VISIBLE
         // My List visibility is owned by FeaturedSwiperChrome.bindListButton below.
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             applyExperimentalTvSwiperChrome(binding)
         }
 
@@ -1472,7 +1458,7 @@ class CategoryViewHolder(
                 nextFocusDownId = downId
                 binding.btnSwiperAddToList.nextFocusDownId = downId
             }
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
                 // Keep Cinema CTA ink — Material onPrimary would wipe cinema_cta_ink.
                 FeaturedSwiperChrome.wireWatchButton(this)
@@ -1543,7 +1529,7 @@ class CategoryViewHolder(
                 nextFocusUpId = chip.id
             }
             nextFocusDownId = View.NO_ID
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
             }
             setOnClickListener {
@@ -1611,7 +1597,7 @@ class CategoryViewHolder(
                 watch.history != null -> View.VISIBLE
                 else -> View.GONE
             }
-            if (ExperimentalMobileDesign.enabled() && watch.history != null) {
+            if (watch.history != null) {
                 val primary = MaterialColors.getColor(
                     this, androidx.appcompat.R.attr.colorPrimary,
                 )
@@ -1620,19 +1606,13 @@ class CategoryViewHolder(
         }
 
         binding.llDotsIndicator.apply {
-            val exp = ExperimentalMobileDesign.enabled()
-            if (exp) {
-                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                val pad = (10 * resources.displayMetrics.density).toInt()
-                setPadding(pad, pad / 2, pad, pad / 2)
-            } else {
-                setBackgroundResource(0)
-                setPadding(0, 0, 0, 0)
-            }
+            setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            val pad = (10 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, pad / 2)
             val total = category.list.size
             val selectedIndex = category.selectedIndex
             if (!rebuildPageIndicator &&
-                updateTvPageIndicatorSelection(this, selectedIndex, total, exp)
+                updateTvPageIndicatorSelection(this, selectedIndex, total, true)
             ) {
                 return@apply
             }
@@ -1640,7 +1620,7 @@ class CategoryViewHolder(
                 container = this,
                 total = total,
                 selected = selectedIndex,
-                exp = exp,
+                exp = true,
                 // Dots are decorative page chrome — keep them out of the DPAD chain on TV.
                 leanbackFocusable = false,
                 onSelect = { index ->
@@ -1703,8 +1683,8 @@ class CategoryViewHolder(
             context,
             R.color.cinema_glass_bright,
         )
-        val dotSize = if (exp) 6.dp(context) else 15
-        val activeWidth = if (exp) 28 else 15
+        val dotSize = if (true) 6.dp(context) else 15
+        val activeWidth = if (true) 28 else 15
         val safeSelected = selected.coerceIn(0, total - 1)
         container.children.forEachIndexed { index, view ->
             val isActive = safeSelected == index

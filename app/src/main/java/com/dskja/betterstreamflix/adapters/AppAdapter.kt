@@ -1161,7 +1161,7 @@ class AppAdapter(
         fun bind(header: FavoriteSectionHeader) {
             itemView.findViewById<TextView>(R.id.tv_favorite_section_title)?.text = header.title
             val rule = itemView.findViewById<View>(R.id.v_favorite_section_rule)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 itemView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             }
             if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
@@ -1221,7 +1221,7 @@ class AppAdapter(
             SupportUiBinder.applyFocusScale(cta)
             SupportUiBinder.applyFocusScale(dismiss)
             SupportUiBinder.applyFocusScale(root)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     root.applyExpPress()
@@ -1316,7 +1316,7 @@ class AppAdapter(
             SupportUiBinder.applyFocusScale(cta)
             SupportUiBinder.applyFocusScale(dismiss)
             SupportUiBinder.applyFocusScale(root)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     root.applyExpPress()
@@ -1355,7 +1355,7 @@ class AppAdapter(
         binding.root
     ) {
         fun bind() {
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 val shimmer = itemView.findViewById<View>(R.id.sh_load_more)
                 val spinner = itemView.findViewById<View>(R.id.pb_load_more_is_loading)
                     ?: itemView.findViewById(R.id.pb_is_loading)

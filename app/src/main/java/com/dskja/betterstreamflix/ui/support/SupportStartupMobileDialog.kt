@@ -44,7 +44,7 @@ class SupportStartupMobileDialog(
 
         binding.cbSupportStartupNever.isChecked = UserPreferences.neverShowSupportOnStart
 
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             (binding.root.getChildAt(0) as? android.view.View)
                 ?.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
             ExpMotion.enterScreen(binding.root)

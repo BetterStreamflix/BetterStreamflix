@@ -23,11 +23,7 @@ import kotlinx.coroutines.withContext
 object GuardaFlixAuthSettingsController {
 
     private fun alertBuilder(context: android.content.Context) =
-        if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
 
     fun bind(
         fragment: Fragment,
@@ -83,15 +79,10 @@ object GuardaFlixAuthSettingsController {
         signOut?.setOnPreferenceClickListener {
             val ctx = fragment.requireContext()
             val message = ctx.getString(R.string.guardaflix_sign_out_summary)
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(ctx, message)
-            } else {
-                null
-            }
+            val glass = ExpDialogChrome.buildGlassMessage(ctx, message)
             val builder = alertBuilder(ctx)
                 .setTitle(R.string.guardaflix_sign_out)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(message)
+            builder.setView(glass.root)
             builder
                 .setPositiveButton(R.string.guardaflix_sign_out) { _, _ ->
                     GuardaFlixProvider.logout()
@@ -126,10 +117,9 @@ object GuardaFlixAuthSettingsController {
         val density = context.resources.displayMetrics.density
         val padding = (24 * density).toInt()
         val fieldGap = (10 * density).toInt()
-        val exp = ExperimentalMobileDesign.enabled()
-        fun styledField(block: EditText.() -> Unit) = EditText(context).apply {
+                fun styledField(block: EditText.() -> Unit) = EditText(context).apply {
             isSingleLine = true
-            if (exp) {
+            {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
                 setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
@@ -151,14 +141,10 @@ object GuardaFlixAuthSettingsController {
             transformationMethod = PasswordTransformationMethod.getInstance()
             visibility = if (confirmPassword) android.view.View.VISIBLE else android.view.View.GONE
         }
-        val glass = if (exp) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.guardaflix_username_hint),
             )
-        } else {
-            null
-        }
         val contentView = if (glass != null) {
             fun addField(field: EditText) {
                 glass.root.addView(
@@ -235,19 +221,14 @@ object GuardaFlixAuthSettingsController {
         action: () -> GuardaFlixProvider.AuthResult,
     ) {
         val context = fragment.requireContext()
-        val glass = if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.buildGlassMessage(
+        val glass = ExpDialogChrome.buildGlassMessage(
                 context,
                 context.getString(R.string.guardaflix_auth_progress_message),
             )
-        } else {
-            null
-        }
         val builder = alertBuilder(context)
             .setTitle(R.string.guardaflix_auth_progress_title)
             .setCancelable(false)
-        if (glass != null) builder.setView(glass.root)
-        else builder.setMessage(R.string.guardaflix_auth_progress_message)
+        builder.setView(glass.root)
         val progress = builder.create()
         progress.setOnShowListener {
             if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)

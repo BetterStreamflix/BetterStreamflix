@@ -19,7 +19,7 @@ object SupportUiBinder {
         context: Context,
         container: LinearLayout,
         horizontal: Boolean = false,
-        animate: Boolean = ExperimentalMobileDesign.enabled(),
+        animate: Boolean = true,
     ) {
         container.removeAllViews()
         val inflater = LayoutInflater.from(context)
@@ -36,7 +36,7 @@ object SupportUiBinder {
             card.root.setOnClickListener(open)
             card.btnSupportProviderCta.setOnClickListener(open)
             wireInteractive(card.root)
-            if (ExperimentalMobileDesign.enabled()) {
+            {
                 card.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
                 (card.ivSupportProviderIcon.parent as? View)?.setBackgroundResource(
                     ExperimentalMobileDesign.iconChipBackground(),
@@ -78,22 +78,16 @@ object SupportUiBinder {
             container.addView(card.root, lp)
 
             if (animate) {
-                if (ExperimentalMobileDesign.enabled()) {
+                {
                     card.root.postDelayed({ ExpMotion.popIn(card.root) }, 40L * index)
-                } else {
-                    val anim = AnimationUtils.loadAnimation(context, R.anim.support_fade_slide_up)
-                    anim.startOffset = (index * 40L)
-                    card.root.startAnimation(anim)
                 }
             }
         }
     }
 
     fun wireInteractive(view: View) {
-        if (ExperimentalMobileDesign.enabled()) {
+        {
             view.applyExpPress()
-        } else {
-            applyFocusScale(view)
         }
     }
 

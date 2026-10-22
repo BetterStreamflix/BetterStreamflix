@@ -81,7 +81,6 @@ class TvShowMobileFragment : Fragment() {
         if (args.openTab.equals("similar", ignoreCase = true)) {
             selectedTab = DetailTab.SIMILAR
         }
-        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)

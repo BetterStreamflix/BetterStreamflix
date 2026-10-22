@@ -39,7 +39,6 @@ import com.dskja.betterstreamflix.providers.SoloLatinoProvider
 import com.dskja.betterstreamflix.providers.ZaluknijProvider
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.getCurrentFragment
