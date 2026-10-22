@@ -131,7 +131,9 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                 page = 1
                 _state.emit(
                     State.SuccessLoading(
-                        people = enriched,
+                        people = enriched.copy(
+                            filmography = filterHidden(enriched.filmography),
+                        ),
                         hasMore = providerHadCredits,
                     ),
                 )
@@ -156,7 +158,9 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
 
             _state.emit(
                 State.SuccessLoading(
-                    people = people,
+                    people = people.copy(
+                        filmography = filterHidden(people.filmography),
+                    ),
                     hasMore = false,
                 ),
             )
@@ -189,7 +193,8 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                 _state.emit(
                     State.SuccessLoading(
                         people = currentState.people.copy(
-                            filmography = currentState.people.filmography + people.filmography
+                            filmography = currentState.people.filmography +
+                            filterHidden(people.filmography)
                         ),
                         hasMore = people.filmography.isNotEmpty(),
                     )
@@ -231,6 +236,14 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
             filmography = mergeFilmography(people.filmography, tmdb.filmography),
         )
     }
+
+    private fun filterHidden(
+        shows: List<com.dskja.betterstreamflix.models.Show>,
+    ): List<com.dskja.betterstreamflix.models.Show> =
+        com.dskja.betterstreamflix.home.SeriesFastForward.filterTasteHidden(
+            com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext,
+            shows,
+        )
 
     private fun mergeFilmography(
         primary: List<com.dskja.betterstreamflix.models.Show>,
