@@ -147,16 +147,16 @@
 	<string name="episode_note_cd">ملاحظة الحلقة</string>
 	<string name="player_episode_note_label">أين توقفت؟ · %1$s</string>
 
-	<string name="episode_item_info">الموسم %d الحلقة %d • %s</string>
-	<string name="episode_item_info_episode_only">الحلقة %d • %s</string>
+	<string name="episode_item_info">الموسم %1$d الحلقة %2$d • %3$s</string>
+	<string name="episode_item_info_episode_only">الحلقة %1$d • %2$s</string>
 
 	<string name="tv_show_item_episode_number">الحلقة %d</string>
-	<string name="tv_show_item_season_number_episode_number">الموسم %d الحلقة %d</string>
+	<string name="tv_show_item_season_number_episode_number">الموسم %1$d الحلقة %2$d</string>
 	<string name="tv_show_item_type">مسلسل</string>
 
-	<string name="tv_show_runtime_hours_minutes">%d ساعة %d دقيقة</string>
+	<string name="tv_show_runtime_hours_minutes">%1$d ساعة %2$d دقيقة</string>
 	<string name="tv_show_runtime_minutes">%d دقيقة</string>
-	<string name="tv_show_watch_season_episode">مشاهدة الموسم %d الحلقة %d</string>
+	<string name="tv_show_watch_season_episode">مشاهدة الموسم %1$d الحلقة %2$d</string>
 	<string name="tv_show_trailer">الإعلان الترويجي</string>
 	<string name="tv_show_seasons">المواسم</string>
 	<string name="tv_show_cast">طاقم العمل</string>
@@ -164,7 +164,7 @@
 	<string name="tv_show_you_may_also_like">قد يعجبك أيضًا</string>
 
 	<string name="movie_item_type">فيلم</string>
-	<string name="movie_runtime_hours_minutes">%d ساعة %d دقيقة</string>
+	<string name="movie_runtime_hours_minutes">%1$d ساعة %2$d دقيقة</string>
 	<string name="movie_runtime_minutes">%d دقيقة</string>
 	<string name="movie_watch_now">شاهد الآن</string>
 	<string name="trailer_stream_now">شاهد الآن</string>
@@ -185,8 +185,8 @@
 
 	<string name="genre_header_name">أفلام ومسلسلات %s</string>
 
-	<string name="player_subtitle_tv_show">الموسم %d الحلقة %d • %s</string>
-	<string name="player_subtitle_tv_show_episode_only">الحلقة %d • %s</string>
+	<string name="player_subtitle_tv_show">الموسم %1$d الحلقة %2$d • %3$s</string>
+	<string name="player_subtitle_tv_show_episode_only">الحلقة %1$d • %2$s</string>
 	<string name="player_next_episode_up_next">التالي</string>
 	<string name="player_next_episode_action">شغّل الآن</string>
 	<string name="player_next_episode_dismiss">إخفاء</string>

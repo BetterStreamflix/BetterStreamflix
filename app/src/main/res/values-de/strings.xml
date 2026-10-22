@@ -310,16 +310,16 @@
     <string name="option_clear_recently_watched">Aus Zuletzt gesehen entfernen</string>
     <string name="option_cancel">Abbrechen</string>
 
-    <string name="episode_item_info">S%d E%d • %s</string>
-    <string name="episode_item_info_episode_only">E%d • %s</string>
+    <string name="episode_item_info">S%1$d E%2$d • %3$s</string>
+    <string name="episode_item_info_episode_only">E%1$d • %2$s</string>
 
     <string name="tv_show_item_episode_number">E%d</string>
-    <string name="tv_show_item_season_number_episode_number">S%d E%d</string>
+    <string name="tv_show_item_season_number_episode_number">S%1$d E%2$d</string>
     <string name="tv_show_item_type">TV</string>
 
-    <string name="tv_show_runtime_hours_minutes">%d Std %d Min</string>
+    <string name="tv_show_runtime_hours_minutes">%1$d Std %2$d Min</string>
     <string name="tv_show_runtime_minutes">%d Min</string>
-    <string name="tv_show_watch_season_episode">S%d E%d ansehen</string>
+    <string name="tv_show_watch_season_episode">S%1$d E%2$d ansehen</string>
     <string name="tv_show_trailer">Trailer</string>
     <string name="tv_show_seasons">Staffeln</string>
     <string name="tv_show_cast">Besetzung</string>
@@ -327,7 +327,7 @@
     <string name="tv_show_you_may_also_like">Könnte dir auch gefallen:</string>
 
     <string name="movie_item_type">Film</string>
-    <string name="movie_runtime_hours_minutes">%d h %d min</string>
+    <string name="movie_runtime_hours_minutes">%1$d h %2$d min</string>
     <string name="movie_runtime_minutes">%d Min</string>
     <string name="movie_watch_now">Ansehen</string>
     <string name="movie_trailer">Trailer</string>
@@ -353,8 +353,8 @@
 
     <string name="genre_header_name">%s Filme und Serien</string>
 
-    <string name="player_subtitle_tv_show">S%d E%d • %s</string>
-    <string name="player_subtitle_tv_show_episode_only">E%d • %s</string>
+    <string name="player_subtitle_tv_show">S%1$d E%2$d • %3$s</string>
+    <string name="player_subtitle_tv_show_episode_only">E%1$d • %2$s</string>
     <string name="player_next_episode_up_next">Als Nächstes</string>
     <string name="player_next_episode_action">Jetzt abspielen</string>
     <string name="player_next_episode_dismiss">Ausblenden</string>

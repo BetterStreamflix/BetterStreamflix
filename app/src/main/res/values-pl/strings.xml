@@ -145,15 +145,15 @@
     <string name="episode_note_cd">Notatka odcinka</string>
     <string name="player_episode_note_label">Gdzie skończyłem? · %1$s</string>
 
-    <string name="episode_item_info">S%d E%d • %s</string>
-    <string name="episode_item_info_episode_only">E%d • %s</string>
+    <string name="episode_item_info">S%1$d E%2$d • %3$s</string>
+    <string name="episode_item_info_episode_only">E%1$d • %2$s</string>
 
     <string name="tv_show_item_episode_number">E%d</string>
-    <string name="tv_show_item_season_number_episode_number">S%d E%d</string>
+    <string name="tv_show_item_season_number_episode_number">S%1$d E%2$d</string>
     <string name="tv_show_item_type">Serial</string>
-    <string name="tv_show_runtime_hours_minutes">%d godz. %d min</string>
+    <string name="tv_show_runtime_hours_minutes">%1$d godz. %2$d min</string>
     <string name="tv_show_runtime_minutes">%d min</string>
-    <string name="tv_show_watch_season_episode">Ogladaj S%d E%d</string>
+    <string name="tv_show_watch_season_episode">Ogladaj S%1$d E%2$d</string>
     <string name="tv_show_trailer">Zwiastun</string>
     <string name="tv_show_seasons">Sezony</string>
     <string name="tv_show_cast">Obsada</string>
@@ -182,8 +182,8 @@
     <string name="player_external_player_title">Odtworz za pomoca</string>
     <string name="player_external_player_error_video">Film nie jest jeszcze zaladowany</string>
     <string name="player_retry_later_message">Wideo jest obecnie niedostepne u tego dostawcy. Sprobuj ponownie pozniej</string>
-    <string name="player_subtitle_tv_show">S%d E%d • %s</string>
-    <string name="player_subtitle_tv_show_episode_only">E%d • %s</string>
+    <string name="player_subtitle_tv_show">S%1$d E%2$d • %3$s</string>
+    <string name="player_subtitle_tv_show_episode_only">E%1$d • %2$s</string>
     <string name="player_next_episode_up_next">Następny</string>
     <string name="player_next_episode_action">Odtwórz teraz</string>
     <string name="player_next_episode_dismiss">Ukryj</string>
@@ -1023,7 +1023,7 @@
     <string name="detail_download">Pobierz</string>
     <string name="exp_favorites_selected_count">%d zaznaczonych · przeciągnij, aby przesunąć</string>
     <string name="option_clear_recently_watched">Usuń z Ostatnio oglądanych</string>
-    <string name="movie_runtime_hours_minutes">%d g %d min</string>
+    <string name="movie_runtime_hours_minutes">%1$d g %2$d min</string>
     <string name="movie_runtime_minutes">%d min</string>
     <string name="people_born">Urodzony</string>
     <string name="genre_header_name">Filmy i seriale: %s</string>
