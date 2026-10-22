@@ -279,7 +279,7 @@ object TmdbUtils {
 
     private suspend fun <T> fetchLogosWithRetry(block: suspend () -> T): T {
         var last: Exception? = null
-        repeat(LogoConstants.NETWORK_RETRY_COUNT + 1) { attempt ->
+        for (attempt in 0..LogoConstants.NETWORK_RETRY_COUNT) {
             try {
                 return block()
             } catch (e: CancellationException) {
