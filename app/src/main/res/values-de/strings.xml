@@ -2765,4 +2765,8 @@
     <string name="platform_opensubtitles_login_failed">OpenSubtitles-Login fehlgeschlagen: %1$s</string>
     <string name="platform_opensubtitles_logged_out">OpenSubtitles-Sitzung gelöscht</string>
     <string name="platform_simkl_logged_out">Simkl-Token gelöscht</string>
+    <plurals name="cloud_sync_progress_applying_cloud">
+        <item quantity="one">Wende %d Cloud-Element an…</item>
+        <item quantity="other">Wende %d Cloud-Elemente an…</item>
+    </plurals>
 </resources>
