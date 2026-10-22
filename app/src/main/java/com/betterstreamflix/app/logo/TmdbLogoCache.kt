@@ -31,6 +31,9 @@ object TmdbLogoCache {
     /** Identity → blacklistedAtMs (identity strips TMDb size tier). */
     private val failBlacklist = ConcurrentHashMap<String, Long>()
 
+    /** Basename → identity set, so file-path exclusion is O(1) per candidate. */
+    private val failByBasename = ConcurrentHashMap<String, MutableSet<String>>()
+
     @Volatile
     private var prefs: SharedPreferences? = null
 
@@ -50,16 +53,33 @@ object TmdbLogoCache {
         if (stored != LogoConstants.DISK_CACHE_VERSION) {
             p.edit().clear().putInt(META_VERSION, LogoConstants.DISK_CACHE_VERSION).apply()
         }
-        // Hydrate persisted decode-fail blacklist so trusted-broken logo URLs stay
-        // suppressed across restarts; prune anything past its TTL on the way in.
+        // Hydrate the persisted decode-fail blacklist so trusted-broken logo URLs
+        // stay suppressed across restarts, and bound disk growth by dropping
+        // malformed rows plus entries older than the maximum configurable TTL
+        // (per-entry TTLs are only applied at read time, since configureTtls()
+        // runs after init).
         val now = System.currentTimeMillis()
         val prune = mutableListOf<String>()
         p.all.forEach { (k, v) ->
-            if (!k.startsWith(BLACKLIST_PREFIX) || v !is Long) return@forEach
-            if (now - v > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
-                prune.add(k)
-            } else {
-                failBlacklist[k.removePrefix(BLACKLIST_PREFIX)] = v
+            when {
+                k.startsWith(BLACKLIST_PREFIX) -> {
+                    val at = v as? Long
+                    if (at == null || now - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
+                        prune.add(k)
+                    } else {
+                        val identity = k.removePrefix(BLACKLIST_PREFIX)
+                        failBlacklist[identity] = at
+                        indexBlacklist(identity)
+                    }
+                }
+                k.startsWith(DISK_PREFIX) -> {
+                    val raw = v as? String
+                    val sep = raw?.lastIndexOf('|') ?: -1
+                    val at = raw?.substring(sep + 1)?.toLongOrNull()
+                    if (sep < 0 || at == null || now - at > LogoConstants.MAX_DISK_ENTRY_AGE_MS) {
+                        prune.add(k)
+                    }
+                }
             }
         }
         if (prune.isNotEmpty()) {
@@ -78,6 +98,7 @@ object TmdbLogoCache {
         synchronized(memory) { memory.clear() }
         inflight.clear()
         failBlacklist.clear()
+        failByBasename.clear()
         prefs?.edit()?.clear()?.putInt(META_VERSION, LogoConstants.DISK_CACHE_VERSION)?.apply()
     }
 
@@ -88,6 +109,7 @@ object TmdbLogoCache {
         val identity = ArtworkUrls.logoFileIdentity(url)
         if (identity.isEmpty()) return
         failBlacklist[identity] = nowMs
+        indexBlacklist(identity)
         prefs?.edit()?.putLong(BLACKLIST_PREFIX + identity, nowMs)?.apply()
         TmdbLogoTelemetry.recordFailBlacklist()
     }
@@ -104,28 +126,43 @@ object TmdbLogoCache {
     }
 
     fun isFilePathBlacklisted(filePath: String?, nowMs: Long = System.currentTimeMillis()): Boolean {
-        val path = filePath?.trim().orEmpty()
-        if (path.isEmpty()) return false
         // Boundary match on basename so "/1.png" does not poison "/11.png".
-        val basename = path.substringAfterLast('/').lowercase()
+        val basename = filePath?.trim()
+            ?.substringAfterLast('/')
+            ?.lowercase()
+            .orEmpty()
         if (basename.isEmpty()) return false
-        val needle = "/$basename"
-        val iterator = failBlacklist.entries.iterator()
+        val bucket = failByBasename[basename] ?: return false
         val expired = mutableListOf<String>()
-        while (iterator.hasNext()) {
-            val (id, at) = iterator.next()
-            if (nowMs - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
+        var live = false
+        for (id in bucket) {
+            val at = failBlacklist[id]
+            if (at == null || nowMs - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
                 expired.add(id)
-                continue
+            } else {
+                live = true
             }
-            if (id.endsWith(needle)) return true
         }
         expired.forEach { evictBlacklist(it) }
-        return false
+        return live
+    }
+
+    private fun indexBlacklist(identity: String) {
+        val basename = identity.substringAfterLast('/').lowercase()
+        if (basename.isEmpty()) return
+        failByBasename.getOrPut(basename) { ConcurrentHashMap.newKeySet() }.add(identity)
+    }
+
+    private fun deindexBlacklist(identity: String) {
+        val basename = identity.substringAfterLast('/').lowercase()
+        val bucket = failByBasename[basename] ?: return
+        bucket.remove(identity)
+        if (bucket.isEmpty()) failByBasename.remove(basename, bucket)
     }
 
     private fun evictBlacklist(identity: String) {
         failBlacklist.remove(identity)
+        deindexBlacklist(identity)
         prefs?.edit()?.remove(BLACKLIST_PREFIX + identity)?.apply()
     }
 
@@ -232,7 +269,8 @@ object TmdbLogoCache {
     private fun readDisk(cacheKey: String): TmdbLogoPicker.CacheEntry? {
         val raw = prefs?.getString(DISK_PREFIX + cacheKey, null) ?: return null
         val sep = raw.lastIndexOf('|')
-        if (sep <= 0) return null
+        // sep == 0 is a persisted miss ("|<ts>"), not a malformed row.
+        if (sep < 0) return null
         val at = raw.substring(sep + 1).toLongOrNull() ?: return null
         val value = raw.substring(0, sep)
         return TmdbLogoPicker.CacheEntry(value, at)

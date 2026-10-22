@@ -22,6 +22,13 @@ object LogoConstants {
     /** Soft blacklist after a trusted Glide decode failure. */
     const val FAIL_BLACKLIST_TTL_MS = 30L * 60L * 1000L
 
+    /**
+     * Hard cap for persisted disk rows, pruned during init. Must stay at the upper
+     * bound of the user-configurable TTL prefs (UserPreferences coerces to 336h),
+     * because init runs before those TTLs are applied.
+     */
+    const val MAX_DISK_ENTRY_AGE_MS = 336L * 60L * 60L * 1000L
+
     const val MIN_PREFERRED_WIDTH = 200
     const val MIN_ASPECT_FOR_WORDMARK = 1.2f
 
