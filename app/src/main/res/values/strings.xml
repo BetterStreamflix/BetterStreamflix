@@ -1068,8 +1068,6 @@
     <string name="profile_integrations_summary_none">All integrations disabled</string>
     <string name="profile_integrations_summary_some">%1$d enabled: %2$s</string>
     <string name="profile_integrations_dialog_title">Integrations on this profile</string>
-    <string name="profile_integrations_global_title">Manage accounts</string>
-    <string name="profile_integrations_global_summary">Sign in and configure Trakt, Jellyfin, Plex, Debrid &amp; more</string>
     <string name="profile_integration_summary">When off, this profile ignores the service even if configured globally</string>
     <string name="profile_switched_toast">Switched to %1$s</string>
     <string name="profile_created_toast">Profile \"%1$s\" created</string>

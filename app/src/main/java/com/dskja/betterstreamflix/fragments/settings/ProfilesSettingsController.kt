@@ -59,7 +59,6 @@ object ProfilesSettingsController {
         onProfileSwitched: (() -> Unit)? = null,
         onExportProfile: (() -> Unit)? = null,
         onImportProfile: (() -> Unit)? = null,
-        onOpenGlobalIntegrations: (() -> Unit)? = null,
     ) {
         val context = fragment.requireContext()
 
@@ -100,11 +99,6 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_INTEGRATIONS")?.setOnPreferenceClickListener {
             showIntegrationsDialog(fragment, findPreference)
-            true
-        }
-
-        findPreference("PROFILE_INTEGRATIONS_GLOBAL")?.setOnPreferenceClickListener {
-            onOpenGlobalIntegrations?.invoke()
             true
         }
 

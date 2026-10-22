@@ -935,8 +935,6 @@
     <string name="profile_integrations_summary_none">Alle Integrationen deaktiviert</string>
     <string name="profile_integrations_summary_some">%1$d aktiv: %2$s</string>
     <string name="profile_integrations_dialog_title">Integrationen auf diesem Profil</string>
-    <string name="profile_integrations_global_title">Konten verwalten</string>
-    <string name="profile_integrations_global_summary">Trakt, Jellyfin, Plex, Debrid &amp; mehr anmelden und einrichten</string>
     <string name="profile_integration_summary">Wenn aus, ignoriert dieses Profil den Dienst auch bei globaler Konfiguration</string>
     <string name="profile_switched_toast">Zu %1$s gewechselt</string>
     <string name="profile_created_toast">Profil \"%1$s\" erstellt</string>

@@ -274,10 +274,6 @@
                 android:title="@string/profile_integrations_title"
                 android:summary="@string/profile_integrations_summary_all" />
 
-            <Preference
-                android:key="PROFILE_INTEGRATIONS_GLOBAL"
-                android:title="@string/profile_integrations_global_title"
-                android:summary="@string/profile_integrations_global_summary" />
         </PreferenceCategory>
 
         <PreferenceCategory
