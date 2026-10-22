@@ -62,6 +62,28 @@ class ContinueWatchingWidgetProvider : AppWidgetProvider() {
             R.id.widget_cw_row_2,
             R.id.widget_cw_row_3,
         )
+        private val ROW_POSTER_IDS = intArrayOf(
+            R.id.widget_cw_poster_1,
+            R.id.widget_cw_poster_2,
+            R.id.widget_cw_poster_3,
+        )
+
+        /** Glide bitmap fetch for widget posters — callers are on Dispatchers.IO. */
+        private fun loadPosterBitmap(context: Context, url: String?): android.graphics.Bitmap? {
+            if (url.isNullOrBlank()) return null
+            val radiusPx = (8f * context.resources.displayMetrics.density).toInt()
+            return runCatching {
+                com.bumptech.glide.Glide.with(context)
+                    .asBitmap()
+                    .load(url)
+                    .transform(
+                        com.bumptech.glide.load.resource.bitmap.CenterCrop(),
+                        com.bumptech.glide.load.resource.bitmap.RoundedCorners(radiusPx),
+                    )
+                    .submit(120, 176)
+                    .get()
+            }.getOrNull()
+        }
 
         fun buildViews(
             context: Context,
@@ -95,6 +117,13 @@ class ContinueWatchingWidgetProvider : AppWidgetProvider() {
                     return@forEachIndexed
                 }
                 views.setViewVisibility(containerId, View.VISIBLE)
+                val posterView = ROW_POSTER_IDS[index]
+                val bitmap = loadPosterBitmap(context, row.poster)
+                if (bitmap != null) {
+                    views.setImageViewBitmap(posterView, bitmap)
+                } else {
+                    views.setImageViewResource(posterView, R.drawable.glide_fallback_cover)
+                }
                 val label = if (row.subtitle.isBlank()) {
                     row.title
                 } else {

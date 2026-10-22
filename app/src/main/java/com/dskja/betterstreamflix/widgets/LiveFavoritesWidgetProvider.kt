@@ -46,6 +46,35 @@ class LiveFavoritesWidgetProvider : AppWidgetProvider() {
             R.id.widget_live_tile_3,
             R.id.widget_live_tile_4,
         )
+        private val TILE_POSTER_IDS = intArrayOf(
+            R.id.widget_live_poster_1,
+            R.id.widget_live_poster_2,
+            R.id.widget_live_poster_3,
+            R.id.widget_live_poster_4,
+        )
+        private val TILE_LABEL_IDS = intArrayOf(
+            R.id.widget_live_tile_label_1,
+            R.id.widget_live_tile_label_2,
+            R.id.widget_live_tile_label_3,
+            R.id.widget_live_tile_label_4,
+        )
+
+        /** Glide bitmap fetch for channel tiles — callers are on Dispatchers.IO. */
+        private fun loadPosterBitmap(context: Context, url: String?): android.graphics.Bitmap? {
+            if (url.isNullOrBlank()) return null
+            val radiusPx = (10f * context.resources.displayMetrics.density).toInt()
+            return runCatching {
+                com.bumptech.glide.Glide.with(context)
+                    .asBitmap()
+                    .load(url)
+                    .transform(
+                        com.bumptech.glide.load.resource.bitmap.CenterCrop(),
+                        com.bumptech.glide.load.resource.bitmap.RoundedCorners(radiusPx),
+                    )
+                    .submit(240, 240)
+                    .get()
+            }.getOrNull()
+        }
 
         fun buildViews(
             context: Context,
@@ -84,7 +113,16 @@ class LiveFavoritesWidgetProvider : AppWidgetProvider() {
                     return@forEachIndexed
                 }
                 views.setViewVisibility(tileId, View.VISIBLE)
-                views.setTextViewText(tileId, row.title)
+                views.setTextViewText(TILE_LABEL_IDS[index], row.title)
+                val bitmap = loadPosterBitmap(context, row.poster)
+                if (bitmap != null) {
+                    views.setImageViewBitmap(TILE_POSTER_IDS[index], bitmap)
+                } else {
+                    views.setImageViewResource(
+                        TILE_POSTER_IDS[index],
+                        R.drawable.bg_widget_tile,
+                    )
+                }
                 views.setOnClickPendingIntent(
                     tileId,
                     deepLinkPi(context, row.deepLink, appWidgetId, index + 1),
