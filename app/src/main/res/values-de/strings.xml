@@ -3,7 +3,6 @@
     <string name="app_name">BetterStreamflix</string>
 
     <string name="loading_error_title">Etwas ist schiefgelaufen</string>
-    <string name="loading_error_body">Prüfe die Verbindung und versuche es erneut. Cache leeren hilft nach Provider-Wechseln.</string>
     <string name="loading_error_retry">Erneut versuchen</string>
     
     <string name="loading_error_clear_cache">Cache leeren</string>
@@ -18,9 +17,6 @@
     <string name="update">Aktualisieren</string>
 
     <string name="app_layout">App-Layout</string>
-    <string name="app_layout_auto">Automatisch</string>
-    <string name="app_layout_mobile">Mobiles Layout</string>
-    <string name="app_layout_tv">TV Layout</string>
     <string name="app_layout_apply">Anwenden</string> 
 
     <string name="providers_all_languages">Alle Sprachen</string>
@@ -45,7 +41,6 @@
     <string name="meine_sender_leiste_unpinned">%1$s von Sender-Leiste entfernt</string>
     <string name="meine_sender_leiste_pin_cd">%1$s. Lange drücken zum Entfernen</string>
     <string name="meine_sender_leiste_pin_max">Sender-Leiste voll (%1$d). Ältester Pin wurde ersetzt.</string>
-    <string name="meine_sender_leiste_item_cd">%1$s. Lang drücken zum Entfernen.</string>
     <string name="main_menu_movies">Filme</string>
     <string name="main_menu_tv_shows">Serien</string>
     <string name="main_menu_all_channels">Alle Kanäle</string>
@@ -73,12 +68,6 @@
     <string name="live_command_action_ambient_on">Ambiente an</string>
     <string name="live_command_action_ambient_off">Ambiente aus</string>
     <string name="live_command_action_pip">Bild-im-Bild-Zap</string>
-    <string name="live_command_status_search">%1$d Treffer für „%2$s“</string>
-    <string name="live_command_status_reminders">%1$d anstehende Erinnerungen aus Favoriten</string>
-    <string name="live_command_status_sport_zap">Sport-Modus — Zap warm ±2 auf diesem Regal</string>
-    <string name="live_command_status_news">Nachrichten · %1$d Kanäle</string>
-    <string name="live_command_status_favorites">Favoriten · %1$d Kanäle</string>
-    <string name="live_command_status_mode">%1$s · %2$d Regale</string>
     <string name="live_command_toast_pins">Sender-Leiste · %1$d Pins</string>
     <string name="live_command_toast_reminders_on">Live-Erinnerungen an — 5 Min. vor Kickoff</string>
     <string name="live_command_toast_reminders_off">Live-Erinnerungen aus</string>
@@ -114,9 +103,6 @@
     <string name="detail_trailer_unmute">Trailer Ton an</string>
     <string name="detail_trailer_fullscreen">Vollbild</string>
     <string name="detail_trailer_official_badge">Offiziell</string>
-    <string name="detail_featuring_fmt">Mit: %1$s</string>
-    <string name="detail_directors_fmt">Regie: %1$s</string>
-    <string name="detail_actors_fmt">Schauspieler: %1$s</string>
     <string name="detail_about_overview_label">Handlung</string>
     <string name="detail_about_featuring_label">Mit</string>
     <string name="detail_about_directors_label">Regie</string>
@@ -149,7 +135,6 @@
     <string name="search_input_hint">Titel, Personen oder ähnlich wie…</string>
     <string name="search_input_hint_iptv">Kanäle suchen</string>
     <string name="search_similar_header">Ähnlich wie %1$s</string>
-    <string name="search_people_section">Personen</string>
     <string name="global_search">Globale Suche</string>
     <string name="global_search_cd_on">Globale Suche, an, Schalter</string>
     <string name="global_search_cd_off">Globale Suche, aus, Schalter</string>
@@ -180,7 +165,6 @@
     <string name="taste_undo_hide">Rückgängig</string>
     <string name="taste_hidden_snackbar">Aus Für dich ausgeblendet</string>
     <string name="taste_not_interested_snackbar">Als kein Interesse markiert</string>
-    <string name="taste_hidden_list_title">Ausgeblendete Titel</string>
     <string name="taste_hidden_restore">Wiederherstellen</string>
     <string name="taste_hidden_empty">Nichts ausgeblendet — Titel, die du versteckst oder als nicht interessant markierst, erscheinen hier.</string>
     <string name="taste_memory_more_like_cd">Mehr wie %1$s</string>
@@ -192,9 +176,6 @@
     <string name="settings_search_sort_title">Suchergebnis-Reihenfolge</string>
     <string name="search_empty_query">Bitte geben Sie einen Suchbegriff ein</string>
     <string name="search_no_results">Keine Ergebnisse für diese Suche</string>
-    <string name="search_recent_title">Zuletzt</string>
-    <string name="search_recent_clear">Löschen</string>
-    <string name="search_recent_clear_cd">Letzte Suchen löschen</string>
     <string name="search_memories_title">Damals gesucht</string>
     <string name="search_memories_clear">Löschen</string>
     <string name="search_memories_clear_cd">Such-Erinnerungen löschen</string>
@@ -213,57 +194,11 @@
     <string name="provider_update_domain_failed">Domain konnte nicht aktualisiert werden: %1$s</string>
     <string name="provider_health_unstable">instabil</string>
     <string name="provider_health_flaky">unzuverlässig</string>
-    <string name="settings_provider_health_title">Anbieter-Status</string>
-    <string name="settings_provider_health_summary">Welche Quellen sind heute tot oder langsam</string>
-    <string name="settings_provider_health_summary_counts">%1$d tot · %2$d langsam · %3$d ok</string>
-    <string name="settings_provider_health_refresh">Quellen jetzt prüfen</string>
-    <string name="settings_provider_health_checking">Domains werden geprüft…</string>
-    <string name="settings_provider_health_refreshed_at">Letzte Prüfung: %1$s</string>
-    <string name="settings_provider_health_issues_title">Heute tot oder langsam</string>
-    <string name="settings_provider_health_issues_empty">Gerade keine toten oder langsamen Quellen</string>
-    <string name="settings_provider_health_ok_title">Sieht gesund aus</string>
-    <string name="settings_provider_health_status_dead">tot</string>
-    <string name="settings_provider_health_status_slow">langsam</string>
-    <string name="settings_provider_health_status_ok">ok</string>
-    <string name="settings_provider_health_latency_ms">%1$d ms</string>
-    <string name="settings_provider_health_learned_servers">bevorzugt %1$s</string>
-    <string name="settings_provider_passport_title">Provider-Pass</string>
-    <string name="settings_provider_passport_summary">Login- und Captcha-Status pro Anbieter</string>
-    <string name="settings_provider_passport_summary_counts">%1$d Sitzung frisch · %2$d Captcha fällig · %3$d Login fällig</string>
-    <string name="settings_provider_passport_refresh">Sitzungen jetzt prüfen</string>
-    <string name="settings_provider_passport_checking">Login und Captcha werden geprüft…</string>
-    <string name="settings_provider_passport_refreshed_at">Letzte Prüfung: %1$s</string>
-    <string name="settings_provider_passport_attention_title">Handlungsbedarf</string>
-    <string name="settings_provider_passport_attention_empty">Gerade kein Login oder Captcha fällig</string>
-    <string name="settings_provider_passport_fresh_title">Sitzung frisch</string>
-    <string name="settings_provider_passport_fresh_empty">Noch keine frische Sitzung</string>
-    <string name="settings_provider_passport_as_user">als %1$s</string>
-    <string name="settings_provider_passport_cta_captcha">Captcha lösen</string>
-    <string name="settings_provider_passport_cta_login">Anmelden</string>
-    <string name="settings_provider_passport_cta_manage">Sitzung verwalten</string>
     <string name="provider_passport_status_session_fresh">Sitzung frisch</string>
     <string name="provider_passport_status_captcha_due">Captcha fällig</string>
     <string name="provider_passport_status_login_due">Login fällig</string>
-    <string name="settings_provider_trust_title">Provider-Vertrauen</string>
-    <string name="settings_provider_trust_summary">Gesundheit, gelernte Server, Ausfälle und warum dieser Hoster</string>
-    <string name="settings_provider_trust_summary_counts">%1$d tot · %2$d langsam · %3$d Pass · %4$d gelernt</string>
-    <string name="settings_provider_trust_refresh">Vertrauen jetzt prüfen</string>
-    <string name="settings_provider_trust_checking">Gesundheit, Sitzungen und Lernen werden geprüft…</string>
-    <string name="settings_provider_trust_refreshed_at">Letzte Prüfung: %1$s</string>
-    <string name="settings_provider_trust_outage_title">Ausfälle gerade</string>
-    <string name="settings_provider_trust_outage_row">Als tot markiert — Domain aktualisieren oder Provider wechseln</string>
-    <string name="settings_provider_trust_learned_title">Gelernt für diesen Provider</string>
-    <string name="settings_provider_trust_learned_empty">Noch keine gelernten Hoster — ein paar Titel abspielen, damit Trust lernt</string>
-    <string name="settings_provider_trust_learned_row">%1$d%% stabil · %2$d ok / %3$d fehl — tippen zum Anheften</string>
-    <string name="settings_provider_trust_pins_title">Angeheftete Hoster</string>
-    <string name="settings_provider_trust_pins_empty">Keine angehefteten Hoster</string>
-    <string name="settings_provider_trust_pins_hint">Aus der gelernten Liste oder im Player-Servermenü anheften</string>
-    <string name="settings_provider_trust_pin_remove">Tippen zum Lösen</string>
     <string name="settings_provider_trust_pin_on">%1$s angeheftet — beim nächsten Abspielen zuerst</string>
     <string name="settings_provider_trust_pin_off">%1$s gelöst</string>
-    <string name="settings_provider_trust_open_health">Anbieter-Status öffnen</string>
-    <string name="settings_provider_trust_open_passport">Provider-Pass öffnen</string>
-    <string name="settings_provider_trust_stack_title">Trust-Stapel</string>
     <string name="server_why_pinned">Nutze %1$s — von dir angeheftet</string>
     <string name="server_why_preferred">Nutze %1$s — für diesen Titel bevorzugt</string>
     <string name="server_why_learned">Nutze %1$s — für dich hier am stabilsten</string>
@@ -281,8 +216,6 @@
     <string name="provider_outage_banner_subtitle">%1$s (%2$d) — Trust für Details öffnen</string>
     <string name="provider_outage_banner_cta">Trust</string>
     <string name="provider_outage_banner_dismiss_cd">Ausfall-Banner schließen</string>
-    <string name="player_server_pin_action">Hoster anheften</string>
-    <string name="player_server_unpin_action">Hoster lösen</string>
     <string name="genre_empty">In diesem Genre ist noch nichts</string>
     <string name="genre_section_label">Genre</string>
     <string name="season_empty">Keine Episoden in dieser Staffel</string>
@@ -295,7 +228,6 @@
     <string name="exp_cd_search_clear">Suche löschen</string>
     <string name="exp_cd_voice_search">Sprachsuche</string>
     <string name="searching">Suche läuft...</string>
-    <string name="search_error">Fehler</string>
     <string name="result">Ergebnis</string>
     <string name="results">Ergebnisse</string>
     <string name="switching_to_provider">Wechseln zu %s</string>
@@ -346,7 +278,6 @@
     <string name="home_remix_block_live_summary">Favorisierte Live-Kanäle</string>
     <string name="home_remix_block_collections">Collections</string>
     <string name="home_remix_block_collections_summary">Smart-Collections-Regale</string>
-    <string name="home_remix_button_cd">Home-Regalreihenfolge remixen</string>
     <string name="settings_home_remix_title">Home remixen</string>
     <string name="settings_home_remix_summary">Continue, Live und Collections per Drag neu ordnen</string>
     <string name="home_family_friday">Familien-Freitag</string>
@@ -359,7 +290,6 @@
     <string name="shelf_weather_flaky">unzuverlässig</string>
     <string name="shelf_weather_cd_storm">Regal abgedunkelt — Quelle %1$s ist unzuverlässig</string>
     <string name="shelf_weather_cd_haze">Regal abgedunkelt — Quelle %1$s ist instabil</string>
-    <string name="home_catalog_unavailable">Katalog nicht verfügbar — Bibliothek wird weiter angezeigt</string>
     <string name="home_catalog_empty_from_provider">Leerer Katalog von %1$s</string>
     <string name="home_catalog_no_usable_rows">Keine nutzbaren Zeilen von %1$s</string>
     <string name="home_featured_restored_from">Empfohlen-Leiste aus „%1$s“ wiederhergestellt</string>
@@ -377,7 +307,6 @@
     <string name="option_show_unwatched">Als Ungesehen markieren</string>
     <string name="option_clear_program">Aus Weiterschauen entfernen</string>
     <string name="option_clear_recently_watched">Aus Zuletzt gesehen entfernen</string>
-    <string name="option_clear_all_recently_watched">Zuletzt gesehen leeren</string>
     <string name="option_cancel">Abbrechen</string>
 
     <string name="episode_item_info">S%d E%d • %s</string>
@@ -390,7 +319,6 @@
     <string name="tv_show_runtime_hours_minutes">%d Std %d Min</string>
     <string name="tv_show_runtime_minutes">%d Min</string>
     <string name="tv_show_watch_season_episode">S%d E%d ansehen</string>
-    <string name="tv_show_watch_episode">E%d ansehen</string>
     <string name="tv_show_trailer">Trailer</string>
     <string name="tv_show_seasons">Staffeln</string>
     <string name="tv_show_cast">Besetzung</string>
@@ -430,7 +358,6 @@
     <string name="player_next_episode_action">Jetzt abspielen</string>
     <string name="player_next_episode_dismiss">Ausblenden</string>
     <string name="player_next_episode_ready">Nächste Folge bereit</string>
-    <string name="player_next_episode_autoplay_in">Nächste Folge in %ds</string>
     <string name="player_end_card_title">Was kommt als Nächstes?</string>
     <string name="player_end_card_next">Nächste Folge</string>
     <string name="player_end_card_similar">Ähnlich</string>
@@ -448,16 +375,13 @@
     <string name="external_player_remembered">Standard-Player gespeichert</string>
     <string name="player_external_fragile_playlist">Dieser Stream nutzt relative Segmente — externe Player können scheitern. Besser den In-App-Player verwenden.</string>
     <string name="player_external_vlc_headers_unsupported">VLC kann Stream-Cookies/Header nicht senden. Versuch ohne — für geschützte Streams MX Player oder mpv nutzen.</string>
-    <string name="external_download_hls_unsupported">ADM/1DM können HLS-Playlists (.m3u8) nicht laden. Nutze den In-App-Download für diesen Stream.</string>
     <string name="external_download_adaptive_unsupported">ADM/1DM können HLS/DASH-Playlists (.m3u8/.mpd) nicht laden. Nutze den In-App-Download für diesen Stream.</string>
     <string name="external_download_remembered">Standard-Download-Manager gespeichert</string>
     <string name="external_player_clear_default">Standard-Player zurücksetzen</string>
     <string name="external_player_clear_default_summary">Immer nachfragen, welche App genutzt wird</string>
     <string name="external_player_default_summary">Standard: %1$s</string>
-    <string name="external_player_default_none">Kein Standard — Auswahl wird angezeigt</string>
     <string name="player_settings_play_with">Abspielen mit…</string>
     <string name="player_settings_download_with">Herunterladen mit…</string>
-    <string name="player_settings_server_play_with_hint">Quelle lange drücken, um sie in einem externen Player zu öffnen</string>
     <string name="external_download_with_title">Herunterladen mit</string>
     <string name="external_download_none_found">Kein Download-Manager gefunden. Installiere ADM (Advanced Download Manager) oder 1DM.</string>
     <string name="external_download_invalid_url">Noch keine ladbare Stream-URL</string>
@@ -503,7 +427,6 @@
     <string name="player_settings_title">Einstellungen</string>
     <string name="player_settings_quality_title">Qualität des aktuellen Videos</string>
     <string name="player_settings_quality_label">Qualität</string>
-    <string name="player_settings_quality_sub_label_auto">Auto (%dp)</string>
     <string name="player_settings_quality_auto">Automatisch</string>
     <string name="player_settings_quality_auto_selected">Auto • %dp</string>
     <string name="player_settings_quality">%dp</string>
@@ -513,7 +436,6 @@
     <string name="player_settings_night_audio_label">Nacht-Audio</string>
     <string name="player_settings_night_audio_on">Nacht — Dialog-Boost</string>
     <string name="player_settings_night_audio_off">Stereo (normal)</string>
-    <string name="player_settings_night_audio_summary">Dialog anheben und laute Action dämpfen fürs leise Hören</string>
     <string name="player_audio_remember_series">Für diese Serie merken</string>
     <string name="player_audio_always_series">Immer %1$s für diese Serie</string>
     <string name="player_audio_always_saved">Immer %1$s für diese Serie</string>
@@ -528,7 +450,6 @@
     <string name="subtitle_studio_title">Untertitel-Studio</string>
     <string name="subtitle_studio_summary">Schriftgröße, Farbe und Hintergrund für dieses Profil</string>
     <string name="subtitle_studio_preview_sample">Untertitel-Studio — Beispielzeile</string>
-    <string name="subtitle_studio_preview_label">Vorschau</string>
     <string name="subtitle_studio_preset_hint">Größe · Farbe · Hintergrund</string>
     <string name="subtitle_studio_presets_title">Schnellvorlagen</string>
     <string name="subtitle_studio_preset_classic">Studio · Klassisch</string>
@@ -650,8 +571,6 @@
     <string name="player_settings_servers_label">Server</string>
 
     <string name="settings_about">Über</string>
-    <string name="settings_version_tv">TV-Version</string>
-    <string name="settings_version_mobile">Mobile-Version</string>
     <string name="settings_update_check">Automatische Suche nach Updates</string>
     <string name="settings_update_check_summary">Automatisch nach neuen Versionen der App suchen</string>
     <string name="settings_about_version">Version</string>
@@ -667,7 +586,6 @@
     <string name="settings_serienstream_session_cookies">SerienStream-Sitzung</string>
     <string name="settings_serienstream_session_cookies_summary">Status der gespeicherten SerienStream-Login-Cookies</string>
     <string name="settings_serienstream_session_cookies_empty">Nicht angemeldet — oben „Bei SerienStream anmelden“ nutzen</string>
-    <string name="settings_serienstream_session_cookies_set">Angemeldet (%1$d Zeichen) — tippen zum Löschen</string>
     <string name="settings_serienstream_session_cookies_clear_title">SerienStream-Cookies löschen?</string>
     <string name="settings_serienstream_session_cookies_cleared">SerienStream-Cookies gelöscht</string>
     <string name="settings_serienstream_session_login">Bei SerienStream anmelden</string>
@@ -713,7 +631,6 @@
     <string name="settings_aniworld_session_cookies">AniWorld-Sitzung</string>
     <string name="settings_aniworld_session_cookies_summary">Status der gespeicherten AniWorld-Login-Cookies</string>
     <string name="settings_aniworld_session_cookies_empty">Nicht angemeldet — oben „Bei AniWorld anmelden“ nutzen</string>
-    <string name="settings_aniworld_session_cookies_set">Angemeldet (%1$d Zeichen) — tippen zum Löschen</string>
     <string name="settings_aniworld_session_cookies_clear_title">AniWorld-Cookies löschen?</string>
     <string name="settings_aniworld_session_cookies_cleared">AniWorld-Cookies gelöscht</string>
     <string name="settings_aniworld_session_login">Bei AniWorld anmelden</string>
@@ -780,28 +697,18 @@
     <string name="settings_streamingcommunity_domain_blocked">Gesperrte Domain erkannt, auf Standard zurückgesetzt</string>
     <string name="settings_category_cuevana">Cuevana 3 - Einstellungen</string>
     <string name="settings_category_cuevana_domain">Cuevana 3 - Domain-Name</string>
-    <string name="settings_close_app">App schließen</string>
-    <string name="settings_category_streamingcommunity_dnsOverHttps">Sichere DNS-Auflösung verwenden</string>
     <string name="settings_section_content_title">TMDb &amp; Katalog</string>
     <string name="settings_screen_profiles_title">Profile</string>
     <string name="settings_screen_profiles_summary">Avatare, PIN, Kids-Modus und Integrationen</string>
-    <string name="settings_screen_library_title">Bibliothek &amp; Jugendschutz</string>
-    <string name="settings_screen_library_summary">Startzeilen, Bibliotheksbereich und Jugendschutz</string>
-    <string name="profile_atelier_brand">BetterStreamflix</string>
-    <string name="profile_picker_eyebrow">Wer schaut?</string>
     <string name="profile_picker_title">Wer schaut?</string>
     <string name="profile_picker_close">Schließen</string>
     <string name="profile_picker_subtitle">Profil auswählen oder erstellen.</string>
-    <string name="profile_picker_subtitle_plain">Profil auswählen oder erstellen.</string>
     <string name="profile_manage_title">Profile verwalten</string>
     <string name="profile_edit_title">Profil bearbeiten</string>
     <string name="profile_done">Fertig</string>
     <string name="profile_edit_profiles">Profile bearbeiten</string>
     <string name="profile_add_profile">Profil hinzufügen</string>
-    <string name="profile_choose_avatar">Avatar wählen</string>
-    <string name="profile_name_label">Profilname</string>
     <string name="profile_picker_manage">In Einstellungen verwalten</string>
-    <string name="profile_picker_manage_hint">Tippe auf Profile bearbeiten, um umzubenennen, PIN zu setzen oder zu löschen</string>
     <string name="profile_picker_active">Aktiv</string>
     <string name="profile_picker_locked">PIN</string>
     <string name="profile_picker_lock_glyph">⌁</string>
@@ -1022,7 +929,6 @@
     <string name="profile_integrations_global_title">Konten verwalten</string>
     <string name="profile_integrations_global_summary">Trakt, Jellyfin, Plex, Debrid &amp; mehr anmelden und einrichten</string>
     <string name="profile_integration_summary">Wenn aus, ignoriert dieses Profil den Dienst auch bei globaler Konfiguration</string>
-    <string name="profile_beta_badge">Beta</string>
     <string name="profile_switched_toast">Zu %1$s gewechselt</string>
     <string name="profile_created_toast">Profil \"%1$s\" erstellt</string>
     <string name="profile_renamed_toast">Profil umbenannt</string>
@@ -1089,7 +995,6 @@
     <string name="cloud_sync_screen_summary">Favoriten/Watchlist, Verlauf, Folgen-Notizen und Looks zwischen Geräten synchronisieren; Link-Code koppelt ein TV ohne E-Mail-Eingabe</string>
     <string name="shared_watchlist_share_action">Liste teilen</string>
     <string name="shared_watchlist_share_menu_title">Geteilte Merkliste</string>
-    <string name="shared_watchlist_default_title">Merkliste</string>
     <string name="shared_watchlist_share_subject">BetterStreamflix-Merkliste</string>
     <string name="shared_watchlist_share_needs_supabase">Richte Supabase unter Konto und Sync ein, bevor du eine Liste teilst</string>
     <string name="shared_watchlist_share_needs_sign_in">Melde dich unter Konto und Sync an, um deine Merkliste zu teilen</string>
@@ -1145,7 +1050,6 @@
     <string name="watch_party_open_lobby_action">Lobby öffnen</string>
     <string name="watch_party_end_action">Party beenden</string>
     <string name="watch_party_leave_action">Party verlassen</string>
-    <string name="watch_party_guest_leave_message">Diese Watch Party verlassen? Die Wiedergabe läuft lokal weiter.</string>
     <string name="watch_party_share_action">Watch Party teilen</string>
     <string name="watch_party_share_subject">BetterStreamflix Watch Party</string>
     <string name="watch_party_needs_supabase">Supabase unter Konto &amp; Sync einrichten, bevor du eine Watch Party hostest</string>
@@ -1164,7 +1068,6 @@
     <string name="watch_party_unknown_provider">Diese Watch Party nutzt einen Provider, der auf diesem Gerät nicht verfügbar ist</string>
     <string name="watch_party_ended">Watch Party beendet</string>
     <string name="watch_party_left">Watch Party verlassen</string>
-    <string name="watch_party_lobby_title">Watch-Party-Lobby</string>
     <string name="watch_party_lobby_host_waiting">In der Lobby — Link teilen, Server wählen, dann Start</string>
     <string name="watch_party_lobby_guest_waiting">Warte, bis der Host startet…</string>
     <string name="watch_party_lobby_starting">Wiedergabe startet…</string>
@@ -1193,7 +1096,6 @@
     <string name="cast_room_host_summary">Raum auf diesem TV öffnen — das Telefon wird Sidekick (Scrubber, Tastatur, Chat)</string>
     <string name="cast_room_host_active_summary">Aktiv · Code %1$s</string>
     <string name="cast_room_host_failed">Cast-Raum konnte nicht geöffnet werden: %1$s</string>
-    <string name="cast_room_host_ready">Cast-Raum bereit — Warteschlange vom Telefon steuern</string>
     <string name="cast_room_host_qr_title">Scannen, um diesen TV zu steuern</string>
     <string name="cast_room_host_qr_message">Das Telefon tritt als Remote-Companion bei. In der Warteschlange stehen nur Medien-Identitäten — Stream-URLs werden nicht geteilt.</string>
     <string name="cast_room_qr_cd">Cast-Raum-QR-Code</string>
@@ -1256,7 +1158,6 @@
     <string name="tv_sidekick_chat_loading">Chat wird geladen…</string>
     <string name="tv_sidekick_chat_empty">Noch keine Nachrichten — sag Hallo</string>
     <string name="cast_room_queue_empty">Warteschlange leer — Titel öffnen und „Zum Cast-Raum hinzufügen“ wählen</string>
-    <string name="cast_room_now_playing">Jetzt auf dem TV · %1$s</string>
     <string name="cast_room_add_action">Zum Cast-Raum hinzufügen</string>
     <string name="cast_room_item_added">Zur Cast-Raum-Warteschlange hinzugefügt</string>
     <string name="cast_room_add_failed">Konnte nicht zum Cast-Raum hinzufügen: %1$s</string>
@@ -1441,8 +1342,6 @@
     <string name="player_settings_subtitles_loading">Untertitel werden gesucht…</string>
     <string name="player_settings_subtitles_empty">Keine Untertitel gefunden</string>
     <string name="player_back_content_description">Zurück</string>
-
-    <string name="settings_category_home_library">Startbildschirm-Bibliothek</string>
     <string name="settings_show_continue_watching_title">Weiterschauen anzeigen</string>
     <string name="settings_show_continue_watching_summary">Die Weiterschauen-Zeile auf dem Startbildschirm anzeigen</string>
     <string name="settings_show_recently_watched_title">Zuletzt angesehen anzeigen</string>
@@ -1476,19 +1375,9 @@
     <string name="settings_tmdb_clear_cache_title">TMDb-Cache leeren</string>
     <string name="settings_tmdb_clear_cache_summary">Gecachte Details, IMDb-Finds und Suchtreffer verwerfen</string>
     <string name="settings_tmdb_cache_cleared">TMDb-Cache geleert</string>
-    <string name="settings_enable_tmdb_logos_title">Titel-Logos</string>
-    <string name="settings_enable_tmdb_logos_summary">TMDb-Titel-Logos auf Featured und Detailseiten zeigen</string>
-    <string name="settings_tmdb_logo_quality_title">Logo-Bildqualität</string>
-    <string name="settings_tmdb_logo_quality_summary">Original oder w1280 zuerst beim Laden der Logos</string>
     <string name="settings_tmdb_clear_logo_cache_title">Titel-Logo-Cache leeren</string>
     <string name="settings_tmdb_clear_logo_cache_summary">Nur gecachte Titel-Logo-URLs verwerfen (andere TMDb-Daten bleiben)</string>
     <string name="settings_tmdb_logo_cache_cleared">Titel-Logo-Cache geleert</string>
-    <string name="settings_tmdb_logo_telemetry_title">Titel-Logo-Statistik</string>
-    <string name="settings_tmdb_logo_telemetry_summary">Tippen zum Aktualisieren der Logo-Pipeline-Zähler</string>
-    <string name="settings_tmdb_logo_miss_ttl_title">Logo-Miss-Cache-TTL</string>
-    <string name="settings_tmdb_logo_miss_ttl_summary">Wie lange merken, dass ein Titel kein Logo hat</string>
-    <string name="settings_tmdb_logo_hit_ttl_title">Logo-Hit-Cache-TTL</string>
-    <string name="settings_tmdb_logo_hit_ttl_summary">Wie lange eine erfolgreiche Logo-URL behalten wird</string>
     <string name="settings_category_subdl">SubDL-Einstellungen</string>
     <string name="settings_subdl_api_key">SubDL API-Key</string>
     <string name="settings_subdl_api_key_summary">Eigener SubDL API-Key für Untertitel</string>
@@ -1508,19 +1397,11 @@
     <string name="bypass_tv_instructions">DEN CURSOR ÜBER DAS KÄSTCHEN BEWEGEN\nUND OK DRÜCKEN ZUM FREISCHALTEN</string>
     <string name="bypass_status_complete_bypass_first">Schließe zuerst die Umgehung ab.</string>
     <string name="bypass_status_missing_url">Bypass-URL fehlt.</string>
-    <string name="bypass_status_external_redirect_blocked">Externe Weiterleitung blockiert. Schließe zuerst die Verifizierung ab.</string>
     <string name="bypass_status_completed_continue">Bypass abgeschlossen. Tippe auf Continue, um fortzufahren.</string>
-    <string name="bypass_status_cookies_detected">Verifizierungs-Cookies erkannt. Wenn die Seite gelöst aussieht, tippe auf Continue.</string>
     <string name="bypass_status_complete_in_page">Schließe die Captchas ab, tippe im Popup auf Weiter und danach unten auf die Schaltfläche.</string>
-    <string name="bypass_status_complete_captchas_then_weiter_continue">Schließe die Captchas ab, tippe im Popup auf Weiter und danach unten auf die Schaltfläche.</string>
-    <string name="bypass_status_submitted_wait">Verifizierung gesendet. Warte, bis die Weiterleitung abgeschlossen ist.</string>
-    <string name="bypass_status_complete_captcha_modal">Schließe die Captchas im Popup ab, tippe dort auf Weiter und danach unten auf die Schaltfläche.</string>
-    <string name="bypass_status_loading_captcha">Captcha-Abfragen werden geladen.</string>
     <string name="settings_serienstream_domain_summary">Aktueller Endpunkt (Standard: serien.domains-Proxy 186.2.175.5). Alternativen: serienstream.to, serienstream.cx</string>
-    <string name="bypass_status_waiting_modal">Warte, bis der SerienStream-Verifizierungsdialog fertig geladen ist.</string>
     <string name="bypass_action_cancel">Abbrechen</string>
     <string name="bypass_action_continue">Weiter</string>
-    <string name="player_not_available_it_message">Auf italienischen Servern nicht verfügbar, suche es auf TMDB in anderen Sprachen</string>
     <string name="settings_category_poseidon">Poseidonhd2-Einstellungen</string>
     <string name="settings_category_poseidon_domain">Poseidonhd2-Domainname</string>
     <string name="settings_scan_resolver_qr_title">TV-Bypass-QR scannen</string>
@@ -1536,17 +1417,14 @@
     <string name="player_bypass_start_failed">TV-Bypass konnte nicht gestartet werden. Bitte erneut versuchen.</string>
     <string name="settings_scan_resolver_invalid_qr">Dieser QR-Code ist kein BetterStreamflix-Bypass-Link.</string>
     <string name="settings_scan_resolver_failed">QR-Scanner konnte auf diesem Gerät nicht gestartet werden.</string>
-    <string name="settings_category_provider_url_manual">Manuell eingeben</string>
     <string name="player_skip_intro">Intro überspringen</string>
     <string name="player_skip_recap">Zusammenfassung überspringen</string>
     <string name="player_smart_mute_ads_skipped">Hängende Werbung übersprungen</string>
-    <string name="voice_error_clear">Suchverlauf löschen</string>
     <string name="watch_trailer_with">Trailer ansehen mit...</string>
     <string name="youtube">YouTube</string>
     <string name="smarttube">SmartTube</string>
     <string name="smarttube_stable">SmartTube Stable</string>
     <string name="smarttube_beta">SmartTube Beta</string>
-    <string name="choose_smarttube_version">SmartTube-Version auswählen</string>
     <string name="settings_trailer_player_title">Trailer-Player</string>
     <string name="settings_trailer_player_summary">Bevorzugten Player für Trailer auswählen</string>
     <string name="settings_trailer_player_ask">Jedes Mal fragen</string>
@@ -1559,16 +1437,11 @@
     <string name="settings_trailer_thumb_quality_sd">Standard · 640×480</string>
     <string name="settings_trailer_start_muted_title">Trailer stumm starten</string>
     <string name="settings_trailer_start_muted_summary">In-App-Trailer-Tab startet stumm, bis du den Ton einschaltest</string>
-    <string name="settings_category_frenchstream">FrenchStream-Einstellungen</string>
-    <string name="settings_category_interface_title">Oberflächeneinstellungen</string>
     <string name="settings_immersive_mode">Immersiver Modus</string>
     <string name="settings_immersive_mode_summary">Status- und Navigationsleisten ausblenden</string>
     <string name="settings_immersive_mode_on">An (Leisten ausgeblendet)</string>
     <string name="settings_immersive_mode_off">Aus (Leisten sichtbar)</string>
     <string name="home_featured_title">Empfohlen</string>
-    <string name="exp_home_provider_chip">Via %1$s</string>
-    <string name="exp_opt_dynamic_short">Material You</string>
-    <string name="exp_opt_pure_black_short">Pure Black</string>
     <string name="settings_hub_eyebrow">Einstellungen</string>
     <string name="settings_hub_title">Einstellungen</string>
     <string name="settings_hub_subtitle">Wiedergabe, Downloads, Profile und Verbindungen — so gruppiert, wie du sie nutzt.</string>
@@ -1576,25 +1449,14 @@
     <string name="settings_hub_provider_fmt">Schauen über %1$s</string>
     <string name="settings_hub_featured_badge">Verbindungen</string>
     <string name="settings_hub_featured_cta">Verbindungen öffnen</string>
-    <string name="platform_hub_subtitle">Verbinde Trakt, Jellyfin, Plex, Debrid und mehr. Jeder Dienst hat einen eigenen Bildschirm.</string>
     <string name="platform_hub_section_services">Dienste</string>
     <string name="settings_hub_section_app">App</string>
     <string name="settings_hub_section_account">Konto</string>
     <string name="settings_hub_section_project">Projekt</string>
     <string name="settings_hub_more_summary">Updates, Community-Links, Hilfe und Diagnose</string>
-    <string name="exp_home_tagline">Kino, für dich gemacht</string>
     <string name="exp_catalog_eyebrow">BetterStreamflix</string>
-    <string name="exp_bypass_brand">Stream-Verifizierung</string>
-    <string name="exp_movies_tagline">Filme aus allen verbundenen Quellen</string>
-    <string name="exp_tv_shows_tagline">Serien, binge-bereit</string>
-    <string name="exp_search_tagline">Finde alles in deinen Quellen</string>
-    <string name="exp_favorites_tagline">Titel auf deinen Listen</string>
     <string name="exp_favorites_selected_count">%d ausgewählt · zum Verschieben ziehen</string>
-    <string name="exp_downloads_tagline">Offline, bereit wenn du bist</string>
-    <string name="exp_providers_eyebrow">Quellen</string>
-    <string name="exp_genre_tagline">Alle Titel in dieser Spur</string>
     <string name="exp_genre_count">%1$d Titel</string>
-    <string name="exp_people_eyebrow">Cast &amp; Crew</string>
     <string name="exp_season_eyebrow">Episoden</string>
     <string name="exp_season_tagline">Staffel wählen, abspielen</string>
     <string name="exp_back">Zurück</string>
@@ -1605,7 +1467,6 @@
     <string name="exp_empty_browse_catalog">Katalog durchsuchen</string>
     <string name="exp_empty_clear_filter">Alle anzeigen</string>
     <string name="exp_empty_all_languages">Alle Sprachen</string>
-    <string name="exp_swiper_page">Empfohlen: %1$s</string>
     <string name="exp_cd_prev_episode">Vorherige Episode</string>
     <string name="exp_cd_next_episode">Nächste Episode</string>
     <string name="exp_cd_rewind">Zurückspulen</string>
@@ -1653,15 +1514,11 @@
     <string name="watchlist_import_challenge">Bot-Check noch aktiv — warte bis die Seite fertig ist und versuche es erneut</string>
     <string name="watchlist_import_empty">Keine Watchlist-Titel auf dem Account gefunden</string>
     <string name="watchlist_import_ssl_rejected">Sichere Verbindung für unbekannten Host abgelehnt. Nur SerienStream, AniWorld und bekannte Spiegel sind erlaubt.</string>
-    <string name="player_brightness">Helligkeit</string>
-    <string name="player_volume">Lautstärke</string>
-    <string name="percentage_format">%d%%</string>
     <string name="settings_category_appearance">Darstellung</string>
     <string name="settings_theme_title">App-Design</string>
     <string name="settings_stick_energy_mode_title">Energie-Modus Stick</string>
     <string name="settings_stick_energy_mode_summary">Fire Stick: weniger Parallel-Provider und weniger UI-Motion (auto-an für Stick / wenig RAM / altes Fire OS — nicht Cube). Bei Kompakt-Dichte zählt der Fokus-Ring (Zoom aus).</string>
     <string name="settings_stick_energy_mode_summary_auto_on">An (auto für diesen Stick)</string>
-    <string name="settings_stick_energy_mode_summary_off">Aus</string>
     <string name="settings_codec_comfort_title">Codec Comfort</string>
     <string name="settings_codec_comfort_summary_idle">Lernt von HW-Decode-Abstürzen — bevorzugt SW-Decoder und stabile Puffer auf diesem Gerät</string>
     <string name="settings_codec_comfort_summary_active">Aktiv — SW-Decoder und stabile Puffer nach Decode-Abstürzen auf diesem Gerät</string>
@@ -1687,9 +1544,6 @@
     <string name="settings_cinema_room_pillars_summary">Skip Intro, End-Card-Chooser und Clean Exit bleiben verfügbar. Trailer→Play nutzt eine längere Wohnzimmer-Überblendung.</string>
     <string name="cinema_room_brand_label">Cinema Room</string>
     <string name="cinema_room_wake_hint">Beliebige Taste</string>
-    <string name="settings_stick_energy_mode_summary_with_codec_comfort">Energie-Modus Stick · Codec Comfort aktiv — Decoder-Prefs unter Codec Comfort</string>
-    <string name="settings_oled_mode_title">OLED-Modus</string>
-    <string name="settings_oled_mode_summary">Graue Flächen app-weit durch echtes Schwarz ersetzen</string>
     <string name="settings_category_accessibility">Barrierefreiheit</string>
     <string name="settings_leanback_density_title">Leanback-Dichte</string>
     <string name="settings_leanback_density_summary">Pro Profil. Kompakt zeigt mehr Kacheln; Komfort größere Poster. Lädt die TV-Oberfläche neu und kehrt zu Darstellung zurück. Mit Großer Schrift nutzt Kompakt weniger Spalten.</string>
@@ -1705,13 +1559,11 @@
     <string name="a11y_state_downloaded">heruntergeladen</string>
     <string name="a11y_state_selected">ausgewählt</string>
     <string name="a11y_episode_label">Folge %1$d, %2$s</string>
-    <string name="settings_category_library">Mediathek</string>
     <string name="settings_library_scope_title">Favoriten &amp; Weiterschauen</string>
     <string name="settings_library_scope_summary">Listen nur vom aktuellen Anbieter oder von allen Anbietern anzeigen</string>
     <string name="settings_library_scope_per_provider">Pro Anbieter</string>
     <string name="settings_library_scope_cross_provider">Über alle Anbieter</string>
     <string name="settings_library_scope_updated">Mediathek-Bereich aktualisiert</string>
-    <string name="settings_category_parental_control">Kindersicherung</string>
     <string name="settings_parental_pin_title">Eltern-PIN</string>
     <string name="settings_parental_pin_summary">PIN festlegen, um Änderungen an der Kindersicherung zu schützen</string>
     <string name="settings_parental_pin_not_set">PIN nicht festgelegt</string>
@@ -1749,7 +1601,6 @@
     <string name="settings_parental_locked_temporary">Zu viele falsche PIN-Versuche. Versuche es in %1$d Minuten erneut.</string>
     <string name="settings_parental_locked_hard">Die Kindersicherung ist gesperrt. Verwende die Admin-PIN zum Entsperren.</string>
     <string name="settings_parental_unlocked">Kindersicherung entsperrt.</string>
-    <string name="settings_parental_tmdb_disable_blocked">Du musst die Kindersicherung entsperren, bevor du TMDb deaktivierst.</string>
     <string name="settings_screen_content_summary">TMDb-Anreicherung, API-Schlüssel und Anbieter-Quarantäne</string>
     <string name="settings_screen_network_summary">DNS, Diagnosen, Integrationen und Untertitel-Schluessel</string>
     <string name="connection_section_status">Status</string>
@@ -1867,7 +1718,6 @@
     <string name="player_live_channel_meta_program">%1$s\n%2$s</string>
     <string name="player_live_channel_guide">Senderliste</string>
     <string name="player_live_zapping">Wechsle Kanal…</string>
-    <string name="player_controls_locked_hint">Steuerung gesperrt · tippen zum Entsperren</string>
     <string name="player_live_prev_channel">Vorheriger Kanal</string>
     <string name="player_live_next_channel">Nächster Kanal</string>
     <string name="player_live_no_more_channels">Keine weiteren Kanäle in der Liste</string>
@@ -1930,10 +1780,6 @@
     <string name="settings_send_sentry_feedback_sent">Feedback gesendet — danke</string>
     <string name="settings_send_sentry_feedback_empty">Bitte eine kurze Nachricht eingeben</string>
     <string name="bypass_status_challenge_pending">Challenge in der Seite abschließen (Session-Cookies allein reichen nicht)</string>
-    <string name="player_tmdb_de_try_serienstream">Keine funktionierenden deutschen Streams gefunden. Dieser Titel ist möglicherweise noch auf SerienStream verfügbar.</string>
-    <string name="player_tmdb_de_switch_title">SerienStream versuchen?</string>
-    <string name="player_tmdb_de_switch_message">\"%1$s\" hatte keine abspielbaren deutschen Server auf TMDb. Zu SerienStream wechseln und danach suchen?</string>
-    <string name="player_tmdb_de_switch_cta">Zu SerienStream wechseln</string>
 
     <string name="main_menu_downloads">Downloads</string>
     <string name="downloads_title">Downloads</string>
@@ -1941,7 +1787,6 @@
     <string name="offline_library_badge">Nur heruntergeladen</string>
     <string name="offline_library_tagline">Alles hier läuft offline – kein Internet nötig</string>
     <string name="offline_library_mode">Bibliothek</string>
-    <string name="offline_library_manage_mode">Verwalten</string>
     <string name="offline_studio_title">Offline Studio</string>
     <string name="offline_studio_mode_queue">Warteschlange</string>
     <string name="offline_studio_mode_care">Zustand</string>
@@ -1974,7 +1819,6 @@
     <string name="offline_studio_storage_body">%1$s · bis %2$d parallel · %3$s\nBelegt %4$s · frei %5$s</string>
     <string name="offline_studio_wifi_on">nur WLAN</string>
     <string name="offline_studio_wifi_off">Mobilfunk erlaubt</string>
-    <string name="offline_studio_soft_unlimited">∞</string>
     <string name="offline_studio_stepper_lookahead_minus">Smart-Lookahead verringern</string>
     <string name="offline_studio_stepper_lookahead_plus">Smart-Lookahead erhöhen</string>
     <string name="offline_studio_stepper_quota_minus">Serien-Kontingent verringern</string>
@@ -1990,7 +1834,6 @@
     <string name="offline_studio_pack_share">Pack teilen</string>
     <string name="offline_studio_pack_import">Pack-QR scannen</string>
     <string name="offline_studio_pack_import_tv">Pack-Link einfügen</string>
-    <string name="offline_studio_pack_import_tv_hint">Füge einen Pack-Link vom Telefon ein, um ins Offline Studio zu importieren.</string>
     <string name="offline_studio_pack_import_paste_message">Füge einen BetterStreamflix-Pack-Link oder eine URL ein.</string>
     <string name="offline_studio_pack_import_link_hint">https://betterstreamflix.app/pack?d=…</string>
     <string name="offline_studio_open_settings">Alle Download-Einstellungen</string>
@@ -2013,7 +1856,6 @@
     <string name="offline_library_empty">Noch keine Offline-Titel. Lade einen Film oder eine Episode herunter — dann erscheint er hier.</string>
     <string name="offline_library_empty_search">Keine Downloads passen zu dieser Suche.</string>
     <string name="offline_library_series_episodes_title">%1$s · Offline-Episoden</string>
-    <string name="offline_library_series_count">%1$d offline</string>
     <string name="offline_library_cd_search">Offline-Bibliothek durchsuchen</string>
     <string name="offline_library_cd_clear_search">Offline-Suche löschen</string>
     <string name="downloads_empty">Noch keine Downloads. Speichere Filme oder Episoden über das Menü oder die Detailseite.</string>
@@ -2022,7 +1864,6 @@
     <string name="downloads_filter_downloading">Laden</string>
     <string name="downloads_filter_completed">Fertig</string>
     <string name="downloads_filter_failed">Fehler</string>
-    <string name="downloads_section_active">Aktiv</string>
     <string name="downloads_section_seasons">Staffeln</string>
     <string name="downloads_section_completed">Fertig</string>
     <string name="downloads_section_redownload">Erneuter Download nötig</string>
@@ -2055,7 +1896,6 @@
     <string name="downloads_eta_minutes_seconds">noch %1$d Min. %2$d Sek.</string>
     <string name="downloads_eta_minutes">noch %1$d Min.</string>
     <string name="downloads_eta_seconds">noch %1$d Sek.</string>
-    <string name="download_options_loading_tracks">Qualitäten werden geladen…</string>
     <string name="downloads_action_pause">Pause</string>
     <string name="downloads_action_resume">Fortsetzen</string>
     <string name="downloads_action_retry">Erneut</string>
@@ -2177,7 +2017,6 @@
     <string name="episode_note_cd">Folgennotiz</string>
     <string name="player_episode_note_label">Wo war ich? · %1$s</string>
     <string name="season_download">Staffel herunterladen</string>
-    <string name="season_download_confirm">%1$d Episoden herunterladen?</string>
     <string name="player_settings_download">Download</string>
     <string name="settings_screen_downloads">Downloads</string>
     <string name="settings_screen_downloads_summary">WLAN, Qualität, Speicher und Benachrichtigungen</string>
@@ -2276,7 +2115,6 @@
     <string name="settings_cast_subtitles_summary">Textspuren an Chromecast senden, wenn der Stream sie bereitstellt</string>
     <string name="settings_cast_keep_screen_awake">Bildschirm während Cast wach halten</string>
     <string name="settings_cast_keep_screen_awake_summary">Verhindert, dass das Telefon während einer aktiven Cast-Sitzung schläft</string>
-    <string name="settings_cast_queue_next">Nächste Folge in Cast-Warteschlange</string>
 
     <string name="support_hub_title">BetterStreamflix unterstützen</string>
     <string name="support_hub_subtitle">Förderung, Community und die Geschichte hinter BetterStreamflix.</string>
@@ -2318,30 +2156,15 @@
     <string name="tg_gate_headline">Community beitreten</string>
     <string name="tg_gate_body">Release-Notes, frühe APKs und Support — Telegram oder Discord beitreten, oder einfach weiter.</string>
     <string name="tg_gate_channel_chip">@%1$s</string>
-    <string name="tg_gate_step_open">Öffnen</string>
-    <string name="tg_gate_step_join">Beitreten</string>
-    <string name="tg_gate_step_confirm">Bestätigen</string>
-    <string name="tg_gate_cta_open">Telegram öffnen</string>
-    <string name="tg_gate_cta_open_again">Telegram erneut öffnen</string>
-    <string name="tg_gate_cta_open_short">Öffnen</string>
     <string name="tg_gate_cta_join_telegram">Telegram beitreten</string>
     <string name="tg_gate_cta_join_discord">Discord beitreten</string>
-    <string name="tg_gate_cta_confirm">Beigetreten — weiter</string>
     <string name="tg_gate_cta_continue">Weiter ohne Beitritt</string>
-    <string name="tg_gate_cta_copy_link">Kanal-Link kopieren</string>
-    <string name="tg_gate_link_copied">Kanal-Link kopiert</string>
     <string name="tg_gate_benefit_updates">Release-Notes &amp; APKs zuerst hier</string>
     <string name="tg_gate_benefit_support">Direkter Support wenn etwas hakt</string>
     <string name="tg_gate_benefit_community">News vor dem Store</string>
     <string name="tg_gate_benefit_updates_short">Frühe APKs</string>
     <string name="tg_gate_benefit_support_short">Support</string>
     <string name="tg_gate_benefit_community_short">News zuerst</string>
-    <string name="tg_gate_status_locked">Schritt 1 von 3 — Telegram öffnen</string>
-    <string name="tg_gate_status_opened">Schritt 2 von 3 — @%1$s beitreten</string>
-    <string name="tg_gate_status_ready">Schritt 3 von 3 — bestätigen und %1$s starten</string>
-    <string name="tg_gate_hint_open_first">Öffne Telegram, tritt dem Kanal bei, komm dann zurück.</string>
-    <string name="tg_gate_hint_join_then_return">Tritt @%1$s bei und kehre hierher zurück.</string>
-    <string name="tg_gate_hint_confirm">Bereit — bestätige, um %1$s zu öffnen.</string>
     <string name="tg_gate_hint_optional">Optional — die Links findest du jederzeit in den Einstellungen.</string>
     <string name="tg_gate_open_failed">Telegram konnte nicht geöffnet werden. Installiere Telegram oder versuche es erneut.</string>
     <string name="tg_gate_discord_open_failed">Discord konnte nicht geöffnet werden. Installiere Discord oder versuche es erneut.</string>
@@ -2393,8 +2216,6 @@
     <string name="support_details_ways_title">Möglichkeiten zu unterstützen</string>
     <string name="support_details_cta_hub">Unterstützungsoptionen ansehen</string>
     <string name="support_external_link_cd">Öffnet im externen Browser</string>
-    <string name="support_preview_title">Support-UI-Vorschau</string>
-    <string name="support_preview_summary">Premium-Support-Komponenten prüfen</string>
     <string name="support_link_releases">Releases</string>
     <string name="support_link_issues">Issue melden</string>
     <string name="support_faq_community_a">Discord und Telegram sind offen. Discord ist der Haupt-Chat; Telegram spiegelt Updates.</string>
@@ -2426,9 +2247,6 @@
     <string name="support_provider_discord_title">Discord Community</string>
     <string name="support_provider_discord_description">Chatte mit der Community, gib Feedback und folge Entwicklungs-Updates live.</string>
     <string name="support_provider_discord_cta">Discord beitreten</string>
-    <string name="about_screen_title">Über BetterStreamflix</string>
-    <string name="about_screen_subtitle">Open-Source-Streaming, gebaut für die Community.</string>
-    <string name="about_maintainer_label">Betreut von dskja</string>
     <string name="crash_log_copy">Log kopieren</string>
     <string name="crash_log_share">Teilen</string>
     <string name="crash_log_copied">Crash-Log kopiert</string>
@@ -2439,7 +2257,6 @@
     <string name="download_season_partial_storage">%1$d von %2$d Folgen eingereiht (Speicherlimit)</string>
     <string name="download_season_partial_prepare_failures">%1$d von %2$d Folgen eingereiht · %3$d Vorbereitung fehlgeschlagen</string>
     <string name="download_season_complete_queued">%1$d Folgen eingereiht</string>
-    <string name="season_download_quota_exhausted">Serien-Download-Quota ist voll (%1$d ungesehen). Slots unter Downloads freigeben oder Quota unter Einstellungen → Downloads erhöhen.</string>
     <string name="download_preparing">Download wird vorbereitet…</string>
     <string name="about_links_heading">Links &amp; Community</string>
     <string name="crash_log_clear">Logs löschen</string>
@@ -2465,9 +2282,7 @@
     <string name="platform_trakt_category">Trakt</string>
     <string name="platform_trakt_enabled_title">Trakt-Scrobbling aktivieren</string>
     <string name="platform_trakt_enabled_summary">Fortschritt und Favoriten zu Trakt.tv senden (nur ausgehend — kein Import in lokale Favoriten)</string>
-    <string name="platform_trakt_client_id_title">Trakt Client-ID</string>
     <string name="platform_trakt_client_id_summary">API-App-Client-ID von trakt.tv</string>
-    <string name="platform_trakt_token_title">Trakt Access-Token</string>
     <string name="platform_trakt_token_summary">OAuth Access-Token</string>
     <string name="platform_trakt_auth_help_title">Trakt Geräte-Auth Hilfe</string>
     <string name="platform_trakt_auth_help_summary">trakt.tv Geräteautorisierung öffnen</string>
@@ -2488,7 +2303,6 @@
     <string name="platform_debrid_enabled_summary">Hoster-Links und Magnete über den gewählten Anbieter entsperren</string>
     <string name="platform_rd_token_title">Real-Debrid API-Token</string>
     <string name="platform_rd_token_summary">Token von real-debrid.com/apitoken</string>
-    <string name="platform_trakt_client_secret_title">Trakt Client-Secret</string>
     <string name="platform_trakt_client_secret_summary">Für OAuth-Anmeldung erforderlich</string>
     <string name="platform_trakt_unavailable_title">Trakt-Anmeldung nicht verfügbar</string>
     <string name="platform_trakt_unavailable_summary">Zum Anlegen einer Trakt-API-App ist inzwischen eine Trakt-VIP-Mitgliedschaft nötig. Bis BetterStreamflix diese App registrieren kann, bleibt die Anmeldung deaktiviert.</string>
@@ -2507,8 +2321,6 @@
     <string name="platform_trakt_oauth_success">Bei Trakt angemeldet</string>
     <string name="platform_trakt_oauth_failed">Trakt-Anmeldung fehlgeschlagen: %1$s</string>
     <string name="platform_trakt_oauth_exchange_failed">Trakt-Token-Austausch fehlgeschlagen</string>
-    <string name="platform_trakt_oauth_app_not_configured">Trakt-Anmeldung nicht verfügbar — VIP-API-App noch nicht konfiguriert</string>
-    <string name="platform_trakt_oauth_missing_credentials">Trakt-Anmeldung ist noch nicht verfügbar</string>
     <string name="platform_trakt_device_auth_title">Mit Code anmelden (TV)</string>
     <string name="platform_trakt_device_auth_summary">Code anzeigen und auf trakt.tv bestätigen — praktisch am Android TV</string>
     <string name="platform_trakt_device_auth_code_message">Code %1$s unter %2$s eingeben</string>
@@ -2553,42 +2365,7 @@
     <string name="platform_opensubtitles_langs_summary">Kommagetrennte ISO-Codes (z. B. en,de)</string>
     <string name="platform_cast_queue_title">Cast-Nächste-Folge-Warteschlange</string>
     <string name="platform_cast_queue_summary">Nächste Folge während Cast vorladen</string>
-    <string name="platform_plugin_catalog_title">Plugin-Katalog</string>
-    <string name="platform_plugin_catalog_summary">Geladene lokale/remote Plugin-Manifeste anzeigen</string>
-    <string name="platform_plugin_catalog_empty">Keine Katalog-Plugins gefunden</string>
-    <string name="platform_plugin_catalog_title_dialog">Plugin-Katalog</string>
-    <string name="platform_plugin_install_local_title">Lokales Plugin-APK installieren</string>
-    <string name="platform_plugin_install_local_summary">SHA-256 prüfen und SourcePlugin-APK aus dem Speicher laden (kein Auto-Download)</string>
-    <string name="platform_plugin_reload_title">Lokale Plugins neu laden</string>
-    <string name="platform_plugin_reload_summary">Stubs und verifizierte LOCAL-APKs neu scannen, ohne die Registry zu leeren</string>
-    <string name="platform_plugin_install_ok">Plugin geladen: %1$s</string>
-    <string name="platform_plugin_install_fail">Plugin-Laden fehlgeschlagen: %1$s</string>
-    <string name="platform_plugin_reload_ok">%1$d lokales/lokale Plugin(s) geladen</string>
     <string name="platform_mpv_not_installed">Kein MPV/VLC gefunden. MPV installieren oder ExoPlayer wählen.</string>
-    <string name="platform_plugins_category">Quellen &amp; Addons</string>
-    <string name="platform_plugin_hide_jellyfin_title">Jellyfin-Provider ausblenden</string>
-    <string name="platform_plugin_hide_jellyfin_summary">Auch bei Konfiguration ausblenden</string>
-    <string name="platform_plugin_hide_plex_title">Plex-Provider ausblenden</string>
-    <string name="platform_plugin_hide_plex_summary">Auch bei Konfiguration ausblenden</string>
-    <string name="platform_plugin_hide_demo_title">Demo-Addon ausblenden</string>
-    <string name="platform_plugin_hide_demo_summary">Home-Tippzeile und Playback-Hooks deaktivieren</string>
-    <string name="platform_plugin_manage_title">Addons verwalten</string>
-    <string name="platform_plugin_manage_summary">Plugins aktivieren, deaktivieren oder deinstallieren</string>
-    <string name="platform_plugin_extensions_title">Extension-Hooks</string>
-    <string name="platform_plugin_extensions_summary">Home-, Playback- und Extractor-Beiträge</string>
-    <string name="platform_plugin_extensions_empty">Keine aktiven Extension-Hooks</string>
-    <string name="platform_plugin_subtitles_claimed">Beanspruchte Untertitel-Sprachen:</string>
-    <string name="platform_plugin_actions_title">Addon-Aktionen</string>
-    <string name="platform_plugin_actions_empty">Keine Addon-Einstellungsaktionen</string>
-    <string name="platform_plugin_action_done">Addon-Aktion ausgeführt</string>
-    <string name="platform_plugin_action_unsupported">Addon-Aktion nicht unterstützt</string>
-    <string name="platform_plugin_extractors_claimed">Beanspruchte Extractors:</string>
-    <string name="platform_plugin_action_enable">Aktivieren</string>
-    <string name="platform_plugin_action_disable">Deaktivieren</string>
-    <string name="platform_plugin_action_uninstall">Deinstallieren</string>
-    <string name="platform_plugin_enabled_toast">Addon aktiviert</string>
-    <string name="platform_plugin_disabled_toast">Addon deaktiviert</string>
-    <string name="platform_plugin_uninstalled_toast">Lokales Plugin deinstalliert</string>
     <string name="platform_test_jellyfin_title">Jellyfin-Verbindung testen</string>
     <string name="platform_test_jellyfin_summary">Resume-Items abrufen zur Prüfung</string>
     <string name="platform_test_plex_title">Plex-Verbindung testen</string>
@@ -2599,10 +2376,7 @@
     <string name="home_swiper_resume">Fortsetzen · %1$d%%</string>
     <string name="home_swiper_continue">Weitersehen</string>
     <string name="home_swiper_released_year">%1$s</string>
-    <string name="home_swiper_more_info">Mehr Infos</string>
     <string name="home_swiper_trailer">Trailer</string>
-    <string name="home_featured_synthesized">Empfohlen aus dem Katalog wiederhergestellt</string>
-    <string name="simkl_sync_failed">Liste nicht synchronisiert — lokal gespeichert</string>
     <string name="home_featured_page">Empfohlen: %1$s</string>
 
     <!-- Cast/IPTV/Downloads/Watchlist/Support i18n fill -->
@@ -2632,7 +2406,6 @@
 
     <!-- Home/Cinema i18n focus keys -->
     <string name="home_empty_choose_provider">Anbieter wählen</string>
-    <string name="watchlist_empty">Deine Watchlist ist leer</string>
     <string name="error_no_provider_selected">Kein Anbieter ausgewählt</string>
     <string name="error_no_servers_found">Keine Server gefunden</string>
     <string name="error_no_source_found">Keine Quelle gefunden</string>
@@ -2659,13 +2432,10 @@
     <string name="detail_overview_less">Weniger anzeigen</string>
     <string name="detail_overview_more">Mehr anzeigen</string>
     <string name="detail_share">Teilen</string>
-    <string name="favorites_move_left">Nach links</string>
-    <string name="favorites_move_right">Nach rechts</string>
     <string name="favorites_moving_selected">Auswahl wird verschoben — OK zum Beenden</string>
     <string name="favorites_rearrange_off">Umsortieren beenden</string>
     <string name="favorites_rearrange_on">Umsortieren starten</string>
     <string name="favorites_reorder_categories">Favoriten sortieren</string>
-    <string name="favorites_reorder_item">Favorit neu anordnen</string>
     <string name="favorites_show_options">Normale Optionen anzeigen</string>
     <string name="favorites_sort_manual">Manuelle Reihenfolge</string>
     <string name="favorites_sort_recent">Zuletzt hinzugefügt</string>
@@ -2676,7 +2446,6 @@
     <string name="player_settings_subtitle_offset_label">Zeitversatz</string>
     <string name="player_settings_subtitle_offset_seconds">%+.1f s</string>
     <string name="player_settings_subtitle_offset_title">Untertitel-Timing</string>
-    <string name="player_trying_next_server">Nächster Server wird versucht: %1$s</string>
     <string name="trailer_player_in_app">Trailer in der App</string>
     <string name="trailer_player_unavailable">Keine App zum Abspielen dieses Trailers gefunden</string>
 

@@ -16,9 +16,6 @@
 	<string name="update">تحديث</string>
 
 	<string name="app_layout">تخطيط التطبيق</string>
-    <string name="app_layout_auto">تلقائي</string>
-    <string name="app_layout_mobile">تخطيط الهاتف</string>
-    <string name="app_layout_tv">تخطيط التلفاز</string>
     <string name="app_layout_apply">تطبيق</string> 
 
 	<string name="providers_all_languages">كل اللغات</string>
@@ -54,12 +51,6 @@
     <string name="live_command_action_ambient_on">Ambient on</string>
     <string name="live_command_action_ambient_off">Ambient off</string>
     <string name="live_command_action_pip">PiP Zap</string>
-    <string name="live_command_status_search">%1$d matches for “%2$s”</string>
-    <string name="live_command_status_reminders">%1$d upcoming reminders from favorites</string>
-    <string name="live_command_status_sport_zap">Sport mode — zap warm ±2 on this shelf</string>
-    <string name="live_command_status_news">News · %1$d channels</string>
-    <string name="live_command_status_favorites">Favorites · %1$d channels</string>
-    <string name="live_command_status_mode">%1$s · %2$d shelves</string>
     <string name="live_command_toast_pins">My channels strip · %1$d pins</string>
     <string name="live_command_toast_reminders_on">Live reminders on — 5 min before kickoff</string>
     <string name="live_command_toast_reminders_off">Live reminders off</string>
@@ -109,12 +100,10 @@
 	<string name="taste_undo_hide">Undo</string>
 	<string name="taste_hidden_snackbar">Hidden from For you</string>
 	<string name="taste_not_interested_snackbar">Marked not interested</string>
-	<string name="taste_hidden_list_title">Hidden titles</string>
 	<string name="taste_memory_more_like_cd">More like %1$s</string>
 	<string name="search_query_more_like">more like %1$s</string>
 	<string name="search_empty_query">يرجى إدخال نص للبحث</string>
 	<string name="searching">جاري البحث...</string>
-	<string name="search_error">خطأ</string>
 	<string name="result">نتيجة</string>
 	<string name="results">نتائج</string>
 	<string name="switching_to_provider">التبديل إلى %s</string>
@@ -168,7 +157,6 @@
 	<string name="tv_show_runtime_hours_minutes">%d ساعة %d دقيقة</string>
 	<string name="tv_show_runtime_minutes">%d دقيقة</string>
 	<string name="tv_show_watch_season_episode">مشاهدة الموسم %d الحلقة %d</string>
-	<string name="tv_show_watch_episode">مشاهدة الحلقة %d</string>
 	<string name="tv_show_trailer">الإعلان الترويجي</string>
 	<string name="tv_show_seasons">المواسم</string>
 	<string name="tv_show_cast">طاقم العمل</string>
@@ -203,7 +191,6 @@
 	<string name="player_next_episode_action">شغّل الآن</string>
 	<string name="player_next_episode_dismiss">إخفاء</string>
 	<string name="player_next_episode_ready">الحلقة التالية جاهزة</string>
-	<string name="player_next_episode_autoplay_in">سيتم تشغيل التالية خلال %dث</string>
 	<string name="player_picture_in_picture_not_supported">الوضع الصوري داخل الصورة غير مدعوم على جهازك</string>
 	<string name="player_external_player_title">تشغيل باستخدام</string>
 	<string name="player_external_player_error_video">الفيديو لم يتم تحميله بعد</string>
@@ -214,7 +201,6 @@
 	<string name="player_settings_title">الإعدادات</string>
 	<string name="player_settings_quality_title">جودة الفيديو الحالي</string>
 	<string name="player_settings_quality_label">الجودة</string>
-	<string name="player_settings_quality_sub_label_auto">تلقائي (%dp)</string>
 	<string name="player_settings_quality_auto">تلقائي</string>
 	<string name="player_settings_quality_auto_selected">تلقائي • %dp</string>
 	<string name="player_settings_quality">%dp</string>
@@ -227,8 +213,6 @@
     <string name="player_settings_caption_style_margin_label">هامش سفلي</string>
 
 	<string name="settings_about">حول</string>
-	<string name="settings_version_tv">إصدار التلفاز</string>
-	<string name="settings_version_mobile">إصدار الهاتف</string>
     <string name="settings_update_check">التحقق التلقائي من التحديثات</string>
     <string name="settings_update_check_summary">التحقق من وجود إصدارات جديدة من التطبيق تلقائيًا</string>
 	<string name="settings_about_version">الإصدار</string>
@@ -275,7 +259,6 @@
 	<string name="smarttube">SmartTube</string>
 	<string name="smarttube_stable">SmartTube Stable</string>
 	<string name="smarttube_beta">SmartTube Beta</string>
-	<string name="choose_smarttube_version">اختر إصدار SmartTube</string>
 
 	<string name="settings_trailer_player_title">مشغل الإعلان الترويجي</string>
 	<string name="settings_trailer_player_summary">اختر المشغل المفضل للإعلانات الترويجية</string>
@@ -381,7 +364,6 @@
 	<string name="settings_enable_tmdb_enabled">تم تفعيل TMDB</string>
 	<string name="settings_enable_tmdb_disabled">تم تعطيل TMDB</string>
     <string name="main_menu_all_channels">جميع القنوات</string>
-    <string name="player_not_available_it_message">غير متوفر على الخوادم الإيطالية، ابحث عنه على TMDB بلغات أخرى</string>
     <string name="player_not_available_lang_message">غير متوفر باللغة %s، ابحث عنه على TMDB بلغات أخرى</string>
     <string name="player_aspect_ratio_zoom_4_3">تكبير لـ 4:3</string>
     <string name="player_aspect_ratio_stretch_vertical">تمديد عمودي</string>
@@ -476,13 +458,10 @@
     <string name="player_settings_servers_label">الخوادم</string>
     <string name="settings_category_poseidon">إعدادات Poseidonhd2</string>
     <string name="settings_category_poseidon_domain">اسم نطاق Poseidonhd2</string>
-    <string name="settings_close_app">إغلاق التطبيق</string>
-    <string name="settings_category_streamingcommunity_dnsOverHttps">استخدام DNS آمن</string>
     <string name="settings_scan_resolver_qr_title">مسح رمز تجاوز التلفاز</string>
     <string name="settings_scan_resolver_qr_summary">افتح الكاميرا وامسح رمز QR المعروض على التلفاز</string>
     <string name="settings_scan_resolver_invalid_qr">رمز QR هذا ليس رابط تجاوز BetterStreamflix.</string>
     <string name="settings_scan_resolver_failed">تعذر تشغيل ماسح QR على هذا الجهاز.</string>
-    <string name="settings_category_provider_url_manual">إدخال يدوي</string>
     <string name="settings_autoplay_buffer_title">مهلة التشغيل التلقائي</string>
     <string name="player_settings">إعدادات المشغل</string>
     <string name="settings_player_gestures">إيماءات المشغل</string>
@@ -490,16 +469,10 @@
     <string name="settings_player_gestures_off">إيقاف</string>
     <string name="player_skip_intro">تخطي المقدمة</string>
     <string name="player_skip_recap">تخطي الملخص</string>
-    <string name="voice_error_clear">مسح سجل البحث</string>
-    <string name="settings_category_frenchstream">إعدادات FrenchStream</string>
-    <string name="settings_category_interface_title">إعدادات الواجهة</string>
     <string name="settings_immersive_mode">الوضع الغامر</string>
     <string name="settings_immersive_mode_summary">إخفاء شريطي الحالة والتنقل</string>
     <string name="settings_immersive_mode_on">تشغيل (الأشرطة مخفية)</string>
     <string name="settings_immersive_mode_off">إيقاف (الأشرطة ظاهرة)</string>
-    <string name="player_brightness">السطوع</string>
-    <string name="player_volume">مستوى الصوت</string>
-    <string name="percentage_format">%d%%</string>
     <string name="settings_category_appearance">المظهر</string>
     <string name="settings_theme_title">سمة التطبيق</string>
     <string name="player_settings_manual_zoom_label">تكبير يدوي</string>
@@ -507,18 +480,10 @@
     <string name="bypass_tv_instructions">حرّك المؤشر فوق reCAPTCHA\nواضغط موافق لإلغاء القفل</string>
     <string name="bypass_status_complete_bypass_first">أكمل التجاوز أولاً.</string>
     <string name="bypass_status_missing_url">رابط التجاوز مفقود.</string>
-    <string name="bypass_status_external_redirect_blocked">تم حظر إعادة توجيه خارجية. أكمل التحقق أولاً.</string>
     <string name="bypass_status_completed_continue">اكتمل التجاوز. اضغط Continue للمتابعة.</string>
-    <string name="bypass_status_cookies_detected">تم اكتشاف ملفات تحقق. إذا بدت الصفحة محلولة، اضغط Continue.</string>
     <string name="bypass_status_complete_in_page">أكمل اختبارات الكابتشا، واضغط على Weiter في النافذة المنبثقة، ثم اضغط على الزر الموجود في الأسفل.</string>
-    <string name="bypass_status_complete_captchas_then_weiter_continue">أكمل اختبارات الكابتشا، واضغط على Weiter في النافذة المنبثقة، ثم اضغط على الزر الموجود في الأسفل.</string>
-    <string name="bypass_status_submitted_wait">تم إرسال التحقق. انتظر حتى يكتمل إعادة التوجيه.</string>
-    <string name="bypass_status_complete_captcha_modal">أكمل اختبارات الكابتشا في النافذة المنبثقة، واضغط هناك على Weiter، ثم اضغط على الزر الموجود في الأسفل.</string>
-    <string name="bypass_status_loading_captcha">جارٍ تحميل طلبات الكابتشا.</string>
-    <string name="bypass_status_waiting_modal">بانتظار انتهاء تحميل نافذة تحقق s.to.</string>
     <string name="bypass_action_cancel">إلغاء</string>
     <string name="bypass_action_continue">متابعة</string>
-    <string name="settings_category_parental_control">الرقابة الأبوية</string>
     <string name="settings_parental_pin_title">رمز PIN الأبوي</string>
     <string name="settings_parental_pin_summary">قم بتعيين رمز PIN لحماية تغييرات الرقابة الأبوية</string>
     <string name="settings_parental_pin_not_set">لم يتم تعيين رمز PIN</string>
@@ -555,7 +520,6 @@
     <string name="settings_parental_locked_temporary">عدد كبير جدًا من محاولات PIN الخاطئة. حاول مرة أخرى بعد %1$d دقيقة.</string>
     <string name="settings_parental_locked_hard">الرقابة الأبوية مقفلة. استخدم رمز PIN للمشرف لإلغاء القفل.</string>
     <string name="settings_parental_unlocked">تم إلغاء قفل الرقابة الأبوية.</string>
-    <string name="settings_parental_tmdb_disable_blocked">يجب عليك إلغاء قفل الرقابة الأبوية قبل تعطيل TMDb.</string>
     <string name="settings_screen_content_summary">الوصول إلى TMDb والرقابة الأبوية وقيود المحتوى</string>
     <string name="settings_screen_network_summary">DNS وأدوات تجاوز التلفاز ومفاتيح خدمات الترجمة</string>
     <string name="settings_provider_connection_title">إعدادات المزود الحالي</string>
@@ -607,23 +571,18 @@
     <string name="home_swiper_resume">متابعة · %1$d٪</string>
     <string name="home_swiper_continue">متابعة المشاهدة</string>
     <string name="home_swiper_released_year">%1$s</string>
-    <string name="home_swiper_more_info">المزيد</string>
     <string name="home_swiper_trailer">إعلان</string>
-    <string name="home_featured_synthesized">تمت استعادة المميز من الكتالوج</string>
-    <string name="simkl_sync_failed">تعذر المزامنة — محفوظ محلياً</string>
     <string name="home_swiper_my_list">+ قائمتي</string>
     <string name="home_swiper_in_my_list">في قائمتي</string>
     <string name="home_swiper_all_episodes">جميع الحلقات متاحة</string>
     <string name="home_swiper_now_playing">يعرض الآن</string>
     <string name="home_featured_title">مميز</string>
-    <string name="exp_swiper_page">مميز: %1$s</string>
     <string name="home_featured_page">مميز: %1$s</string>
 
     <!-- Home/Cinema i18n focus keys -->
     <string name="main_menu_downloads">التنزيلات</string>
     <string name="home_empty">لا يوجد شيء للعرض بعد — اختر مزوّدًا، وستظهر العناوين التي تشاهدها ضمن متابعة المشاهدة والحلقات التالية وشوهد مؤخرًا</string>
     <string name="home_empty_choose_provider">اختر مزوّدًا</string>
-    <string name="watchlist_empty">قائمة المشاهدة فارغة</string>
     <string name="favorites_empty">قوائمك فارغة — أضف عنوانًا للاحتفاظ به هنا</string>
     <string name="download_error_no_provider">لم يتم اختيار مزوّد</string>
     <string name="error_no_provider_selected">لم يتم اختيار مزوّد</string>
@@ -674,9 +633,6 @@
     <string name="favorites_sort_title_ascending">العنوان أ–ي</string>
     <string name="favorites_sort_title_descending">العنوان ي–أ</string>
     <string name="favorites_reorder_categories">ترتيب المفضلة</string>
-    <string name="favorites_reorder_item">إعادة ترتيب المفضلة</string>
-    <string name="favorites_move_left">تحريك لليسار</string>
-    <string name="favorites_move_right">تحريك لليمين</string>
     <string name="favorites_show_options">عرض الخيارات العادية</string>
     <string name="favorites_rearrange_on">الدخول إلى وضع إعادة الترتيب</string>
     <string name="favorites_rearrange_off">إنهاء إعادة الترتيب</string>
@@ -684,7 +640,6 @@
     <string name="player_settings_subtitle_offset_title">توقيت الترجمة</string>
     <string name="player_settings_subtitle_offset_label">إزاحة التوقيت</string>
     <string name="player_settings_subtitle_offset_seconds">%+.1f ث</string>
-    <string name="player_trying_next_server">تجربة الخادم التالي: %1$s</string>
     <string name="player_stuck_buffering_title">ما زال التحميل؟</string>
     <string name="player_stuck_buffering_message">يبدو أن هذا الخادم عالق. جرّب خادمًا آخر قبل المغادرة.</string>
     <string name="player_stuck_try_another_server">خادم آخر</string>
@@ -729,13 +684,6 @@
     <string name="exp_cd_voice_search">بحث صوتي</string>
     <string name="continue_watching_confirm_title">متابعة المشاهدة؟</string>
     <string name="continue_watching_go_to_details">الانتقال إلى التفاصيل</string>
-    <string name="exp_home_tagline">سينما مصمّمة لك</string>
-    <string name="exp_movies_tagline">أفلام من كل مصادرك المتصلة</string>
-    <string name="exp_tv_shows_tagline">مسلسلات جاهزة للمشاهدة المتواصلة</string>
-    <string name="exp_search_tagline">اعثر على أي شيء في مصادرك</string>
-    <string name="exp_favorites_tagline">عناوين تبقيها في قوائمك</string>
-    <string name="exp_downloads_tagline">دون اتصال، جاهزة عندما تكون أنت</string>
-    <string name="exp_genre_tagline">كل العناوين في هذا المسار</string>
     <string name="exp_season_tagline">اختر موسمًا واضغط تشغيل</string>
 
     <string name="offline_studio_title">Offline Studio</string>
@@ -775,7 +723,6 @@
     <string name="offline_studio_max_concurrent">Parallel downloads</string>
     <string name="offline_studio_wifi_window_off">Wi‑Fi window off — change in Settings</string>
     <string name="offline_studio_wifi_window_summary">Wi‑Fi window %1$s–%2$s</string>
-    <string name="offline_studio_soft_unlimited">∞</string>
     <string name="offline_studio_stepper_concurrent_plus">Increase parallel downloads</string>
     <string name="offline_studio_stepper_concurrent_minus">Decrease parallel downloads</string>
     <string name="offline_studio_stepper_soft_plus">Increase soft limit</string>
@@ -791,7 +738,6 @@
     <string name="offline_studio_pack_share">Share pack</string>
     <string name="offline_studio_pack_import">Scan pack QR</string>
     <string name="offline_studio_pack_import_tv">Paste pack link</string>
-    <string name="offline_studio_pack_import_tv_hint">Paste a pack link from your phone to import into Offline Studio.</string>
     <string name="offline_studio_pack_import_paste_message">Paste a BetterStreamflix pack link or URL.</string>
     <string name="offline_studio_pack_import_link_hint">https://betterstreamflix.app/pack?d=…</string>
     <string name="offline_studio_open_settings">Full download settings</string>
