@@ -45,6 +45,14 @@ class PlayerGestureHelper(
     /** When true, brightness/volume/pinch gestures are ignored (control lock). */
     var controlsLocked: Boolean = false
 
+    /**
+     * Hold-to-boost: invoked with true while the user long-presses the video,
+     * false on release. The owner applies/restores playback speed.
+     */
+    var onSpeedBoost: ((Boolean) -> Unit)? = null
+
+    private var speedBoosting = false
+
     private val density = context.resources.displayMetrics.density
     private val topGestureExclusionPx = 72f * density
     private val bottomGestureExclusionPx = 96f * density
@@ -84,7 +92,7 @@ class PlayerGestureHelper(
             }
 
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                if (e1 == null || isScaling || controlsLocked) return false
+                if (e1 == null || isScaling || controlsLocked || speedBoosting) return false
                 // Exclude top/bottom chrome bands (dp-based) so seek/play aren't stolen.
                 if (e1.y < topGestureExclusionPx) return false
                 if (e1.y > playerView.height - bottomGestureExclusionPx) return false
@@ -118,6 +126,18 @@ class PlayerGestureHelper(
                 videoView.scaleY = 1.0f
                 return true
             }
+
+            override fun onLongPress(e: MotionEvent) {
+                if (controlsLocked || isScrolling || isScaling) return
+                if (!UserPreferences.playerGestures || !UserPreferences.playerGestureSpeedBoost) return
+                speedBoosting = true
+                hideJob?.cancel()
+                volumeLayout.visibility = View.VISIBLE
+                brightnessLayout.visibility = View.GONE
+                volumeBar.progress = 100
+                volumeText.text = "2\u00D7"
+                onSpeedBoost?.invoke(true)
+            }
         })
 
         playerView.setOnTouchListener { _, event ->
@@ -148,10 +168,14 @@ class PlayerGestureHelper(
             if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                 isScrolling = false
                 isScaling = false
+                if (speedBoosting) {
+                    speedBoosting = false
+                    onSpeedBoost?.invoke(false)
+                }
                 hideBars()
             }
-            
-            isScrolling || isScaling
+
+            isScrolling || isScaling || speedBoosting
         }
     }
 
@@ -242,6 +266,10 @@ class PlayerGestureHelper(
     fun release() {
         hideJob?.cancel()
         hideJob = null
+        if (speedBoosting) {
+            speedBoosting = false
+            onSpeedBoost?.invoke(false)
+        }
         brightnessLayout.animate().cancel()
         volumeLayout.animate().cancel()
         brightnessLayout.visibility = View.GONE

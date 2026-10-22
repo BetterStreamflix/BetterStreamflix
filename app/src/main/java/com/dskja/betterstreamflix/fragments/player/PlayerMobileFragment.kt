@@ -377,6 +377,7 @@ class PlayerMobileFragment : Fragment(),
     private var playbackSoftStopped = false
     private var playerViewDetached = false
     private var playerReleased = false
+    private var speedBoostRestoreSpeed = 1f
     private var mediaSessionReleased = true
     private var chooserReceiverRegistered = false
     private var castNextQueueJob: Job? = null
@@ -562,15 +563,30 @@ class PlayerMobileFragment : Fragment(),
         setupCastControls()
         initializeVideo()
         gestureHelper = PlayerGestureHelper(
-            requireContext(), 
-            binding.pvPlayer, 
-            binding.llBrightness, 
-            binding.pbBrightness, 
+            requireContext(),
+            binding.pvPlayer,
+            binding.llBrightness,
+            binding.pbBrightness,
             binding.tvBrightnessPercentage,
-            binding.llVolume, 
-            binding.pbVolume, 
+            binding.llVolume,
+            binding.pbVolume,
             binding.tvVolumePercentage
         )
+        // Hold-to-boost: 2x while held, restore the previous speed on release.
+        gestureHelper.onSpeedBoost = { boosting ->
+            runCatching {
+                if (::player.isInitialized && !playerReleased) {
+                    if (boosting) {
+                        speedBoostRestoreSpeed = player.playbackParameters.speed
+                        player.setPlaybackSpeed(2f)
+                    } else {
+                        player.setPlaybackSpeed(
+                            speedBoostRestoreSpeed.takeIf { it > 0f } ?: 1f,
+                        )
+                    }
+                }
+            }
+        }
         defaultControllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs.coerceAtLeast(2000)
         savedControllerShowTimeoutMs = defaultControllerShowTimeoutMs
         applyPlayerSafeAreaInsets()

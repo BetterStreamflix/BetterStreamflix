@@ -979,6 +979,9 @@
     <string name="settings_gesture_guide_double_tap">Zweimal schnell tippen, um den Zoom wieder auf die Standard-Ansicht zurückzusetzen.</string>
     <string name="settings_gesture_zoom_mode_title">Manueller Zoom-Modus</string>
     <string name="settings_gesture_guide_zoom_mode">Über das Player-Menü startest du den manuellen Zoom: mit zwei Fingern X/Y getrennt strecken, Doppeltippen zum Zurücksetzen, Einzeltippen zum Beenden.</string>
+    <string name="settings_gesture_speed_boost_title">Halten für 2×-Tempo</string>
+    <string name="settings_gesture_speed_boost_summary">Video gedrückt halten, um mit doppeltem Tempo vorzuspulen, bis du loslässt</string>
+    <string name="settings_gesture_guide_speed_boost">Während der Wiedergabe irgendwo auf dem Video gedrückt halten – es läuft mit 2×-Tempo, bis du loslässt. Ideal zum Überspringen von Recaps.</string>
     <string name="settings_keep_screen_on_when_paused">Bildschirm bei Pause anlassen</string>
     <string name="settings_keep_screen_on_when_paused_summary">Verhindert das Ausschalten des Bildschirms bei Wiedergabestopp</string>
     <string name="settings_allow_phone_portrait_playback">Hochkant-Wiedergabe auf Handys erlauben</string>

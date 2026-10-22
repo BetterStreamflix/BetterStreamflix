@@ -1211,6 +1211,9 @@
     <string name="settings_gesture_guide_double_tap">Tap twice quickly to snap the zoom back to the default fit.</string>
     <string name="settings_gesture_zoom_mode_title">Manual zoom mode</string>
     <string name="settings_gesture_guide_zoom_mode">From the player menu you can enter manual zoom: drag with two fingers to stretch X/Y independently, double tap to reset, single tap to exit.</string>
+    <string name="settings_gesture_speed_boost_title">Hold for 2× speed</string>
+    <string name="settings_gesture_speed_boost_summary">Press and hold the video to fast-forward at double speed until released</string>
+    <string name="settings_gesture_guide_speed_boost">Press and hold anywhere on the video during playback — it plays at 2× until you let go. Great for skipping recaps.</string>
     <string name="settings_keep_screen_on_when_paused">Keep screen on when paused</string>
     <string name="settings_keep_screen_on_when_paused_summary">Prevents the screen from turning off when a video is paused</string>
     <string name="settings_allow_phone_portrait_playback">Allow portrait playback on phones</string>

@@ -890,6 +890,13 @@
                         android:summary="@string/settings_gesture_double_tap_summary"
                         android:defaultValue="true"
                         app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="PLAYER_GESTURE_SPEED_BOOST"
+                        android:title="@string/settings_gesture_speed_boost_title"
+                        android:summary="@string/settings_gesture_speed_boost_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
                 </PreferenceCategory>
 
                 <PreferenceCategory
@@ -928,6 +935,13 @@
                         android:key="gesture_guide_zoom_mode"
                         android:title="@string/settings_gesture_zoom_mode_title"
                         android:summary="@string/settings_gesture_guide_zoom_mode"
+                        android:selectable="false"
+                        app:iconSpaceReserved="false" />
+
+                    <Preference
+                        android:key="gesture_guide_speed_boost"
+                        android:title="@string/settings_gesture_speed_boost_title"
+                        android:summary="@string/settings_gesture_guide_speed_boost"
                         android:selectable="false"
                         app:iconSpaceReserved="false" />
                 </PreferenceCategory>

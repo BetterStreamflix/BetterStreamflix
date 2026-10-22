@@ -483,6 +483,11 @@ object UserPreferences {
         get() = Key.PLAYER_GESTURE_DOUBLE_TAP.getBoolean() ?: true
         set(value) = Key.PLAYER_GESTURE_DOUBLE_TAP.setBoolean(value)
 
+    /** Hold anywhere on the video to play at 2x speed until released. */
+    var playerGestureSpeedBoost: Boolean
+        get() = Key.PLAYER_GESTURE_SPEED_BOOST.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_SPEED_BOOST.setBoolean(value)
+
     var playerGestures: Boolean
         get() = Key.PLAYER_GESTURES.getBoolean() ?: true
         set(value) {
@@ -2251,6 +2256,7 @@ object UserPreferences {
         PLAYER_GESTURE_VOLUME,
         PLAYER_GESTURE_ZOOM,
         PLAYER_GESTURE_DOUBLE_TAP,
+        PLAYER_GESTURE_SPEED_BOOST,
         NIGHT_AUDIO_MODE,
         ALLOW_PHONE_PORTRAIT_PLAYBACK,
         DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN,
