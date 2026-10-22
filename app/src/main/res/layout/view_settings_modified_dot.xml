@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Marker shown in the widget slot of rows whose value differs from the
+     declared android:defaultValue. Only attached to plain Preference rows —
+     interactive widgets (switches, seekbars) already display state. -->
+<View xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/v_settings_modified_dot"
+    android:layout_width="8dp"
+    android:layout_height="8dp"
+    android:layout_gravity="center_vertical"
+    android:background="@drawable/bg_cinema_accent_rule"
+    android:contentDescription="@string/settings_row_modified_cd"
+    android:rotation="45" />

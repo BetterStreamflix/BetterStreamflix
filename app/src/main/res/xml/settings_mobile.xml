@@ -2315,6 +2315,17 @@
                 android:title="@string/backup_db_import_title"
                 android:summary="@string/backup_db_import_summary"
                 app:iconSpaceReserved="false" />
+            <Preference
+                android:key="SETTINGS_BACKUP_EXPORT"
+                android:title="@string/settings_backup_export_title"
+                android:summary="@string/settings_backup_export_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="SETTINGS_BACKUP_IMPORT"
+                android:title="@string/settings_backup_import_title"
+                android:summary="@string/settings_backup_import_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
 

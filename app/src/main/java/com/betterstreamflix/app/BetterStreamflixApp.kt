@@ -94,6 +94,7 @@ class BetterStreamflixApp : Application() {
             com.betterstreamflix.app.logo.TmdbLogoCache.init(this)
             com.betterstreamflix.app.logo.TmdbLogoTelemetry.init(this)
             com.betterstreamflix.app.logo.ChannelLogoStore.init(this)
+            com.betterstreamflix.app.settings.SettingsRepository.init(this)
             com.betterstreamflix.app.logo.ProviderLogoStore.init(this)
             com.betterstreamflix.app.logo.CustomLogoStore.init(this)
             UserPreferences.applyTmdbLogoTtls()

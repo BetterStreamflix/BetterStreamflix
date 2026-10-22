@@ -2782,4 +2782,33 @@
     <string name="custom_logo_saved">Logo personnalisé enregistré — prioritaire sur les logos résolus automatiquement</string>
     <string name="custom_logo_removed">Logo personnalisé supprimé</string>
     <string name="custom_logo_remove">Supprimer</string>
+
+    <string name="settings_group_household">Profils et foyer</string>
+    <string name="settings_group_playback">Lecture</string>
+    <string name="settings_group_appearance">Apparence</string>
+    <string name="settings_group_library">Bibliothèque</string>
+    <string name="settings_group_downloads">Téléchargements et notifications</string>
+    <string name="settings_group_network">Réseau et sources</string>
+    <string name="settings_group_integrations">Intégrations</string>
+    <string name="settings_group_system">Système</string>
+    <string name="settings_recents_header">Utilisés récemment</string>
+    <string name="settings_shell_watching_via">Lecture via %1$s</string>
+    <string name="settings_section_card_cd">Section de réglages : %1$s</string>
+    <string name="settings_row_modified_cd">Modifié par rapport au défaut</string>
+    <string name="settings_section_reset_title">Réinitialiser cette section</string>
+    <string name="settings_section_reset_summary">Restaurer toutes les lignes de cette section à leur valeur par défaut</string>
+    <string name="settings_section_reset_confirm">Réinitialiser %1$d valeurs modifiées dans cette section à leurs valeurs par défaut ?</string>
+    <string name="settings_section_reset_done">%1$d valeurs restaurées à leurs valeurs par défaut</string>
+    <string name="settings_section_reset_nothing">Tout est déjà à ses valeurs par défaut ici</string>
+
+    <string name="settings_backup_export_title">Exporter les réglages</string>
+    <string name="settings_backup_export_summary">Enregistrer tous les réglages dans un fichier JSON</string>
+    <string name="settings_backup_import_title">Importer les réglages</string>
+    <string name="settings_backup_import_summary">Restaurer les réglages depuis un JSON avec aperçu</string>
+    <string name="settings_backup_export_saved">Réglages exportés</string>
+    <string name="settings_backup_export_failed">Impossible d\'écrire le fichier de réglages</string>
+    <string name="settings_backup_import_invalid">Fichier de réglages non valide</string>
+    <string name="settings_backup_import_preview">%1$d réglages trouvés — %2$d modifient des valeurs existantes, %3$d sont nouveaux. Appliquer ?</string>
+    <string name="settings_backup_import_apply">Appliquer</string>
+    <string name="settings_backup_import_done">%1$d réglages importés</string>
 </resources>

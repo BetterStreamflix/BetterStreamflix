@@ -24,6 +24,7 @@ object SettingsSearchDialog {
     fun show(
         context: Context,
         @XmlRes settingsXmlRes: Int,
+        isTv: Boolean = false,
         onNavigate: (SettingsSearchIndex.Entry) -> Unit,
     ) {
         val view = LayoutInflater.from(context)
@@ -32,7 +33,20 @@ object SettingsSearchDialog {
         val empty = view.findViewById<TextView>(R.id.tv_settings_search_empty)
         val list = view.findViewById<RecyclerView>(R.id.rv_settings_search)
 
-        val entries = SettingsSearchIndex.index(context, settingsXmlRes)
+        // Entries living inside a catalog-hidden screen are filtered out;
+        // screens unknown to the catalog stay reachable (nested pages).
+        val entries = SettingsSearchIndex.index(context, settingsXmlRes).map { e ->
+            val group = e.screenKey?.let { com.betterstreamflix.app.settings.SettingsCatalog.groupOf(it) }
+            if (group != null) {
+                e.copy(path = listOfNotNull(
+                    context.getString(group.titleRes).takeIf { it.isNotBlank() },
+                    e.path.takeIf { it.isNotBlank() },
+                ).joinToString(" · "))
+            } else e
+        }.filter { e ->
+            val page = e.screenKey?.let { com.betterstreamflix.app.settings.SettingsCatalog.page(it) }
+            page == null || page.visible(isTv) || page.navTarget != null
+        }
         lateinit var dialogRef: AlertDialog
         val adapter = ResultAdapter { entry ->
             dialogRef.dismiss()

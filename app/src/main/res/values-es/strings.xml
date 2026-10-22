@@ -2782,4 +2782,33 @@
     <string name="custom_logo_saved">Logotipo personalizado guardado: tiene prioridad sobre los resueltos automáticamente</string>
     <string name="custom_logo_removed">Logotipo personalizado eliminado</string>
     <string name="custom_logo_remove">Quitar</string>
+
+    <string name="settings_group_household">Perfiles y hogar</string>
+    <string name="settings_group_playback">Reproducción</string>
+    <string name="settings_group_appearance">Apariencia</string>
+    <string name="settings_group_library">Biblioteca</string>
+    <string name="settings_group_downloads">Descargas y notificaciones</string>
+    <string name="settings_group_network">Red y fuentes</string>
+    <string name="settings_group_integrations">Integraciones</string>
+    <string name="settings_group_system">Sistema</string>
+    <string name="settings_recents_header">Usados recientemente</string>
+    <string name="settings_shell_watching_via">Viendo vía %1$s</string>
+    <string name="settings_section_card_cd">Sección de ajustes: %1$s</string>
+    <string name="settings_row_modified_cd">Cambiado del valor predeterminado</string>
+    <string name="settings_section_reset_title">Restablecer esta sección</string>
+    <string name="settings_section_reset_summary">Restaurar todas las filas de esta sección a su valor predeterminado</string>
+    <string name="settings_section_reset_confirm">¿Restablecer %1$d valores modificados en esta sección a sus valores predeterminados?</string>
+    <string name="settings_section_reset_done">%1$d valores restaurados a sus valores predeterminados</string>
+    <string name="settings_section_reset_nothing">Todo aquí ya está en sus valores predeterminados</string>
+
+    <string name="settings_backup_export_title">Exportar ajustes</string>
+    <string name="settings_backup_export_summary">Guardar todos los ajustes en un archivo JSON</string>
+    <string name="settings_backup_import_title">Importar ajustes</string>
+    <string name="settings_backup_import_summary">Restaurar ajustes desde un JSON con vista previa</string>
+    <string name="settings_backup_export_saved">Ajustes exportados</string>
+    <string name="settings_backup_export_failed">No se pudo escribir el archivo de ajustes</string>
+    <string name="settings_backup_import_invalid">No es un archivo de ajustes válido</string>
+    <string name="settings_backup_import_preview">%1$d ajustes encontrados — %2$d cambian valores existentes, %3$d son nuevos. ¿Aplicar?</string>
+    <string name="settings_backup_import_apply">Aplicar</string>
+    <string name="settings_backup_import_done">%1$d ajustes importados</string>
 </resources>

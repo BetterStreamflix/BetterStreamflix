@@ -2789,4 +2789,33 @@
     <string name="custom_logo_remove">Entfernen</string>
     <string name="settings_fanart_api_key_success">Fanart.tv-API-Schlüssel gespeichert</string>
     <string name="settings_fanart_api_key_reset">Fanart.tv-Schlüssel entfernt — Quelle deaktiviert</string>
+
+    <string name="settings_group_household">Profile &amp; Haushalt</string>
+    <string name="settings_group_playback">Wiedergabe</string>
+    <string name="settings_group_appearance">Darstellung</string>
+    <string name="settings_group_library">Bibliothek</string>
+    <string name="settings_group_downloads">Downloads &amp; Benachrichtigungen</string>
+    <string name="settings_group_network">Netzwerk &amp; Quellen</string>
+    <string name="settings_group_integrations">Integrationen</string>
+    <string name="settings_group_system">System</string>
+    <string name="settings_recents_header">Zuletzt verwendet</string>
+    <string name="settings_shell_watching_via">Inhalte über %1$s</string>
+    <string name="settings_section_card_cd">Einstellungen: %1$s</string>
+    <string name="settings_row_modified_cd">Vom Standard geändert</string>
+    <string name="settings_section_reset_title">Diesen Bereich zurücksetzen</string>
+    <string name="settings_section_reset_summary">Alle Einträge dieses Bereichs auf Standard zurücksetzen</string>
+    <string name="settings_section_reset_confirm">%1$d geänderte Werte in diesem Bereich auf Standard zurücksetzen?</string>
+    <string name="settings_section_reset_done">%1$d Werte auf Standard zurückgesetzt</string>
+    <string name="settings_section_reset_nothing">Hier ist bereits alles auf Standard</string>
+
+    <string name="settings_backup_export_title">Einstellungen exportieren</string>
+    <string name="settings_backup_export_summary">Alle Einstellungen als JSON-Datei speichern</string>
+    <string name="settings_backup_import_title">Einstellungen importieren</string>
+    <string name="settings_backup_import_summary">Einstellungen aus JSON-Datei mit Diff-Vorschau laden</string>
+    <string name="settings_backup_export_saved">Einstellungen exportiert</string>
+    <string name="settings_backup_export_failed">Einstellungsdatei konnte nicht geschrieben werden</string>
+    <string name="settings_backup_import_invalid">Keine gültige Einstellungsdatei</string>
+    <string name="settings_backup_import_preview">%1$d Einstellungen gefunden — %2$d ändern bestehende Werte, %3$d sind neu. Anwenden?</string>
+    <string name="settings_backup_import_apply">Anwenden</string>
+    <string name="settings_backup_import_done">%1$d Einstellungen importiert</string>
 </resources>

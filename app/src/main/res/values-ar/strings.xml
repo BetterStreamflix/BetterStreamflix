@@ -2782,4 +2782,33 @@
     <string name="custom_logo_saved">تم حفظ الشعار المخصص — له أولوية على الشعارات المحلولة تلقائيًا</string>
     <string name="custom_logo_removed">تمت إزالة الشعار المخصص</string>
     <string name="custom_logo_remove">إزالة</string>
+
+    <string name="settings_group_household">الملفات والأسرة</string>
+    <string name="settings_group_playback">التشغيل</string>
+    <string name="settings_group_appearance">المظهر</string>
+    <string name="settings_group_library">المكتبة</string>
+    <string name="settings_group_downloads">التنزيلات والإشعارات</string>
+    <string name="settings_group_network">الشبكة والمصادر</string>
+    <string name="settings_group_integrations">التكاملات</string>
+    <string name="settings_group_system">النظام</string>
+    <string name="settings_recents_header">المستخدَمة مؤخرًا</string>
+    <string name="settings_shell_watching_via">المشاهدة عبر %1$s</string>
+    <string name="settings_section_card_cd">قسم الإعدادات: %1$s</string>
+    <string name="settings_row_modified_cd">معدَّل عن الافتراضي</string>
+    <string name="settings_section_reset_title">إعادة تعيين هذا القسم</string>
+    <string name="settings_section_reset_summary">استعادة كل الصفوف هنا إلى قيمتها الافتراضية</string>
+    <string name="settings_section_reset_confirm">إعادة تعيين %1$d قيمًا معدَّلة في هذا القسم إلى الافتراضي؟</string>
+    <string name="settings_section_reset_done">تمت استعادة %1$d قيمة إلى الافتراضي</string>
+    <string name="settings_section_reset_nothing">كل شيء هنا بالفعل على الافتراضي</string>
+
+    <string name="settings_backup_export_title">تصدير الإعدادات</string>
+    <string name="settings_backup_export_summary">حفظ كل الإعدادات في ملف JSON</string>
+    <string name="settings_backup_import_title">استيراد الإعدادات</string>
+    <string name="settings_backup_import_summary">استعادة الإعدادات من ملف JSON مع معاينة الفروقات</string>
+    <string name="settings_backup_export_saved">تم تصدير الإعدادات</string>
+    <string name="settings_backup_export_failed">تعذر كتابة ملف الإعدادات</string>
+    <string name="settings_backup_import_invalid">ليس ملف تصدير إعدادات صالحًا</string>
+    <string name="settings_backup_import_preview">تم العثور على %1$d إعدادًا — %2$d يغيّر قيمًا موجودة، %3$d جديدة. هل تطبق؟</string>
+    <string name="settings_backup_import_apply">تطبيق</string>
+    <string name="settings_backup_import_done">تم استيراد %1$d إعدادًا</string>
 </resources>

@@ -2771,4 +2771,33 @@
     <string name="custom_logo_saved">Niestandardowe logo zapisane — ma pierwszeństwo przed automatycznie rozpoznanymi</string>
     <string name="custom_logo_removed">Niestandardowe logo usunięte</string>
     <string name="custom_logo_remove">Usuń</string>
+
+    <string name="settings_group_household">Profile i gospodarstwo</string>
+    <string name="settings_group_playback">Odtwarzanie</string>
+    <string name="settings_group_appearance">Wygląd</string>
+    <string name="settings_group_library">Biblioteka</string>
+    <string name="settings_group_downloads">Pobieranie i powiadomienia</string>
+    <string name="settings_group_network">Sieć i źródła</string>
+    <string name="settings_group_integrations">Integracje</string>
+    <string name="settings_group_system">System</string>
+    <string name="settings_recents_header">Ostatnio używane</string>
+    <string name="settings_shell_watching_via">Oglądasz przez %1$s</string>
+    <string name="settings_section_card_cd">Sekcja ustawień: %1$s</string>
+    <string name="settings_row_modified_cd">Zmienione względem domyślnego</string>
+    <string name="settings_section_reset_title">Zresetuj tę sekcję</string>
+    <string name="settings_section_reset_summary">Przywróć wszystkie wiersze tej sekcji do wartości domyślnych</string>
+    <string name="settings_section_reset_confirm">Zresetować %1$d zmienionych wartości w tej sekcji do wartości domyślnych?</string>
+    <string name="settings_section_reset_done">Przywrócono %1$d wartości do domyślnych</string>
+    <string name="settings_section_reset_nothing">Wszystko tutaj jest już domyślne</string>
+
+    <string name="settings_backup_export_title">Eksportuj ustawienia</string>
+    <string name="settings_backup_export_summary">Zapisz wszystkie ustawienia w pliku JSON</string>
+    <string name="settings_backup_import_title">Importuj ustawienia</string>
+    <string name="settings_backup_import_summary">Przywróć ustawienia z pliku JSON z podglądem zmian</string>
+    <string name="settings_backup_export_saved">Ustawienia wyeksportowane</string>
+    <string name="settings_backup_export_failed">Nie udało się zapisać pliku ustawień</string>
+    <string name="settings_backup_import_invalid">Nieprawidłowy plik ustawień</string>
+    <string name="settings_backup_import_preview">Znaleziono %1$d ustawień — %2$d zmienia istniejące wartości, %3$d jest nowych. Zastosować?</string>
+    <string name="settings_backup_import_apply">Zastosuj</string>
+    <string name="settings_backup_import_done">Zaimportowano %1$d ustawień</string>
 </resources>
