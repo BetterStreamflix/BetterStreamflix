@@ -86,9 +86,17 @@ class SettingsTvFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        val railHadFocus = view?.findViewById<View>(R.id.settings_tv_rail)
+            ?.hasFocus() == true
         renderRail()
         renderRecents()
-        selectedScreenKey?.let { highlightRail(it) }
+        selectedScreenKey?.let { key ->
+            highlightRail(key)
+            if (railHadFocus) railRows[key]?.requestFocus()
+        }
+        SettingsDeepLink.consumePendingScreenKey()?.let { key ->
+            selectPage(key, focusRail = false)
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

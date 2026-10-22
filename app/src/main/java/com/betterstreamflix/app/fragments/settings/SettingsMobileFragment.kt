@@ -79,6 +79,8 @@ class SettingsMobileFragment : Fragment() {
         // Provider/profile visibility can change while away — rebuild cheaply.
         renderGroups()
         renderRecents()
+        // Deep links can also arrive while Settings is already open.
+        consumeDeepLink()
     }
 
     override fun onDestroyView() {
