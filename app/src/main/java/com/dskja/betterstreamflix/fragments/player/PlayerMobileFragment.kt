@@ -559,6 +559,11 @@ class PlayerMobileFragment : Fragment(),
                 ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
         }
         runCatching { TrailerPlaybackController.silenceAllActive() }
+        com.dskja.betterstreamflix.player.SleepTimer.attach(viewLifecycleOwner.lifecycleScope) {
+            runCatching {
+                if (::player.isInitialized && !playerReleased) player.pause()
+            }
+        }
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
@@ -1237,6 +1242,7 @@ class PlayerMobileFragment : Fragment(),
         endCardCountdownJob?.cancel()
         endCardCountdownJob = null
         endCardCountdownCancelled = true
+        com.dskja.betterstreamflix.player.SleepTimer.detach()
         hideEndCardChooser()
         stopProgressHandler()
         stopLiveEdgeWatcher()
@@ -1956,6 +1962,12 @@ class PlayerMobileFragment : Fragment(),
             if (isTearingDown || !isAdded) return@launch
             if (KidsBedtime.shouldBlockAutoplay()) {
                 finishForKidsBedtime()
+                return@launch
+            }
+            if (autoplay && com.dskja.betterstreamflix.player.SleepTimer.shouldBlockAutoplay()) {
+                // One-shot "end of video" sleep timer: hold at the end card,
+                // then disarm so manual navigation stays unaffected.
+                com.dskja.betterstreamflix.player.SleepTimer.onAutoplayBlocked()
                 return@launch
             }
             if (autoplay && viewModel.isVideoResolveInFlight()) {
@@ -4060,11 +4072,18 @@ class PlayerMobileFragment : Fragment(),
         )
         endCardCountdownCancelled = false
         endCardCountdownJob?.cancel()
+        val sleepTimerHoldsEndCard = com.dskja.betterstreamflix.player.SleepTimer
+            .shouldBlockAutoplay()
+        if (sleepTimerHoldsEndCard) {
+            // One-shot: the armed "end of video" timer holds this end card,
+            // then disarms so manual navigation stays unaffected.
+            com.dskja.betterstreamflix.player.SleepTimer.onAutoplayBlocked()
+        }
         val shouldCountdown = EndCardPolicy.shouldAutoplayAfterCountdown(
             autoplayEnabled = UserPreferences.autoplay,
             hasNextEpisode = hasNext,
             countdownCancelled = false,
-            bedtimeBlocks = KidsBedtime.shouldBlockAutoplay(),
+            bedtimeBlocks = KidsBedtime.shouldBlockAutoplay() || sleepTimerHoldsEndCard,
         )
         if (shouldCountdown) {
             card.tvEndCardCountdown.isVisible = true

@@ -54,6 +54,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     private val gesturesAdapter = SettingsAdapter(this, Settings.Gestures.list)
     private val nightAudioAdapter = SettingsAdapter(this, Settings.NightAudio.list)
     private val keepScreenOnAdapter = SettingsAdapter(this, Settings.KeepScreenOn.list)
+    private val sleepTimerAdapter = SettingsAdapter(this, Settings.SleepTimer.list)
     private val serversAdapter = SettingsAdapter(this, Settings.Server.list)
     private val marginAdapter = SettingsAdapter(this, Settings.Subtitle.Style.Margin.list)
 
@@ -104,6 +105,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.NIGHT_AUDIO,
             Setting.EXTRA_BUFFERING,
             Setting.SOFTWARE_DECODER,
+            Setting.SLEEP_TIMER,
             Setting.MANUAL_ZOOM -> displaySettings(Setting.MAIN)
             Setting.SUBTITLE_OFFSET -> displaySettings(Setting.SUBTITLES)
             Setting.CAPTION_STYLE -> displaySettings(Setting.SUBTITLES)
@@ -191,6 +193,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                 Setting.GESTURES -> context.getString(R.string.player_settings_gestures_title)
                 Setting.KEEP_SCREEN_ON -> context.getString(R.string.player_settings_keep_screen_on_title)
                 Setting.NIGHT_AUDIO -> context.getString(R.string.player_settings_night_audio_title)
+                Setting.SLEEP_TIMER -> context.getString(R.string.player_settings_sleep_timer_title)
                 Setting.MANUAL_ZOOM -> context.getString(R.string.player_settings_manual_zoom_label)
             }
         }
@@ -230,6 +233,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.GESTURES -> gesturesAdapter
             Setting.KEEP_SCREEN_ON -> keepScreenOnAdapter
             Setting.NIGHT_AUDIO -> nightAudioAdapter
+            Setting.SLEEP_TIMER -> sleepTimerAdapter
             Setting.MANUAL_ZOOM -> settingsAdapter
         }
         syncSubtitleStudioPreview(setting)
@@ -340,6 +344,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                                 Settings.Server -> settingsView.displaySettings(Setting.SERVERS)
                                 Settings.Gestures -> settingsView.displaySettings(Setting.GESTURES)
                                 Settings.KeepScreenOn -> settingsView.displaySettings(Setting.KEEP_SCREEN_ON)
+                                Settings.SleepTimer -> settingsView.displaySettings(Setting.SLEEP_TIMER)
                                 Settings.ManualZoom -> {
                                     settingsView.onManualZoomClicked?.invoke()
                                     settingsView.hide()
@@ -558,6 +563,17 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                             settingsView.displaySettings(Setting.MAIN)
                         }
 
+                        is Settings.SleepTimer -> {
+                            when (item) {
+                                is Settings.SleepTimer.In ->
+                                    com.dskja.betterstreamflix.player.SleepTimer.setMinutes(item.minutes)
+                                Settings.SleepTimer.EndOfVideo ->
+                                    com.dskja.betterstreamflix.player.SleepTimer.setEndOfVideo()
+                                else -> com.dskja.betterstreamflix.player.SleepTimer.cancel()
+                            }
+                            settingsView.displaySettings(Setting.MAIN)
+                        }
+
                         is Settings.Server -> {
                             settingsView.onServerSelected?.invoke(item)
                             settingsView.displaySettings(Setting.MAIN)
@@ -639,6 +655,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.Server -> R.drawable.ic_player_settings_servers
                         Settings.Gestures -> R.drawable.ic_player_settings_gestures
                         Settings.KeepScreenOn -> R.drawable.ic_brightness
+                        Settings.SleepTimer -> R.drawable.ic_player_settings_sleep_timer
                         Settings.ManualZoom -> R.drawable.exo_styled_controls_aspect_ratio
                         Settings.Download -> R.drawable.ic_player_settings_download
                         Settings.PlayWith -> R.drawable.exo_styled_controls_external_player
@@ -671,6 +688,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.Server -> context.getString(R.string.player_settings_servers_label)
                         Settings.Gestures -> context.getString(R.string.player_settings_gestures_title)
                         Settings.KeepScreenOn -> context.getString(R.string.player_settings_keep_screen_on_title)
+                        Settings.SleepTimer -> context.getString(R.string.player_settings_sleep_timer_label)
                         Settings.ManualZoom -> context.getString(R.string.player_settings_manual_zoom_label)
                         Settings.Download -> context.getString(R.string.player_settings_download)
                         Settings.PlayWith -> context.getString(R.string.player_settings_play_with)
@@ -778,6 +796,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                     is Settings.KeepScreenOn -> context.getString(item.stringId)
 
+                    is Settings.SleepTimer -> context.getString(item.stringId)
+
                     is Settings.Server -> item.name
                     else -> ""
                 }
@@ -810,6 +830,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.SoftwareDecoder -> context.getString(Settings.SoftwareDecoder.selected.stringId)
                         Settings.Gestures -> context.getString(Settings.Gestures.selected.stringId)
                         Settings.KeepScreenOn -> context.getString(Settings.KeepScreenOn.selected.stringId)
+                        Settings.SleepTimer -> Settings.SleepTimer.subtitle(context)
                         Settings.Server -> Settings.Server.selected?.name ?: ""
                         Settings.ManualZoom -> ""
                         Settings.Download -> ""
@@ -967,6 +988,11 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         else -> View.GONE
                     }
 
+                    is Settings.SleepTimer -> when {
+                        item.isSelected -> View.VISIBLE
+                        else -> View.GONE
+                    }
+
                     is Settings.Server -> when {
                         item.isSelected -> View.VISIBLE
                         else -> View.GONE
@@ -1000,6 +1026,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                             Settings.SoftwareDecoder,
                             Settings.Gestures,
                             Settings.KeepScreenOn,
+                            Settings.SleepTimer,
                             Settings.Server -> View.VISIBLE
                             else -> View.GONE
                         }

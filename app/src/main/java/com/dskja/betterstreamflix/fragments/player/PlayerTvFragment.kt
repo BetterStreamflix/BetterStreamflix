@@ -507,6 +507,11 @@ class PlayerTvFragment : Fragment(),
             },
         )
         runCatching { TrailerPlaybackController.silenceAllActive() }
+        com.dskja.betterstreamflix.player.SleepTimer.attach(viewLifecycleOwner.lifecycleScope) {
+            runCatching {
+                if (::player.isInitialized && !playerReleased) player.pause()
+            }
+        }
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
@@ -1102,6 +1107,7 @@ class PlayerTvFragment : Fragment(),
         endCardCountdownJob?.cancel()
         endCardCountdownJob = null
         endCardCountdownCancelled = true
+        com.dskja.betterstreamflix.player.SleepTimer.detach()
         hideEndCardChooser()
         stopProgressHandler()
         stopLiveEdgeWatcher()
@@ -1360,6 +1366,12 @@ class PlayerTvFragment : Fragment(),
             if (isTearingDown || !isAdded) return@launch
             if (KidsBedtime.shouldBlockAutoplay()) {
                 finishForKidsBedtime()
+                return@launch
+            }
+            if (com.dskja.betterstreamflix.player.SleepTimer.shouldBlockAutoplay()) {
+                // One-shot "end of video" sleep timer: hold at the end card,
+                // then disarm so manual navigation stays unaffected.
+                com.dskja.betterstreamflix.player.SleepTimer.onAutoplayBlocked()
                 return@launch
             }
             if (autoplay && viewModel.isVideoResolveInFlight()) {

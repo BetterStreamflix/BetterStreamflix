@@ -1346,6 +1346,16 @@
     <string name="error_dialog_no_cause">Keine Ursache</string>
     <string name="player_settings_gestures_title">Gesten</string>
     <string name="player_settings_keep_screen_on_title">Bildschirm bei Pause anlassen</string>
+    <string name="player_settings_sleep_timer_title">Sleep-Timer</string>
+    <string name="player_settings_sleep_timer_label">Sleep-Timer</string>
+    <string name="player_settings_sleep_timer_off">Aus</string>
+    <string name="player_settings_sleep_timer_minutes_15">15 Minuten</string>
+    <string name="player_settings_sleep_timer_minutes_30">30 Minuten</string>
+    <string name="player_settings_sleep_timer_minutes_45">45 Minuten</string>
+    <string name="player_settings_sleep_timer_minutes_60">1 Stunde</string>
+    <string name="player_settings_sleep_timer_minutes_90">1,5 Stunden</string>
+    <string name="player_settings_sleep_timer_end_of_video">Ende dieses Videos</string>
+    <string name="player_settings_sleep_timer_remaining_minutes">in %1$d Min.</string>
     <string name="player_settings_keep_screen_on_on">An</string>
     <string name="player_settings_keep_screen_on_off">Aus</string>
     <string name="player_settings_subtitles_loading">Untertitel werden gesucht…</string>

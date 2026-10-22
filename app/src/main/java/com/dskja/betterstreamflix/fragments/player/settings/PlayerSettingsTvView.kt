@@ -51,6 +51,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     private val extraBufferingAdapter = SettingsAdapter(this, Settings.ExtraBuffering.list)
     private val softwareDecoderAdapter = SettingsAdapter(this, Settings.SoftwareDecoder.list)
     private val nightAudioAdapter = SettingsAdapter(this, Settings.NightAudio.list)
+    private val sleepTimerAdapter = SettingsAdapter(this, Settings.SleepTimer.list)
     private val serversAdapter = SettingsAdapter(this, Settings.Server.list)
     private val marginAdapter = SettingsAdapter(this, Settings.Subtitle.Style.Margin.list)
 
@@ -86,6 +87,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.GESTURES,
             Setting.KEEP_SCREEN_ON,
             Setting.NIGHT_AUDIO,
+            Setting.SLEEP_TIMER,
             Setting.MANUAL_ZOOM -> displaySettings(Setting.MAIN)
             Setting.SUBTITLE_OFFSET -> displaySettings(Setting.SUBTITLES)
             Setting.CAPTION_STYLE -> displaySettings(Setting.SUBTITLES)
@@ -170,6 +172,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                 Setting.GESTURES -> context.getString(R.string.player_settings_gestures_title)
                 Setting.KEEP_SCREEN_ON -> context.getString(R.string.player_settings_keep_screen_on_title)
                 Setting.NIGHT_AUDIO -> context.getString(R.string.player_settings_night_audio_title)
+                Setting.SLEEP_TIMER -> context.getString(R.string.player_settings_sleep_timer_title)
                 Setting.MANUAL_ZOOM -> context.getString(R.string.player_settings_manual_zoom_label)
             }
         }
@@ -195,6 +198,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.EXTRA_BUFFERING -> extraBufferingAdapter
             Setting.SOFTWARE_DECODER -> softwareDecoderAdapter
             Setting.NIGHT_AUDIO -> nightAudioAdapter
+            Setting.SLEEP_TIMER -> sleepTimerAdapter
             Setting.SERVERS -> serversAdapter
             Setting.CAPTION_STYLE_MARGIN -> marginAdapter
             else -> settingsAdapter
@@ -302,6 +306,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                 Settings.ExtraBuffering -> settingsView.displaySettings(Setting.EXTRA_BUFFERING)
                                 Settings.SoftwareDecoder -> settingsView.displaySettings(Setting.SOFTWARE_DECODER)
                                 Settings.Server -> settingsView.displaySettings(Setting.SERVERS)
+                                Settings.SleepTimer -> settingsView.displaySettings(Setting.SLEEP_TIMER)
                                 Settings.ManualZoom -> {
                                     settingsView.onManualZoomClicked?.invoke()
                                     settingsView.hide()
@@ -499,6 +504,17 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             settingsView.hide()
                         }
 
+                        is Settings.SleepTimer -> {
+                            when (item) {
+                                is Settings.SleepTimer.In ->
+                                    com.dskja.betterstreamflix.player.SleepTimer.setMinutes(item.minutes)
+                                Settings.SleepTimer.EndOfVideo ->
+                                    com.dskja.betterstreamflix.player.SleepTimer.setEndOfVideo()
+                                else -> com.dskja.betterstreamflix.player.SleepTimer.cancel()
+                            }
+                            settingsView.hide()
+                        }
+
                         is Settings.Server -> {
                             settingsView.onServerSelected?.invoke(item)
                             settingsView.hide()
@@ -597,6 +613,12 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                     R.drawable.ic_player_settings_servers
                                 )
                             )
+                            Settings.SleepTimer -> setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.ic_player_settings_sleep_timer
+                                )
+                            )
                             Settings.ManualZoom -> setImageDrawable(
                                 ContextCompat.getDrawable(
                                     context,
@@ -666,6 +688,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         Settings.ExtraBuffering -> context.getString(R.string.player_settings_extra_buffer_server_label)
                         Settings.SoftwareDecoder -> context.getString(R.string.player_settings_software_decoder_label)
                         Settings.Server -> context.getString(R.string.player_settings_servers_label)
+                        Settings.SleepTimer -> context.getString(R.string.player_settings_sleep_timer_label)
                         Settings.ManualZoom -> context.getString(R.string.player_settings_manual_zoom_label)
                         Settings.Download -> context.getString(R.string.player_settings_download)
                         Settings.PlayWith -> context.getString(R.string.player_settings_play_with)
@@ -770,6 +793,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                     is Settings.NightAudio -> context.getString(item.stringId)
 
+                    is Settings.SleepTimer -> context.getString(item.stringId)
+
                     is Settings.Server -> item.name
 
                     else -> ""
@@ -801,6 +826,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         Settings.Speed -> context.getString(Settings.Speed.selected.stringId)
                         Settings.ExtraBuffering -> context.getString(Settings.ExtraBuffering.selected.stringId)
                         Settings.Server -> Settings.Server.selected?.name ?: ""
+                        Settings.SleepTimer -> Settings.SleepTimer.subtitle(context)
                         Settings.ManualZoom -> ""
                         Settings.Download -> ""
                         Settings.PlayWith -> ""
@@ -947,6 +973,11 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         else -> View.GONE
                     }
 
+                    is Settings.SleepTimer -> when {
+                        item.isSelected -> View.VISIBLE
+                        else -> View.GONE
+                    }
+
                     is Settings.Server -> when {
                         item.isSelected -> View.VISIBLE
                         else -> View.GONE
@@ -967,6 +998,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             Settings.Speed,
                             Settings.ExtraBuffering,
                             Settings.SoftwareDecoder,
+                            Settings.SleepTimer,
                             Settings.Server -> View.VISIBLE
                             else -> View.GONE
                         }
