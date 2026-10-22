@@ -216,6 +216,29 @@ object TmdbUtils {
     ): String? {
         if (!tmdbAllowed()) return null
         if (!UserPreferences.enableTmdbLogos) return null
+        val explicitTmdbId = tmdbId?.trim()?.toIntOrNull()
+        // Title→id disk cache: skips the whole search/imdb chain on repeat
+        // resolves (hit) and suppresses repeat searches for known misses.
+        val titleKey = "title|" + listOf(
+            title.trim().lowercase(), isTv, year ?: -1, imdbId.orEmpty(),
+            (language ?: UserPreferences.currentProvider?.language).orEmpty(),
+        ).joinToString("|")
+        if (explicitTmdbId == null) {
+            when (val look = TmdbLogoCache.lookup(titleKey)) {
+                TmdbLogoCache.Lookup.KnownMiss -> return null
+                is TmdbLogoCache.Lookup.Hit -> {
+                    val cachedId = look.url.toIntOrNull()
+                    if (cachedId != null) {
+                        return suspendCatching {
+                            if (isTv) getTvShowLogo(cachedId, language)
+                            else getMovieLogo(cachedId, language)
+                        }
+                    }
+                    TmdbLogoCache.invalidateKey(titleKey)
+                }
+                TmdbLogoCache.Lookup.Fetch -> Unit
+            }
+        }
         // Single-flight: the same title bound on Featured + shelf + detail at once
         // must share one search→id→logo chain, not launch three.
         val flightKey = "resolve|" + listOf(
@@ -236,8 +259,18 @@ object TmdbUtils {
                     language = language,
                 )
             }
-            deferred.complete(result)
-            return result
+            if (explicitTmdbId == null) {
+                when {
+                    // Persist title→id so later resolves skip the search chain.
+                    result.tmdbId != null ->
+                        TmdbLogoCache.put(titleKey, result.tmdbId.toString())
+                    // Only store a miss when the search itself completed —
+                    // transient failures must not poison the cache.
+                    !result.searchFailed -> TmdbLogoCache.put(titleKey, null)
+                }
+            }
+            deferred.complete(result.logoUrl)
+            return result.logoUrl
         } catch (e: TimeoutCancellationException) {
             deferred.complete(null)
             return null
@@ -252,6 +285,12 @@ object TmdbUtils {
         }
     }
 
+    private data class TitleResolve(
+        val logoUrl: String?,
+        val tmdbId: Int?,
+        val searchFailed: Boolean,
+    )
+
     private suspend fun resolveTitleLogoUncapped(
         title: String,
         year: Int? = null,
@@ -259,47 +298,63 @@ object TmdbUtils {
         tmdbId: String? = null,
         imdbId: String? = null,
         language: String? = null,
-    ): String? {
+    ): TitleResolve {
         val lang = language ?: UserPreferences.currentProvider?.language
         val effectiveYear = year ?: extractYear(title)
         val normalizedQuery = titleNormalizer(title)
+        var searchFailed = false
         val id = tmdbId?.trim()?.toIntOrNull()
-            ?: suspendCatching {
-                val cleanImdb = imdbId?.trim()?.takeIf { it.isNotBlank() }
-                when {
-                    cleanImdb != null && isTv ->
-                        getTvShowByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
-                    cleanImdb != null ->
-                        getMovieByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
-                    else -> null
+            ?: run {
+                try {
+                    val cleanImdb = imdbId?.trim()?.takeIf { it.isNotBlank() }
+                    when {
+                        cleanImdb != null && isTv ->
+                            getTvShowByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
+                        cleanImdb != null ->
+                            getMovieByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
+                        else -> null
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    searchFailed = true
+                    null
                 }
             }
-            ?: suspendCatching {
-                if (isTv) {
-                    findBestTvMatch(title, effectiveYear, lang)?.id
-                        ?: effectiveYear?.let {
-                            // Year-less remake guard: still prefer candidates near the year.
-                            findBestTvMatch(title, year = null, lang)?.id
-                        }
-                        ?: searchTvDirect(
-                            query = normalizedQuery.ifBlank { title },
-                            language = lang,
-                            preferredYear = effectiveYear,
-                        )?.id
-                } else {
-                    findBestMovieMatch(title, effectiveYear, lang)?.id
-                        ?: effectiveYear?.let {
-                            findBestMovieMatch(title, year = null, lang)?.id
-                        }
-                        ?: searchMovieDirect(
-                            query = normalizedQuery.ifBlank { title },
-                            language = lang,
-                            preferredYear = effectiveYear,
-                        )?.id
+            ?: run {
+                try {
+                    if (isTv) {
+                        findBestTvMatch(title, effectiveYear, lang)?.id
+                            ?: effectiveYear?.let {
+                                // Year-less remake guard: still prefer candidates near the year.
+                                findBestTvMatch(title, year = null, lang)?.id
+                            }
+                            ?: searchTvDirect(
+                                query = normalizedQuery.ifBlank { title },
+                                language = lang,
+                                preferredYear = effectiveYear,
+                            )?.id
+                    } else {
+                        findBestMovieMatch(title, effectiveYear, lang)?.id
+                            ?: effectiveYear?.let {
+                                findBestMovieMatch(title, year = null, lang)?.id
+                            }
+                            ?: searchMovieDirect(
+                                query = normalizedQuery.ifBlank { title },
+                                language = lang,
+                                preferredYear = effectiveYear,
+                            )?.id
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    searchFailed = true
+                    null
                 }
             }
-            ?: return null
-        return if (isTv) getTvShowLogo(id, lang) else getMovieLogo(id, lang)
+            ?: return TitleResolve(logoUrl = null, tmdbId = null, searchFailed = searchFailed)
+        val logoUrl = if (isTv) getTvShowLogo(id, lang) else getMovieLogo(id, lang)
+        return TitleResolve(logoUrl = logoUrl, tmdbId = id, searchFailed = searchFailed)
     }
 
     /** Like [runCatching] but never swallows [CancellationException]. */
