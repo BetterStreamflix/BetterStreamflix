@@ -22,6 +22,9 @@
     <dimen name="home_featured_card_height">580dp</dimen>
 
     <!-- TV DPAD focus ring — thickened under high-contrast overlay via theme styles. -->
+    <dimen name="tv_focus_stroke_width">4dp</dimen>
+    <dimen name="tv_focus_stroke_width_hc">6dp</dimen>
+    <dimen name="tv_focus_stroke_width_compact">3dp</dimen>
 
     <!-- Shared Cinema Ink corner radii (Featured / Detail high-traffic drawables). -->
     <dimen name="cinema_radius_sm">10dp</dimen>
