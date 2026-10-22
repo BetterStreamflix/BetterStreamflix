@@ -308,9 +308,13 @@ class HomeViewModel(
                     .find { Category.isFeaturedName(it.name) }
                     ?.let { category ->
                         category.copy(
-                            list = category.list.map(::mergeItem)
+                            list = SeriesFastForward.filterTasteHidden(
+                                BetterStreamflixApp.instance.applicationContext,
+                                category.list.map(::mergeItem),
+                            ),
                         )
                     }
+                    ?.takeIf { it.list.isNotEmpty() }
 
                 val mergedCw = com.dskja.betterstreamflix.platform.ContinueWatchingMerger.merge(
                     local = history.continueWatching
@@ -353,16 +357,24 @@ class HomeViewModel(
                     appCtx,
                     history.favoriteTvShows,
                 )
+                val moviesTasteClean = SeriesFastForward.filterTasteHidden(
+                    appCtx,
+                    history.favoritesMovies,
+                )
+                val cwTasteClean = SeriesFastForward.filterTasteHidden(appCtx, mergedCw)
                 val nextFiltered = SeriesFastForward.filterEpisodes(nextTasteClean)
                 val favoriteTvFiltered = SeriesFastForward.filterTvShows(favTasteClean)
-                val rwDeduped = filterRecentlyWatchedAgainstActive(
-                    recentlyWatched = history.recentlyWatched,
-                    continueWatching = mergedCw,
-                    nextEpisodes = nextDeduped,
+                val rwDeduped = SeriesFastForward.filterTasteHidden(
+                    appCtx,
+                    filterRecentlyWatchedAgainstActive(
+                        recentlyWatched = history.recentlyWatched,
+                        continueWatching = mergedCw,
+                        nextEpisodes = nextDeduped,
+                    ),
                 )
                 // Recently Added — favorites by favoritedAt (limited Home companion shelf)
                 val recentlyAdded = run {
-                    val recent = (history.favoritesMovies + history.favoriteTvShows)
+                    val recent = (moviesTasteClean + favTasteClean)
                         .sortedByDescending { item ->
                             when (item) {
                                 is Movie -> item.favoritedAtMillis ?: 0L
@@ -407,9 +419,9 @@ class HomeViewModel(
                 val continueShelves = listOfNotNull(
                     Category(
                         name = Category.CONTINUE_WATCHING,
-                        list = mergedCw,
+                        list = cwTasteClean,
                     ).takeIf {
-                        UserPreferences.showContinueWatching && mergedCw.isNotEmpty()
+                        UserPreferences.showContinueWatching && cwTasteClean.isNotEmpty()
                     }?.let(::stamp),
                     familyFriday,
                     Category(
@@ -453,7 +465,7 @@ class HomeViewModel(
                             stamp(
                                 Category(
                                     name = Category.FAVORITE_MOVIES,
-                                    list = history.favoritesMovies,
+                                    list = moviesTasteClean,
                                 ),
                             ),
                             stamp(
@@ -467,12 +479,15 @@ class HomeViewModel(
                             .filterProviderCategories(state.categories)
                             .filter { !Category.isFeaturedName(it.name) }
                             .map { category ->
-                                stamp(
-                                    category.copy(
-                                        list = category.list.map(::mergeItem),
+                                category.copy(
+                                    list = SeriesFastForward.filterTasteHidden(
+                                        appCtx,
+                                        category.list.map(::mergeItem),
                                     ),
                                 )
                             }
+                            .filter { it.list.isNotEmpty() }
+                            .map(::stamp)
                 )
 
                 // Remix orders blocks; Shelf Pinning floats up to 3 shelves under Featured.
